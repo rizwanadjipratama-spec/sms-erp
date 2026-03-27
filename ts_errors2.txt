@@ -1,0 +1,10 @@
+﻿src/lib/performance-service.ts(279,52): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(callbackfn: (previousValue: { amount: any; }, currentValue: { amount: any; }, currentIndex: number, array: { amount: any; }[]) => { amount: any; }, initialValue: { amount: any; }): { amount: any; }', gave the following error.
+    Argument of type '(sum: number, invoice: Invoice) => number' is not assignable to parameter of type '(previousValue: { amount: any; }, currentValue: { amount: any; }, currentIndex: number, array: { amount: any; }[]) => { amount: any; }'.
+      Types of parameters 'sum' and 'previousValue' are incompatible.
+        Type '{ amount: any; }' is not assignable to type 'number'.
+  Overload 2 of 3, '(callbackfn: (previousValue: number, currentValue: { amount: any; }, currentIndex: number, array: { amount: any; }[]) => number, initialValue: number): number', gave the following error.
+    Argument of type '(sum: number, invoice: Invoice) => number' is not assignable to parameter of type '(previousValue: number, currentValue: { amount: any; }, currentIndex: number, array: { amount: any; }[]) => number'.
+      Types of parameters 'invoice' and 'currentValue' are incompatible.
+        Type '{ amount: any; }' is missing the following properties from type 'Invoice': id, order_id, invoice_number, paid, created_at
+src/lib/performance-service.ts(280,35): error TS2339: Property 'data' does not exist on type 'number'.

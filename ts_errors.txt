@@ -1,0 +1,20 @@
+﻿src/lib/pdf-service.ts(110,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/performance-service.ts(102,67): error TS2322: Type 'string' is not assignable to type 'boolean | undefined'.
+src/lib/performance-service.ts(148,11): error TS2322: Type 'CompanyKPI' is not assignable to type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'CompanyKPI'.
+src/lib/performance-service.ts(196,54): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/performance-service.ts(201,63): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/performance-service.ts(236,32): error TS2339: Property 'getEmployeeMetrics' does not exist on type '{ getCompanyKPIs(): Promise<CompanyKPI>; getAllEmployeesPerformance(): Promise<EmployeePerformance[]>; getEmployeePerformance(userId: string): Promise<...>; getDepartmentPerformance(department: string): Promise<...>; }'.
+src/lib/performance-service.ts(306,23): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(callbackfn: (previousValue: { created_at: any; }, currentValue: { created_at: any; }, currentIndex: number, array: { created_at: any; }[]) => { created_at: any; }, initialValue: { created_at: any; }): { ...; } | undefined', gave the following error.
+    Argument of type '(acc: Record<string, number>, log: ActivityLog) => Record<string, number>' is not assignable to parameter of type '(previousValue: { created_at: any; }, currentValue: { created_at: any; }, currentIndex: number, array: { created_at: any; }[]) => { created_at: any; }'.
+      Types of parameters 'log' and 'currentValue' are incompatible.
+        Type '{ created_at: any; }' is missing the following properties from type 'ActivityLog': id, user_id, action, entity_type
+  Overload 2 of 3, '(callbackfn: (previousValue: Record<string, number>, currentValue: { created_at: any; }, currentIndex: number, array: { created_at: any; }[]) => Record<string, number>, initialValue: Record<...>): Record<...> | undefined', gave the following error.
+    Argument of type '(acc: Record<string, number>, log: ActivityLog) => Record<string, number>' is not assignable to parameter of type '(previousValue: Record<string, number>, currentValue: { created_at: any; }, currentIndex: number, array: { created_at: any; }[]) => Record<string, number>'.
+      Types of parameters 'log' and 'currentValue' are incompatible.
+        Type '{ created_at: any; }' is missing the following properties from type 'ActivityLog': id, user_id, action, entity_type
+src/lib/performance-service.ts(332,16): error TS2339: Property 'avg' does not exist on type '{ avg: { created_at: number; }[]; }[]'.
