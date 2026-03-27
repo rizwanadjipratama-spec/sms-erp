@@ -78,13 +78,17 @@ export async function logSystemEvent(params: {
   metadata?: Record<string, unknown> | null;
 }): Promise<void> {
   try {
-    const { error } = await supabase.from('system_logs').insert({
-      level: params.level,
-      service: params.service,
-      action: params.action,
-      message: params.message,
-      metadata: params.metadata || null,
-    });
+    const { error } = await supabase
+      .from('system_logs')
+      .insert({
+        level: params.level,
+        service: params.service,
+        action: params.action,
+        message: params.message,
+        metadata: params.metadata || null,
+      })
+      .select()
+      .single();
 
     if (error) {
       console.error('[system-log-failed]', {

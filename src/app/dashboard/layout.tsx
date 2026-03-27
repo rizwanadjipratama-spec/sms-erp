@@ -146,6 +146,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <main className="flex-1 overflow-y-auto bg-white p-4 sm:p-6 lg:p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <button
+              onClick={() => router.back()}
+              className="mb-6 px-4 py-1.5 rounded-apple bg-apple-gray-bg hover:bg-apple-gray-border text-apple-text-secondary text-xs font-semibold transition-all active:scale-95 flex items-center gap-2 group shadow-sm border border-apple-gray-border/50"
+            >
+              <span className="group-hover:-translate-x-0.5 transition-transform duration-300">←</span> Back
+            </button>
             {children}
           </div>
         </main>

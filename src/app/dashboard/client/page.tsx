@@ -49,6 +49,9 @@ export default function ClientDashboard() {
   const [requests, setRequests] = useState<DbRequest[]>([]);
   const [fetching, setFetching] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [cancellingRequest, setCancellingRequest] = useState<DbRequest | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelOtherReason, setCancelOtherReason] = useState('');
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
@@ -110,26 +113,64 @@ export default function ClientDashboard() {
   );
 
   const confirmCompleted = async (request: DbRequest) => {
+    if (!profile?.role) {
+      alert('User role not loaded');
+      return;
+    }
+
     setProcessingId(request.id);
     try {
       const actor = await getCurrentAuthUser();
+
       await workflowEngine.transitionOrder({
         request,
         actorId: actor.id,
-        actorEmail: actor.email || profile?.email,
-        actorRole: profile?.role || 'client',
+        actorEmail: actor.email,
+        actorRole: profile.role,
         nextStatus: 'completed',
-        action: 'completed',
-        message: `Client confirmed receipt for request ${request.id}`,
-        type: 'success',
-        notifyRoles: ['finance', 'admin', 'owner'],
-        metadata: {
-          previous_status: request.status,
-        },
+        action: 'complete_request',
+        message: `Request ${request.id} completed by client`,
+        notifyRoles: ['admin', 'owner'],
       });
       await refresh();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to confirm receipt');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!cancellingRequest || !profile) return;
+    
+    const finalReason = cancelReason === 'Other' ? cancelOtherReason : cancelReason;
+    if (!finalReason) {
+      alert('Please select or specify a reason');
+      return;
+    }
+
+    setProcessingId(cancellingRequest.id);
+    try {
+      const actor = await getCurrentAuthUser();
+      await workflowEngine.transitionOrder({
+        request: cancellingRequest,
+        actorId: actor.id,
+        actorEmail: actor.email,
+        actorRole: profile.role,
+        nextStatus: 'cancelled',
+        action: 'cancel_request',
+        message: `Request ${cancellingRequest.id} cancelled by client. Reason: ${finalReason}`,
+        notifyRoles: ['admin', 'owner', 'marketing'],
+        extraUpdates: {
+          cancel_reason: finalReason
+        }
+      });
+      setCancellingRequest(null);
+      setCancelReason('');
+      setCancelOtherReason('');
+      await refresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to cancel request');
     } finally {
       setProcessingId(null);
     }
@@ -262,11 +303,74 @@ export default function ClientDashboard() {
                     </Link>
                   </div>
                 )}
+
+                {['pending', 'priced', 'approved'].includes(request.status) && (
+                  <button
+                    onClick={() => setCancellingRequest(request)}
+                    className="w-full py-2 bg-apple-gray-bg hover:bg-apple-gray-border text-apple-danger text-sm font-bold rounded-apple transition-all active:scale-95 border border-apple-gray-border"
+                  >
+                    Cancel Request
+                  </button>
+                )}
               </div>
             );
           })
         )}
       </section>
+
+      {cancellingRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setCancellingRequest(null)} />
+          <div className="bg-white rounded-[2rem] border border-apple-gray-border shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 slide-in-from-bottom-5 duration-500">
+            <div className="p-8">
+              <h2 className="text-xl font-black text-apple-text-primary tracking-tight mb-2">Cancel Request</h2>
+              <p className="text-apple-text-secondary text-sm font-medium mb-6">Please tell us why you want to cancel this request.</p>
+              
+              <div className="space-y-3 mb-6">
+                {['Wrong item', 'Change plan', 'Ordered by mistake', 'Need revision', 'Other'].map(reason => (
+                  <label key={reason} className="flex items-center gap-3 p-3 rounded-xl bg-apple-gray-bg border border-apple-gray-border cursor-pointer hover:border-apple-blue/50 transition-all group">
+                    <input 
+                      type="radio" 
+                      name="cancel_reason" 
+                      value={reason} 
+                      checked={cancelReason === reason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      className="w-4 h-4 text-apple-blue focus:ring-apple-blue"
+                    />
+                    <span className="text-sm font-bold text-apple-text-primary group-hover:text-apple-blue transition-colors">{reason}</span>
+                  </label>
+                ))}
+              </div>
+
+              {cancelReason === 'Other' && (
+                <textarea
+                  value={cancelOtherReason}
+                  onChange={(e) => setCancelOtherReason(e.target.value)}
+                  placeholder="Tell us more..."
+                  rows={3}
+                  className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium resize-none mb-6"
+                />
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setCancellingRequest(null)}
+                  className="flex-1 py-3 rounded-xl border border-apple-gray-border font-bold text-xs text-apple-text-secondary hover:bg-apple-gray-bg transition-all active:scale-95"
+                >
+                  KEEP REQUEST
+                </button>
+                <button
+                  disabled={!cancelReason || (cancelReason === 'Other' && !cancelOtherReason)}
+                  onClick={handleCancelRequest}
+                  className="flex-1 py-3 rounded-xl bg-apple-danger text-white font-black text-xs hover:bg-apple-danger-hover transition-all active:scale-95 shadow-lg shadow-apple-danger/10"
+                >
+                  CONFIRM CANCEL
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="space-y-4">
         <div className="flex items-center gap-2">

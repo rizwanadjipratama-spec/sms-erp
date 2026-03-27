@@ -49,6 +49,12 @@ export const upsertPriceList = async (
   );
 
   if (error) throw new Error(error.message);
+
+  // Sync is_priced flag to products table
+  await supabase
+    .from('products')
+    .update({ is_priced: true })
+    .eq('id', productId);
 };
 
 export const deletePriceEntry = async (id: string): Promise<void> => {

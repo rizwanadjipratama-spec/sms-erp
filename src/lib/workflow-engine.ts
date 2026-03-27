@@ -4,9 +4,10 @@ import { logActivity } from './activity';
 import { inventoryService } from './inventory-service';
 import { handleServiceError, logServiceExecution } from './service-utils';
 import type { DbRequest, Notification, RequestStatus, UserRole } from '@/types/types';
-import { canTransition } from './permissions';
+import { canTransition, PERMISSIONS } from './permissions';
 
 export const WORKFLOW_STATUSES: RequestStatus[] = [
+  'submitted',
   'pending',
   'priced',
   'approved',
@@ -19,12 +20,14 @@ export const WORKFLOW_STATUSES: RequestStatus[] = [
   'completed',
   'issue',
   'resolved',
+  'cancelled',
 ];
 
 export const WORKFLOW_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
-  pending: ['priced'],
-  priced: ['approved', 'rejected'],
-  approved: ['invoice_ready'],
+  submitted: ['pending', 'cancelled'],
+  pending: ['priced', 'cancelled'],
+  priced: ['approved', 'rejected', 'cancelled'],
+  approved: ['invoice_ready', 'cancelled'],
   rejected: [],
   invoice_ready: ['preparing'],
   preparing: ['ready'],
@@ -34,6 +37,7 @@ export const WORKFLOW_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
   completed: [],
   issue: ['resolved'],
   resolved: [],
+  cancelled: [],
 };
 
 export type TransitionOrderInput = {
@@ -53,13 +57,32 @@ export type TransitionOrderInput = {
 };
 
 function validateTransition(input: TransitionOrderInput) {
+  const currentStatus = String(input.request.status).toLowerCase().trim();
+  const nextStatus = String(input.nextStatus).toLowerCase().trim();
+  const key = `${currentStatus}->${nextStatus}`;
+
+  console.log('WORKFLOW DEBUG');
+  console.log('ROLE:', input.actorRole);
+  console.log('CURRENT:', currentStatus);
+  console.log('NEXT:', nextStatus);
+  console.log('KEY:', key);
+
   const allowed = WORKFLOW_TRANSITIONS[input.request.status] || [];
   if (!allowed.includes(input.nextStatus)) {
     throw new Error(`Invalid transition: ${input.request.status} -> ${input.nextStatus}`);
   }
 
-  if (!canTransition(input.actorRole, input.request.status, input.nextStatus)) {
-    throw new Error(`[workflow-engine:permission-denied] Role "${input.actorRole}" is not authorized to transition request ${input.request.id} from "${input.request.status}" to "${input.nextStatus}"`);
+  const rolePermissions = PERMISSIONS[input.actorRole];
+
+  if (!rolePermissions) {
+    throw new Error(`Unknown role: ${input.actorRole}`);
+  }
+
+  const allowedTransitions = rolePermissions.workflowTransitions || [];
+
+  if (!allowedTransitions.includes(key as any)) {
+    console.log('ALLOWED:', allowedTransitions);
+    throw new Error(`role ${input.actorRole} cannot change request workflow`);
   }
 
 
@@ -209,6 +232,8 @@ console.log('To:', input.nextStatus);
         completed: { completed_at: nowIso },
         issue: { issue_at: nowIso },
         resolved: { resolved_at: nowIso },
+        cancelled: { cancelled_at: nowIso },
+        submitted: { submitted_at: nowIso },
       };
 
       const updates = {
@@ -243,7 +268,28 @@ console.log('To:', input.nextStatus);
           });
         }
 
-        const recipients = await collectNotificationRecipients(input);
+        // Part 6: Automate Notification Mapping
+        const statusNotifyRoles: Record<string, UserRole[]> = {
+          pending: ['marketing'],
+          priced: ['boss'],
+          approved: ['finance'],
+          invoice_ready: ['warehouse'],
+          ready: ['technician'],
+          delivered: [], // Notify client specifically
+          completed: ['owner'],
+        };
+
+        const rolesToNotify = input.notifyRoles?.length 
+          ? input.notifyRoles 
+          : statusNotifyRoles[input.nextStatus] || [];
+
+        const isDelivered = input.nextStatus === 'delivered';
+        const recipients = await collectNotificationRecipients({
+          ...input,
+          notifyRoles: rolesToNotify as UserRole[],
+          notifyRequester: input.notifyRequester ?? isDelivered
+        });
+        
         await Promise.all([
           createNotificationsForUsers(recipients, input.message, input.type || 'info', updatedRequest.id),
           appendTransitionLog(updatedRequest, input, nowIso),

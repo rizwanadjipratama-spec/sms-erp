@@ -16,6 +16,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/finance', label: 'Finance', icon: 'F' },
   { href: '/dashboard/warehouse', label: 'Warehouse', icon: 'W' },
   { href: '/dashboard/technician', label: 'Delivery', icon: 'D' },
+  { href: '/dashboard/client/products', label: 'Browse Products', icon: '🛒' },
   { href: '/dashboard/tax', label: 'Tax Reports', icon: 'T' },
   { href: '/dashboard/owner', label: 'Analytics', icon: 'A' },
   { href: '/dashboard/admin', label: 'Admin Panel', icon: 'S' },

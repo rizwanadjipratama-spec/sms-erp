@@ -52,7 +52,8 @@ export type CartItem = {
 };
 
 export type RequestStatus =
-  | 'pending'           // client submitted
+  | 'submitted'           // client just clicked submit
+  | 'pending'             // client submitted and waiting for marketing
   | 'priced'            // marketing reviewed and priced
   | 'approved'          // boss approved
   | 'rejected'          // boss rejected
@@ -63,7 +64,8 @@ export type RequestStatus =
   | 'delivered'         // technician delivered, waiting for client confirm
   | 'completed'         // client confirmed
   | 'issue'             // client reported issue
-  | 'resolved';         // issue resolved
+  | 'resolved'          // issue resolved
+  | 'cancelled';        // client cancelled
 
 export type RequestPriority = 'normal' | 'cito';
 
@@ -78,6 +80,7 @@ export type DbRequest = {
   priority: RequestPriority;
   reason?: string;
   rejection_reason?: string;
+  cancel_reason?: string;
   marketing_note?: string;
   assigned_technician_id?: string;
   ready_at?: string;
@@ -275,10 +278,14 @@ export interface Solution {
 export interface Product {
   id: string;
   name: string;
-  image: string;
-  category: string;
+  description?: string;
+  price: number;
+  image_url?: string;
+  category?: string;
   stock: number;
-  status: 'in_stock' | 'out_of_stock';
+  status?: string;
+  is_priced?: boolean;
+  created_at: string;
 }
 
 export interface Partner {

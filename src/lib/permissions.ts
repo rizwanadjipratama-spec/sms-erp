@@ -13,6 +13,7 @@ export type AppRoute =
   | '/dashboard/admin'
   | '/dashboard/owner'
   | '/dashboard/tax'
+  | '/dashboard/client/products'
   | '/dashboard/notifications'
   | '/request';
 
@@ -58,6 +59,10 @@ export type WorkflowTransitionKey =
   | 'on_delivery->delivered'
   | 'delivered->completed'
   | 'delivered->issue'
+  | 'submitted->cancelled'
+  | 'pending->cancelled'
+  | 'priced->cancelled'
+  | 'approved->cancelled'
   | 'issue->resolved';
 
 export type RolePermission = {
@@ -69,10 +74,10 @@ export type RolePermission = {
 
 export const PERMISSIONS: Record<UserRole, RolePermission> = {
   client: {
-    routes: ['/dashboard', '/dashboard/client', '/dashboard/client/issues', '/dashboard/notifications', '/request'],
+    routes: ['/dashboard', '/dashboard/client', '/dashboard/client/issues', '/dashboard/client/products', '/dashboard/notifications', '/request'],
     readableEntities: ['profiles:self', 'products:catalog', 'price_list:catalog', 'requests:own', 'issues:own', 'notifications:own', 'payment_promises:own'],
     writableEntities: ['requests:own', 'issues:own', 'payment_promises:own', 'notifications:own'],
-    workflowTransitions: ['delivered->completed', 'delivered->issue'],
+    workflowTransitions: ['delivered->completed', 'delivered->issue', 'pending->cancelled', 'priced->cancelled', 'approved->cancelled'],
   },
   marketing: {
     routes: ['/dashboard', '/dashboard/marketing', '/dashboard/marketing/prices', '/dashboard/notifications'],
@@ -123,10 +128,17 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
     workflowTransitions: [],
   },
   user: {
-    routes: ['/dashboard', '/dashboard/client', '/dashboard/client/issues', '/dashboard/notifications', '/request'],
-    readableEntities: ['profiles:self', 'products:catalog', 'price_list:catalog', 'requests:own', 'issues:own', 'notifications:own', 'payment_promises:own'],
-    writableEntities: ['requests:own', 'issues:own', 'payment_promises:own', 'notifications:own'],
-    workflowTransitions: ['delivered->completed', 'delivered->issue'],
+    routes: ['/dashboard/client', '/dashboard/client/products'],
+    readableEntities: ['requests:own', 'notifications:own'],
+    writableEntities: ['requests:own'],
+    workflowTransitions: [
+      'submitted->cancelled',
+      'pending->cancelled',
+      'priced->cancelled',
+      'approved->cancelled',
+      'delivered->completed',
+      'delivered->issue'
+    ],
   },
 };
 
@@ -168,6 +180,10 @@ export function getTransitionKey(current: RequestStatus, next: RequestStatus): W
     'on_delivery->delivered',
     'delivered->completed',
     'delivered->issue',
+    'submitted->cancelled',
+    'pending->cancelled',
+    'priced->cancelled',
+    'approved->cancelled',
     'issue->resolved',
   ].includes(key)
     ? key

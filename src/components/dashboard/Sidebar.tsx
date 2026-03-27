@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { SidebarButton } from './SidebarButton';
 import { useAuth } from '@/hooks/useAuth';
 import { canAccessRoute } from '@/lib/permissions';
@@ -17,6 +17,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, unreadCount }) => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { profile, logout } = useAuth();
 
   if (!profile) return null;
@@ -56,18 +57,52 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, unreadCount }
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
-        {visibleNav.map((item) => (
-          <SidebarButton
-            key={item.href}
-            label={item.label}
-            href={item.href}
-            icon={item.icon}
-            isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))}
-            onClick={onClose}
-            showBadge={item.href === '/dashboard/notifications'}
-            badgeCount={unreadCount}
-          />
-        ))}
+        {visibleNav.map((item) => {
+          const isWarehouseItem = item.href === '/dashboard/warehouse';
+          const onWarehousePage = pathname === '/dashboard/warehouse';
+          
+          return (
+            <React.Fragment key={item.href}>
+              <SidebarButton
+                label={item.label}
+                href={item.href}
+                icon={item.icon}
+                isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))}
+                onClick={onClose}
+                showBadge={item.href === '/dashboard/notifications'}
+                badgeCount={unreadCount}
+              />
+              
+              {/* Warehouse Sub-menu */}
+              {isWarehouseItem && onWarehousePage && role === 'warehouse' && (
+                <div className="ml-9 mt-1 space-y-1 animate-in slide-in-from-top-2 duration-300">
+                  <Link
+                    href="/dashboard/warehouse"
+                    onClick={onClose}
+                    className={`block px-4 py-2 rounded-apple text-xs font-bold uppercase tracking-widest transition-all ${
+                      !searchParams.get('view') 
+                        ? 'bg-apple-blue/10 text-apple-blue' 
+                        : 'text-apple-text-secondary hover:text-apple-blue hover:bg-apple-blue/5'
+                    }`}
+                  >
+                    • Console
+                  </Link>
+                  <Link
+                    href="/dashboard/warehouse?view=add-product"
+                    onClick={onClose}
+                    className={`block px-4 py-2 rounded-apple text-xs font-bold uppercase tracking-widest transition-all ${
+                      searchParams.get('view') === 'add-product'
+                        ? 'bg-apple-blue/10 text-apple-blue' 
+                        : 'text-apple-text-secondary hover:text-apple-blue hover:bg-apple-blue/5'
+                    }`}
+                  >
+                    • Add Product
+                  </Link>
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
       </nav>
 
       <div className="p-3 border-t border-apple-gray-border space-y-1 bg-white/30 backdrop-blur-sm">
