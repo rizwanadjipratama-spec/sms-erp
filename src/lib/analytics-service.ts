@@ -411,25 +411,28 @@ export async function getMonthlyClosingSummary() {
 
 export async function getOwnerDashboardStats(): Promise<OwnerDashboardStats> {
   const [revenue, orders, unpaid, stockValue, openIssues, delivery] = await Promise.all([
-    getRevenueAnalytics(),
-    getOrdersAnalytics(),
-    getUnpaidInvoices(),
-    getStockValue(),
-    getOpenIssuesCount(),
-    getDeliveryAnalytics(),
+    getRevenueAnalytics().catch(err => { console.error('Revenue analytics failed:', err); return { monthlyRevenue: [], paidRevenueThisMonth: 0, totalPaidRevenue: 0 }; }),
+    getOrdersAnalytics().catch(err => { console.error('Orders analytics failed:', err); return { monthlyOrders: [], totalOrdersThisMonth: 0, ordersInProgress: 0, recentOrders: [] }; }),
+    getUnpaidInvoices().catch(err => { console.error('Unpaid invoices analytics failed:', err); return { count: 0, totalAmount: 0, invoices: [] }; }),
+    getStockValue().catch(err => { console.error('Stock value analytics failed:', err); return 0; }),
+    getOpenIssuesCount().catch(err => { console.error('Issues analytics failed:', err); return 0; }),
+    getDeliveryAnalytics().catch(err => { console.error('Delivery analytics failed:', err); return { deliveriesInProgress: 0 }; }),
   ]);
 
+  const currentMonth = getCurrentMonthKey();
+
   return {
-    totalRevenueThisMonth: revenue.monthlyRevenue.find((item) => item.month === getCurrentMonthKey())?.value || 0,
+    totalRevenueThisMonth: revenue.monthlyRevenue.find((item) => item.month === currentMonth)?.value || 0,
     paidRevenueThisMonth: revenue.paidRevenueThisMonth,
     totalOrdersThisMonth: orders.totalOrdersThisMonth,
-    unpaidInvoices: unpaid.count,
+    unpaidInvoices: (unpaid as any).count || 0,
     stockValue,
     ordersInProgress: orders.ordersInProgress,
-    deliveriesInProgress: delivery.deliveriesInProgress,
+    deliveriesInProgress: (delivery as any).deliveriesInProgress || 0,
     openIssues,
   };
 }
+
 
 export async function getOwnerDashboardBundle(): Promise<OwnerDashboardBundle> {
   const windowStart = getWindowStart();

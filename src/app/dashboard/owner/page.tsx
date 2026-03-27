@@ -148,15 +148,15 @@ export default function OwnerDashboard() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Owner Analytics</h1>
-          <p className="text-gray-500 text-sm mt-1">Executive-level company visibility across revenue, operations, and fulfillment.</p>
+          <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Owner Analytics</h1>
+          <p className="text-apple-text-secondary text-sm mt-1">Executive-level company visibility across revenue, operations, and fulfillment.</p>
         </div>
         <Link
           href="/dashboard/owner/reports"
-          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm transition-colors"
+          className="px-4 py-2 rounded-apple bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-medium transition-all active:scale-95 shadow-sm"
         >
           View Reports
         </Link>
@@ -164,34 +164,34 @@ export default function OwnerDashboard() {
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: 'Total Revenue This Month', value: `Rp${dashboard.stats.totalRevenueThisMonth.toLocaleString('id-ID')}`, color: 'text-emerald-400' },
-          { label: 'Total Orders This Month', value: dashboard.stats.totalOrdersThisMonth, color: 'text-gray-900' },
-          { label: 'Unpaid Invoices', value: dashboard.stats.unpaidInvoices, color: 'text-red-400' },
-          { label: 'Stock Value', value: `Rp${dashboard.stats.stockValue.toLocaleString('id-ID')}`, color: 'text-amber-300' },
-          { label: 'Orders In Progress', value: dashboard.stats.ordersInProgress, color: 'text-yellow-400' },
-          { label: 'Deliveries In Progress', value: dashboard.stats.deliveriesInProgress, color: 'text-cyan-400' },
-          { label: 'Open Issues', value: dashboard.openIssues, color: 'text-rose-400' },
-          { label: 'Paid Revenue This Month', value: `Rp${dashboard.stats.paidRevenueThisMonth.toLocaleString('id-ID')}`, color: 'text-green-400' },
+          { label: 'Total Revenue This Month', value: `Rp${dashboard.stats.totalRevenueThisMonth.toLocaleString('id-ID')}`, color: 'text-apple-success' },
+          { label: 'Total Orders This Month', value: dashboard.stats.totalOrdersThisMonth, color: 'text-apple-text-primary' },
+          { label: 'Unpaid Invoices', value: dashboard.stats.unpaidInvoices, color: 'text-apple-danger' },
+          { label: 'Stock Value', value: `Rp${dashboard.stats.stockValue.toLocaleString('id-ID')}`, color: 'text-apple-warning' },
+          { label: 'Orders In Progress', value: dashboard.stats.ordersInProgress, color: 'text-apple-warning' },
+          { label: 'Deliveries In Progress', value: dashboard.stats.deliveriesInProgress, color: 'text-apple-blue' },
+          { label: 'Open Issues', value: dashboard.openIssues, color: 'text-apple-danger' },
+          { label: 'Paid Revenue This Month', value: `Rp${dashboard.stats.paidRevenueThisMonth.toLocaleString('id-ID')}`, color: 'text-apple-success' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{stat.label}</p>
-            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+          <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-4 shadow-sm">
+            <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-2">{stat.label}</p>
+            <p className={`text-2xl font-bold tracking-tight ${stat.color}`}>{stat.value}</p>
           </div>
         ))}
       </div>
 
       <section className="grid xl:grid-cols-2 gap-5">
         {chartBlocks.map((chart) => (
-          <div key={chart.label} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{chart.label}</h2>
+          <div key={chart.label} className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-apple-text-primary mb-4 tracking-tight">{chart.label}</h2>
             <div className="space-y-3">
               {chart.data.length === 0 ? (
-                <p className="text-sm text-gray-500">No data available.</p>
+                <p className="text-sm text-apple-text-secondary">No data available.</p>
               ) : (
                 chart.data.map((point) => (
                   <div key={point.month} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">{point.month}</span>
-                    <span className="text-gray-900 font-medium">{point.value.toLocaleString('id-ID')}</span>
+                    <span className="text-apple-text-secondary font-medium">{point.month}</span>
+                    <span className="text-apple-text-primary font-bold">{point.value.toLocaleString('id-ID')}</span>
                   </div>
                 ))
               )}

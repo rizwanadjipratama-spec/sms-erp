@@ -169,39 +169,44 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage users and resolve operational issues.</p>
+          <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Admin Panel</h1>
+          <p className="text-apple-text-secondary text-sm mt-1">Manage users and resolve operational issues.</p>
         </div>
-        <Link
-          href="/dashboard/admin/automation"
-          className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm transition-colors"
-        >
-          Automation
-        </Link>
-        <Link
-          href="/dashboard/admin/system-health"
-          className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-slate-700 text-gray-700 text-sm transition-colors"
-        >
-          System Health
-        </Link>
-        <Link
-          href="/dashboard/admin/backups"
-          className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-sm transition-colors"
-        >
-          Backups
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/admin/automation"
+            className="px-4 py-2 rounded-apple bg-apple-danger hover:bg-apple-danger/90 text-white text-sm font-medium transition-all active:scale-95 shadow-sm"
+          >
+            Automation
+          </Link>
+          <Link
+            href="/dashboard/admin/system-health"
+            className="px-4 py-2 rounded-apple bg-apple-gray-bg border border-apple-gray-border text-apple-text-primary hover:bg-apple-gray-border/50 text-sm font-medium transition-all active:scale-95"
+          >
+            System Health
+          </Link>
+          <Link
+            href="/dashboard/admin/backups"
+            className="px-4 py-2 rounded-apple bg-apple-success hover:bg-apple-success/90 text-white text-sm font-medium transition-all active:scale-95 shadow-sm"
+          >
+            Backups
+          </Link>
+        </div>
       </div>
 
-      <div className="flex gap-1 bg-white border-gray-200 shadow-sm p-1 rounded-lg w-fit border border-gray-200">
+      <div className="flex gap-1 bg-apple-gray-bg border border-apple-gray-border p-1 rounded-apple w-fit">
         {(['users', 'issues'] as const).map((item) => (
           <button
             key={item}
             onClick={() => setTab(item)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${tab === item ? 'bg-red-600 text-white' : 'text-gray-500 hover:text-gray-900'
-              }`}
+            className={`px-6 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 ${
+              tab === item 
+                ? 'bg-white text-apple-text-primary shadow-sm' 
+                : 'text-apple-text-secondary hover:text-apple-text-primary'
+            }`}
           >
             {item === 'users' ? 'Users' : `Issues (${issues.length})`}
           </button>
@@ -211,29 +216,29 @@ export default function AdminDashboard() {
       {tab === 'users' && (
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-gray-900">Users ({users.length})</h2>
+            <h2 className="text-lg font-bold text-apple-text-primary tracking-tight">Users ({users.length})</h2>
             <input
               type="text"
               placeholder="Search users..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-white border-gray-200 shadow-sm border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500 w-56"
+              className="bg-white border border-apple-gray-border rounded-apple px-4 py-2 text-sm text-apple-text-primary placeholder-apple-text-secondary/50 focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue outline-none transition-all w-64"
             />
           </div>
           <div className="space-y-3">
             {filteredUsers.map((user) => (
-              <div key={user.email} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div key={user.email} className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm truncate">{user.name || '(no name)'}</p>
-                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    <p className="font-bold text-apple-text-primary text-sm truncate">{user.name || '(no name)'}</p>
+                    <p className="text-xs text-apple-text-secondary truncate mt-0.5">{user.email}</p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <select
                       value={user.role}
                       onChange={(e) => updateRole(user.email, e.target.value as UserRole)}
                       disabled={saving === user.email}
-                      className="bg-gray-100 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-red-500 disabled:opacity-50"
+                      className="bg-apple-gray-bg border border-apple-gray-border rounded-lg px-3 py-1.5 text-xs text-apple-text-primary font-medium focus:ring-2 focus:ring-apple-blue/20 outline-none disabled:opacity-50"
                     >
                       {ALL_ROLES.map((role) => (
                         <option key={role} value={role}>
@@ -245,7 +250,7 @@ export default function AdminDashboard() {
                       <select
                         value={user.client_type || 'regular'}
                         onChange={(e) => updateClientType(user.email, e.target.value)}
-                        className="bg-gray-100 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-red-500"
+                        className="bg-apple-gray-bg border border-apple-gray-border rounded-lg px-3 py-1.5 text-xs text-apple-text-primary font-medium focus:ring-2 focus:ring-apple-blue/20 outline-none"
                       >
                         <option value="regular">Regular</option>
                         <option value="kso">KSO</option>
@@ -253,9 +258,9 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 </div>
-                <div className="mt-2 flex gap-4 text-xs text-gray-500">
-                  <span>Debt: Rp{(user.debt_amount || 0).toLocaleString('id-ID')}</span>
-                  <span>Limit: Rp{(user.debt_limit || 0).toLocaleString('id-ID')}</span>
+                <div className="mt-3 flex gap-4 text-[10px] font-bold uppercase tracking-wider text-apple-text-secondary">
+                  <span className="bg-apple-gray-bg px-2 py-0.5 rounded-full">Debt: Rp{(user.debt_amount || 0).toLocaleString('id-ID')}</span>
+                  <span className="bg-apple-gray-bg px-2 py-0.5 rounded-full">Limit: Rp{(user.debt_limit || 0).toLocaleString('id-ID')}</span>
                 </div>
               </div>
             ))}

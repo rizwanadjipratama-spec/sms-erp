@@ -32,11 +32,14 @@ export default function TechnicianDashboard() {
     if (!profile) return;
     setFetching(true);
     try {
+      if (!profile) {
+        throw new Error('Authentication profile not loaded');
+      }
       const actor = await getCurrentAuthUser();
       const data = await deliveryService.fetchTechnicianDashboardData({
         id: actor.id,
         email: actor.email || profile.email,
-        role: profile.role || 'technician',
+        role: profile.role,
       });
       setRequests(data.requests);
       setDeliveryLogs(data.deliveryLogs);
@@ -88,6 +91,11 @@ export default function TechnicianDashboard() {
   };
 
   const pickUp = async (request: DbRequest) => {
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setProcessingId(request.id);
     try {
       const actor = await getCurrentAuthUser();
@@ -96,7 +104,7 @@ export default function TechnicianDashboard() {
         actor: {
           id: actor.id,
           email: actor.email || profile?.email,
-          role: profile?.role || 'technician',
+          role: profile.role,
         },
       });
       await refresh();
@@ -108,6 +116,11 @@ export default function TechnicianDashboard() {
   };
 
   const markDelivered = async (request: DbRequest) => {
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setProcessingId(request.id);
     try {
       const actor = await getCurrentAuthUser();
@@ -116,7 +129,7 @@ export default function TechnicianDashboard() {
         actor: {
           id: actor.id,
           email: actor.email || profile?.email,
-          role: profile?.role || 'technician',
+          role: profile.role,
         },
         proofUrl: proofUrls[request.id] || null,
         note: notes[request.id] || null,
@@ -152,90 +165,84 @@ export default function TechnicianDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <div className="text-center mb-8 sm:mb-0 sm:text-left">
-        <h1 className="text-3xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 tracking-tight">Delivery Dashboard</h1>
-        <p className="text-gray-500 text-base sm:text-sm max-w-md mx-auto sm:mx-0">Manage ready jobs, track active deliveries, upload proofs, and view history.</p>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="text-center mb-6 sm:text-left">
+        <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Delivery Dashboard</h1>
+        <p className="text-apple-text-secondary text-sm max-w-md">Manage ready jobs, track active deliveries, upload proofs, and view history.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Ready Jobs', value: readyOrders.length, color: 'text-purple-400', icon: '📦' },
-          { label: 'Active Delivery', value: inDelivery.length, color: 'text-cyan-400', icon: '🚚' },
+          { label: 'Ready Jobs', value: readyOrders.length, color: 'text-apple-warning', bg: 'bg-apple-warning/5', icon: '📦' },
+          { label: 'Active Delivery', value: inDelivery.length, color: 'text-apple-blue', bg: 'bg-apple-blue/5', icon: '🚚' },
           { label: 'Completed Today', value: deliveryLogs.filter(log => {
             const today = new Date();
             today.setHours(0,0,0,0);
             return log.delivered_at && new Date(log.delivered_at) >= today;
-          }).length, color: 'text-emerald-400', icon: '✅' },
+          }).length, color: 'text-apple-success', bg: 'bg-apple-success/5', icon: '✅' },
         ].map((stat) => (
-          <div key={stat.label} className="group bg-gradient-to-br from-slate-900/80 to-slate-900 border border-gray-200/50 rounded-2xl p-6 text-center hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300 hover:-translate-y-1">
-            <div className="text-3xl mb-3 opacity-75">{stat.icon}</div>
-            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2 font-medium">{stat.label}</p>
-            <p className={`text-3xl sm:text-2xl lg:text-3xl font-black ${stat.color} leading-tight`}>{stat.value}</p>
+          <div key={stat.label} className={`${stat.bg} border border-apple-gray-border rounded-apple p-6 text-center hover:shadow-md transition-all`}>
+            <div className="text-2xl mb-2">{stat.icon}</div>
+            <p className="text-apple-text-secondary text-[10px] uppercase tracking-wider mb-1 font-bold">{stat.label}</p>
+            <p className={`text-3xl font-black ${stat.color} tracking-tight`}>{stat.value}</p>
           </div>
         ))}
       </div>
 
       <section className="space-y-6 lg:space-y-8">
         <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">📦 Ready Jobs</h2>
-            <span className="text-sm text-gray-500">{readyOrders.length} available</span>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-apple-text-primary tracking-tight">📦 Ready Jobs</h2>
+            <span className="text-xs font-bold text-apple-text-secondary uppercase tracking-widest">{readyOrders.length} available</span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {readyOrders.length === 0 ? (
-              <div className="bg-gradient-to-b from-slate-900/50 to-slate-950 border border-gray-200/50 rounded-2xl p-12 text-center">
-                <div className="w-20 h-20 mx-auto mb-4 bg-gray-100/50 rounded-2xl flex items-center justify-center">
-                  <svg className="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-white border border-apple-gray-border rounded-apple p-12 text-center shadow-sm">
+                <div className="w-16 h-16 mx-auto mb-4 bg-apple-gray-bg rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-apple-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.914a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Ready Jobs</h3>
-                <p className="text-gray-500 text-sm max-w-sm mx-auto">All jobs are being processed. Check back soon for new pickups.</p>
+                <h3 className="text-lg font-bold text-apple-text-primary mb-1">No Ready Jobs</h3>
+                <p className="text-apple-text-secondary text-sm max-w-xs mx-auto">All jobs are being processed. Check back soon for new pickups.</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
                 {readyOrders.map((request) => (
                   <div 
                     key={request.id} 
-                    className="group bg-gradient-to-r from-slate-900 via-slate-900/50 to-slate-950 border border-gray-200/50 hover:border-cyan-500/50 rounded-2xl p-6 hover:shadow-2xl hover:shadow-cyan-500/10 transition-all duration-300 hover:-translate-y-1"
+                    className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.99]"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 gap-3">
+                    <div className="flex justify-between items-start mb-4 gap-3">
                       <div>
-                        <p className="font-bold text-gray-900 text-lg sm:text-base">{request.user_email || request.user_id}</p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(request.created_at).toLocaleDateString('id-ID')} • {new Date(request.created_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
+                        <p className="font-bold text-apple-text-primary text-sm">{request.user_email || request.user_id}</p>
+                        <p className="text-[10px] font-bold text-apple-text-secondary uppercase tracking-wider mt-0.5">
+                          {new Date(request.created_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
                         </p>
                       </div>
-                      <span className="px-3 py-1 bg-purple-500/20 text-purple-300 text-xs font-semibold rounded-full sm:self-start sm:ml-auto">
-                        {request.priority.toUpperCase()}
+                      <span className="px-2 py-0.5 bg-apple-danger/10 text-apple-danger text-[10px] font-bold rounded-full uppercase tracking-widest">
+                        {request.priority}
                       </span>
                     </div>
                     
-                    <div className="space-y-2 mb-6">
+                    <div className="space-y-1.5 mb-5 bg-apple-gray-bg p-3 rounded-lg border border-apple-gray-border/50">
                       {request.items.slice(0, 3).map((item, index) => (
-                        <div key={`${request.id}-${index}`} className="flex justify-between items-center py-1">
-                          <span className="text-gray-600 font-medium">{item.name || item.id}</span>
-                          <span className="text-gray-500 font-bold">x{item.qty}</span>
+                        <div key={`${request.id}-${index}`} className="flex justify-between items-center text-xs">
+                          <span className="text-apple-text-secondary font-medium truncate pr-2">{item.name || item.id}</span>
+                          <span className="text-apple-text-primary font-bold shrink-0">x{item.qty}</span>
                         </div>
                       ))}
-                      {request.items.length > 3 && (
-                        <p className="text-xs text-gray-500">+{request.items.length - 3} more items</p>
-                      )}
                     </div>
 
                     <button
                       onClick={() => pickUp(request)}
                       disabled={processingId === request.id}
-                      className="w-full h-14 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-gray-900 text-base font-bold rounded-2xl shadow-lg shadow-cyan-500/25 hover:shadow-xl hover:shadow-cyan-500/40 active:scale-[0.97] active:shadow-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="w-full py-2.5 bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-bold rounded-apple shadow-sm active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {processingId === request.id ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                          Claiming...
-                        </>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        '🚚 Claim & Start Delivery'
+                        'Claim & Start'
                       )}
                     </button>
                   </div>

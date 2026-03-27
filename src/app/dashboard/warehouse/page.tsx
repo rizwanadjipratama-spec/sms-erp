@@ -72,14 +72,20 @@ export default function WarehouseDashboard() {
   });
 
   const updateOrder = async (request: DbRequest, status: 'preparing' | 'ready') => {
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setProcessingId(request.id);
     try {
+      if (!profile) throw new Error('Authentication profile not loaded'); // Added guard
       const actor = await getCurrentAuthUser();
       await workflowEngine.transitionOrder({
         request,
         actorId: actor.id,
         actorEmail: actor.email || profile?.email,
-        actorRole: profile?.role || 'warehouse',
+        actorRole: profile.role,
         nextStatus: status,
         action: status,
         message:
@@ -102,6 +108,11 @@ export default function WarehouseDashboard() {
   };
 
   const updateStock = async (product: Product) => {
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setProcessingId(product.id);
     try {
       const actor = await getCurrentAuthUser();
@@ -112,7 +123,7 @@ export default function WarehouseDashboard() {
         actor: {
           id: actor.id,
           email: actor.email || profile?.email,
-          role: profile?.role || 'warehouse',
+          role: profile.role,
         },
         reason: 'manual_adjustment',
       });
@@ -143,21 +154,21 @@ export default function WarehouseDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Warehouse</h1>
-        <p className="text-gray-500 text-sm mt-1">Prepare invoice-ready orders and manage inventory levels.</p>
+        <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Warehouse</h1>
+        <p className="text-apple-text-secondary text-sm mt-1">Prepare invoice-ready orders and manage inventory levels.</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Invoice Ready', value: byStatus.invoice_ready.length, color: 'text-cyan-400' },
-          { label: 'Preparing', value: byStatus.preparing.length, color: 'text-orange-400' },
-          { label: 'Ready', value: byStatus.ready.length, color: 'text-green-400' },
+          { label: 'Invoice Ready', value: byStatus.invoice_ready.length, color: 'text-apple-blue' },
+          { label: 'Preparing', value: byStatus.preparing.length, color: 'text-apple-warning' },
+          { label: 'Ready', value: byStatus.ready.length, color: 'text-apple-success' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 text-center">
-            <p className="text-gray-500 text-xs">{stat.label}</p>
-            <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+          <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-5 text-center shadow-sm">
+            <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">{stat.label}</p>
+            <p className={`text-3xl font-black tracking-tight ${stat.color}`}>{stat.value}</p>
           </div>
         ))}
       </div>
@@ -187,27 +198,30 @@ export default function WarehouseDashboard() {
               ) : (
                 <div className="space-y-3">
                   {section.items.map((request) => (
-                    <div key={request.id} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+                    <div key={request.id} className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
                       <div className="flex justify-between items-start gap-3 mb-3">
                         <div>
-                          <p className="font-medium text-gray-900 text-sm">{request.user_email || request.user_id}</p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(request.created_at).toLocaleString('id-ID')}
+                          <p className="font-bold text-apple-text-primary text-sm">{request.user_email || request.user_id}</p>
+                          <p className="text-xs text-apple-text-secondary font-medium">
+                            {new Date(request.created_at).toLocaleString('id-ID', {hour: '2-digit', minute:'2-digit'})}
                           </p>
                         </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-                          {request.priority.toUpperCase()}
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-apple-gray-bg text-apple-text-secondary uppercase tracking-wider">
+                          {request.priority}
                         </span>
                       </div>
-                      <div className="text-sm text-gray-500 mb-4 space-y-1">
+                      <div className="text-xs text-apple-text-secondary mb-4 space-y-1 bg-apple-gray-bg p-3 rounded-lg border border-apple-gray-border/50">
                         {request.items.map((item, index) => (
-                          <p key={`${request.id}-${index}`}>{item.name || item.id} x{item.qty}</p>
+                          <div key={`${request.id}-${index}`} className="flex justify-between">
+                            <span>{item.name || item.id}</span>
+                            <span className="font-bold">x{item.qty}</span>
+                          </div>
                         ))}
                       </div>
                       <button
                         onClick={() => updateOrder(request, section.nextStatus)}
                         disabled={processingId === request.id}
-                        className="w-full py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                        className="w-full py-2.5 bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-bold rounded-apple shadow-sm active:scale-95 transition-all disabled:opacity-50"
                       >
                         {processingId === request.id ? 'Updating...' : section.nextLabel}
                       </button>

@@ -59,8 +59,9 @@ function validateTransition(input: TransitionOrderInput) {
   }
 
   if (!canTransition(input.actorRole, input.request.status, input.nextStatus)) {
-    throw new Error(`Role ${input.actorRole} cannot transition ${input.request.status} -> ${input.nextStatus}`);
+    throw new Error(`[workflow-engine:permission-denied] Role "${input.actorRole}" is not authorized to transition request ${input.request.id} from "${input.request.status}" to "${input.nextStatus}"`);
   }
+
 
   if (input.nextStatus === 'rejected' && !input.extraUpdates?.rejection_reason) {
     throw new Error('Rejection reason is required');
@@ -168,6 +169,8 @@ console.log('Actor:', input.actorId);
 console.log('Role:', input.actorRole);
 console.log('From:', input.request.status);
 console.log('To:', input.nextStatus);
+
+    console.log('TRANSITION ROLE RECEIVED:', input.actorRole);
 
     const logContext = {
       requestId: input.request.id,

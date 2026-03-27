@@ -58,27 +58,27 @@ export default function TaxDashboard() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Tax & Sales Reports</h1>
-        <p className="text-gray-500 text-sm mt-1">Invoice-based tax reporting.</p>
+        <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Tax & Sales Reports</h1>
+        <p className="text-apple-text-secondary text-sm mt-1">Invoice-based tax reporting.</p>
       </div>
 
-      <div className="flex gap-3 items-center">
+      <div className="flex gap-3 items-center bg-apple-gray-bg p-4 rounded-apple border border-apple-gray-border">
         <input
           type="date"
           value={from}
           onChange={(e) => setFrom(e.target.value)}
-          className="bg-white border-gray-200 shadow-sm border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-teal-500"
+          className="bg-white border border-apple-gray-border rounded-lg px-3 py-2 text-sm text-apple-text-primary focus:ring-2 focus:ring-apple-blue/20 outline-none transition-all"
         />
-        <span className="text-gray-500">to</span>
+        <span className="text-apple-text-secondary font-medium lowercase">to</span>
         <input
           type="date"
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="bg-white border-gray-200 shadow-sm border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-teal-500"
+          className="bg-white border border-apple-gray-border rounded-lg px-3 py-2 text-sm text-apple-text-primary focus:ring-2 focus:ring-apple-blue/20 outline-none transition-all"
         />
-        <button onClick={() => refresh()} className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm rounded-lg transition-colors">
+        <button onClick={() => refresh()} className="px-6 py-2 bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-bold rounded-lg transition-all active:scale-95 shadow-sm">
           Filter
         </button>
         <button
@@ -87,7 +87,7 @@ export default function TaxDashboard() {
             setTo('');
             refresh('', '');
           }}
-          className="px-4 py-2 bg-gray-100 hover:bg-slate-700 text-gray-600 text-sm rounded-lg transition-colors"
+          className="px-6 py-2 bg-white border border-apple-gray-border text-apple-text-secondary hover:text-apple-text-primary text-sm font-bold rounded-lg transition-all active:scale-95"
         >
           Clear
         </button>
@@ -95,13 +95,13 @@ export default function TaxDashboard() {
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Sales', value: `Rp${totalRevenue.toLocaleString('id-ID')}`, color: 'text-gray-900' },
-          { label: 'Tax Collected (11%)', value: `Rp${totalTax.toLocaleString('id-ID')}`, color: 'text-teal-400' },
-          { label: 'Paid', value: `Rp${paidRevenue.toLocaleString('id-ID')}`, color: 'text-green-400' },
+          { label: 'Total Sales', value: `Rp${totalRevenue.toLocaleString('id-ID')}`, color: 'text-apple-text-primary' },
+          { label: 'Tax Collected (11%)', value: `Rp${totalTax.toLocaleString('id-ID')}`, color: 'text-apple-blue' },
+          { label: 'Paid Revenue', value: `Rp${paidRevenue.toLocaleString('id-ID')}`, color: 'text-apple-success' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-            <p className="text-gray-500 text-xs">{stat.label}</p>
-            <p className={`text-xl font-bold ${stat.color} mt-1`}>{stat.value}</p>
+          <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
+            <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">{stat.label}</p>
+            <p className={`text-2xl font-black tracking-tight ${stat.color}`}>{stat.value}</p>
           </div>
         ))}
       </div>

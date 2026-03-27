@@ -43,10 +43,30 @@ export const ACTIVE_ORDER_STATUSES: RequestStatus[] = [
 ];
 
 export async function getCurrentAuthUser() {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw new Error(error.message);
-  if (!data.user) throw new Error('User not authenticated');
-  return data.user;
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    throw new Error('User not authenticated');
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    throw new Error('Failed to load user profile');
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    role: (profile?.role || 'user') as UserRole,
+  };
 }
 
 export async function fetchProfilesByRoles(roles: UserRole[]): Promise<Profile[]> {

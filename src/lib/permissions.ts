@@ -132,8 +132,10 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
 
 export function getRolePermissions(role?: UserRole | null): RolePermission | null {
   if (!role) return null;
-  return PERMISSIONS[role] || null;
+  const normalizedRole = role.toLowerCase() as UserRole;
+  return PERMISSIONS[normalizedRole] || null;
 }
+
 
 export function canAccessRoute(role: UserRole | undefined | null, route: string): boolean {
   const permissions = getRolePermissions(role);

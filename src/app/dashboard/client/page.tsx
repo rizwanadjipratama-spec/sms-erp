@@ -13,18 +13,18 @@ import { ACTIVE_ORDER_STATUSES, getCurrentAuthUser } from '@/lib/workflow';
 import { workflowEngine } from '@/lib/workflow-engine';
 
 const STATUS_STYLE: Record<string, string> = {
-  pending: 'bg-yellow-500/20 text-yellow-300',
-  priced: 'bg-fuchsia-500/20 text-fuchsia-300',
-  approved: 'bg-blue-500/20 text-blue-300',
-  invoice_ready: 'bg-cyan-500/20 text-cyan-300',
-  preparing: 'bg-orange-500/20 text-orange-300',
-  ready: 'bg-purple-500/20 text-purple-300',
-  on_delivery: 'bg-indigo-500/20 text-indigo-300',
-  delivered: 'bg-green-500/20 text-green-300',
-  completed: 'bg-emerald-500/20 text-emerald-300',
-  rejected: 'bg-red-500/20 text-red-300',
-  issue: 'bg-rose-500/20 text-rose-300',
-  resolved: 'bg-teal-500/20 text-teal-300',
+  pending: 'bg-apple-warning/10 text-apple-warning',
+  priced: 'bg-apple-blue/10 text-apple-blue',
+  approved: 'bg-apple-blue/20 text-apple-blue',
+  invoice_ready: 'bg-apple-blue/30 text-apple-blue',
+  preparing: 'bg-apple-warning/20 text-apple-warning',
+  ready: 'bg-apple-success/10 text-apple-success',
+  on_delivery: 'bg-apple-blue/10 text-apple-blue',
+  delivered: 'bg-apple-success/20 text-apple-success',
+  completed: 'bg-apple-success/30 text-apple-success',
+  rejected: 'bg-apple-danger/10 text-apple-danger',
+  issue: 'bg-apple-danger/20 text-apple-danger',
+  resolved: 'bg-apple-success/40 text-apple-success',
 };
 
 const TIMELINE_STEPS: Array<{ key: RequestStatus; label: string }> = [
@@ -144,33 +144,36 @@ export default function ClientDashboard() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
-          <p className="text-gray-500 text-sm mt-1">Track your full request lifecycle in one place.</p>
+          <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">My Orders</h1>
+          <p className="text-apple-text-secondary text-sm mt-1">Track your full request lifecycle in one place.</p>
         </div>
         <Link
           href="/request"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+          className="bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-bold px-6 py-2 rounded-apple transition-all active:scale-95 shadow-sm"
         >
           New Request
         </Link>
       </div>
 
       {profile && profile.debt_amount > profile.debt_limit && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-          <p className="text-amber-300 font-medium text-sm">Debt limit exceeded</p>
-          <p className="text-amber-400 text-xs mt-1">
-            Current debt Rp{profile.debt_amount.toLocaleString('id-ID')} • limit Rp{profile.debt_limit.toLocaleString('id-ID')}.
-          </p>
+        <div className="bg-apple-danger/5 border border-apple-danger/20 rounded-apple p-4 flex items-center gap-3">
+          <div className="text-apple-danger text-xl">⚠️</div>
+          <div>
+            <p className="text-apple-danger font-bold text-sm">Debt limit exceeded</p>
+            <p className="text-apple-text-secondary text-xs mt-0.5">
+              Current debt Rp{profile.debt_amount.toLocaleString('id-ID')} • limit Rp{profile.debt_limit.toLocaleString('id-ID')}.
+            </p>
+          </div>
         </div>
       )}
 
       <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-gray-900">Active Orders</h2>
-          <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">{activeOrders.length}</span>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold text-apple-text-primary tracking-tight">Active Orders</h2>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-apple-gray-bg text-apple-text-secondary border border-apple-gray-border">{activeOrders.length}</span>
         </div>
 
         {activeOrders.length === 0 ? (
@@ -210,14 +213,14 @@ export default function ClientDashboard() {
                       const isCurrent = request.status === step.key;
                       return (
                         <div key={step.key} className="flex flex-col items-center text-center gap-2">
-                          <div className={`w-10 h-10 rounded-full border flex items-center justify-center text-xs font-semibold ${
+                          <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-black transition-all ${
                             isDone
-                              ? 'bg-indigo-500 border-indigo-500 text-white'
-                              : 'bg-white border-gray-200 shadow-sm border-gray-300 text-gray-500'
+                              ? 'bg-apple-blue border-apple-blue text-white shadow-sm'
+                              : 'bg-white border-apple-gray-border text-apple-text-secondary'
                           }`}>
                             {index + 1}
                           </div>
-                          <p className={`text-[11px] ${isCurrent ? 'text-gray-900' : 'text-gray-500'}`}>{step.label}</p>
+                          <p className={`text-[10px] font-bold uppercase tracking-tight ${isCurrent ? 'text-apple-blue' : 'text-apple-text-secondary'}`}>{step.label}</p>
                         </div>
                       );
                     })}

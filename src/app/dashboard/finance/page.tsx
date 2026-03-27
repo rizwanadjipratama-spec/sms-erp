@@ -85,6 +85,11 @@ export default function FinanceDashboard() {
   }, [invoices]);
 
   const generateInvoice = async (request: DbRequest) => {
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setProcessingId(request.id);
     try {
       const actor = await getCurrentAuthUser();
@@ -93,7 +98,7 @@ export default function FinanceDashboard() {
         actor: {
           id: actor.id,
           email: actor.email || profile?.email,
-          role: profile?.role || 'finance',
+          role: profile.role,
         },
       });
       await refreshAll();
@@ -105,6 +110,11 @@ export default function FinanceDashboard() {
   };
 
   const markPaid = async (invoice: Invoice) => {
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setProcessingId(invoice.id);
     try {
       const actor = await getCurrentAuthUser();
@@ -113,7 +123,7 @@ export default function FinanceDashboard() {
         actor: {
           id: actor.id,
           email: actor.email || profile?.email,
-          role: profile?.role || 'finance',
+          role: profile.role,
         },
       });
       await refreshAll();
@@ -125,6 +135,11 @@ export default function FinanceDashboard() {
   };
 
   const closeCurrentMonth = async () => {
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setProcessingId('monthly-close');
     try {
       const actor = await getCurrentAuthUser();
@@ -132,7 +147,7 @@ export default function FinanceDashboard() {
         actor: {
           id: actor.id,
           email: actor.email || profile?.email,
-          role: profile?.role || 'finance',
+          role: profile.role,
         },
         notes: closingNotes || undefined,
       });
@@ -154,34 +169,36 @@ export default function FinanceDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Finance</h1>
-        <p className="text-gray-500 text-sm mt-1">Invoice management, payments, and monthly closing.</p>
+        <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Finance</h1>
+        <p className="text-apple-text-secondary text-sm mt-1">Invoice management, payments, and monthly closing.</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { label: 'Needs Invoice', value: approved.length, color: 'text-yellow-400' },
-          { label: 'Invoice Ready', value: invoiced.length, color: 'text-cyan-400' },
-          { label: 'Unpaid Invoices', value: unpaidInvoices.length, color: 'text-red-400' },
-          { label: 'Monthly Revenue', value: `Rp${monthlyRevenue.toLocaleString('id-ID')}`, color: 'text-emerald-300' },
-          { label: 'Paid Revenue', value: `Rp${paidTotal.toLocaleString('id-ID')}`, color: 'text-green-400' },
+          { label: 'Needs Invoice', value: approved.length, color: 'text-apple-warning' },
+          { label: 'Invoice Ready', value: invoiced.length, color: 'text-apple-blue' },
+          { label: 'Unpaid Invoices', value: unpaidInvoices.length, color: 'text-apple-danger' },
+          { label: 'Monthly Revenue', value: `Rp${monthlyRevenue.toLocaleString('id-ID')}`, color: 'text-apple-success' },
+          { label: 'Paid Revenue', value: `Rp${paidTotal.toLocaleString('id-ID')}`, color: 'text-apple-success' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-            <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">{stat.label}</p>
-            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+          <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-4 shadow-sm">
+            <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">{stat.label}</p>
+            <p className={`text-2xl font-black tracking-tight ${stat.color}`}>{stat.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="flex gap-1 bg-white border-gray-200 shadow-sm p-1 rounded-lg w-fit border border-gray-200">
+      <div className="flex gap-1 bg-apple-gray-bg border border-apple-gray-border p-1 rounded-apple w-fit">
         {(['queue', 'invoices', 'closing'] as const).map((item) => (
           <button
             key={item}
             onClick={() => setTab(item)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              tab === item ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-gray-900'
+            className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 ${
+              tab === item 
+                ? 'bg-white text-apple-text-primary shadow-sm' 
+                : 'text-apple-text-secondary hover:text-apple-text-primary'
             }`}
           >
             {item === 'queue' ? 'Invoice Queue' : item === 'invoices' ? 'Invoices' : 'Monthly Closing'}

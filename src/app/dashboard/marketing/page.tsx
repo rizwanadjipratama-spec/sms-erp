@@ -104,25 +104,32 @@ export default function MarketingDashboard() {
   );
 
   const saveRequestReview = async (request: DbRequest) => {
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setSavingId(request.id);
     try {
       const actor = await getCurrentAuthUser();
+      if (!actor) {
+        alert('Actor profile not loaded');
+        return;
+      }
+
       const selectedType = pricingModes[request.id] || 'regular';
       const note = notes[request.id]?.trim() || undefined;
       const priceTotal = await calculatePriceTotal(request.items, selectedType);
 
-      if (!profile?.role) {
-  throw new Error('User role not loaded');
-}
+      console.log('MARKETING ROLE:', profile.role);
+      console.log('ACTOR ROLE:', actor.role);
+      console.log('TRANSITION pending -> priced');
 
-console.log('MARKETING ROLE:', profile.role);
-console.log('TRANSITION pending -> priced');
-
-await workflowEngine.transitionOrder({
-  request,
-  actorId: actor.id,
-  actorEmail: actor.email || profile?.email,
-  actorRole: profile.role || 'marketing',
+      await workflowEngine.transitionOrder({
+        request,
+        actorId: actor.id,
+        actorEmail: actor.email || profile?.email,
+        actorRole: profile.role,
         nextStatus: 'priced',
         action: 'price_request',
         message: `Request ${request.id} priced and ready for boss approval`,
@@ -157,30 +164,30 @@ await workflowEngine.transitionOrder({
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Marketing</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Marketing</h1>
+          <p className="text-apple-text-secondary text-sm mt-1">
             Price pending client requests before boss approval.
           </p>
         </div>
         <Link
           href="/dashboard/marketing/prices"
-          className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+          className="bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-medium px-4 py-2 rounded-apple transition-all active:scale-95 shadow-sm"
         >
           Price List
         </Link>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Pending Review</p>
-          <p className="text-3xl font-bold text-yellow-400">{requests.length}</p>
+        <div className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
+          <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">Pending Review</p>
+          <p className="text-3xl font-bold text-apple-warning">{requests.length}</p>
         </div>
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Priced Orders</p>
-          <p className="text-3xl font-bold text-purple-400">{pricedCount}</p>
+        <div className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
+          <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">Priced Orders</p>
+          <p className="text-3xl font-bold text-apple-blue">{pricedCount}</p>
         </div>
       </div>
 
@@ -193,23 +200,23 @@ await workflowEngine.transitionOrder({
           {requests.map((request) => {
             const clientProfile = request.user_email ? clientProfiles[request.user_email] : undefined;
             return (
-              <div key={request.id} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+              <div key={request.id} className="bg-white border border-apple-gray-border rounded-apple p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{request.user_email || request.user_id}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-sm font-semibold text-apple-text-primary">{request.user_email || request.user_id}</p>
+                    <p className="text-xs text-apple-text-secondary mt-1 font-medium">
                       {new Date(request.created_at).toLocaleString('id-ID')}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-300">
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-apple-warning/10 text-apple-warning uppercase tracking-wider">
                       PENDING
                     </span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-apple-gray-bg text-apple-text-secondary uppercase tracking-wider">
                       {request.priority.toUpperCase()}
                     </span>
                     {clientProfile && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-apple-blue-light text-apple-blue uppercase tracking-wider">
                         {clientProfile.client_type || 'regular'}
                       </span>
                     )}
@@ -238,8 +245,8 @@ await workflowEngine.transitionOrder({
                   </div>
 
                   <div className="space-y-4">
-                    <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
+                    <div className="rounded-apple bg-apple-gray-bg border border-apple-gray-border p-4">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-apple-text-secondary mb-2">
                         Pricing Mode
                       </label>
                       <select
@@ -250,15 +257,15 @@ await workflowEngine.transitionOrder({
                             [request.id]: e.target.value as ClientType,
                           }))
                         }
-                        className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-purple-500"
+                        className="w-full bg-white border border-apple-gray-border rounded-lg px-3 py-2 text-sm text-apple-text-primary focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue outline-none transition-all"
                       >
                         <option value="regular">Regular</option>
                         <option value="kso">KSO</option>
                       </select>
                     </div>
 
-                    <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
+                    <div className="rounded-apple bg-apple-gray-bg border border-apple-gray-border p-4">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-apple-text-secondary mb-2">
                         Marketing Note
                       </label>
                       <textarea
@@ -267,17 +274,17 @@ await workflowEngine.transitionOrder({
                           setNotes((prev) => ({ ...prev, [request.id]: e.target.value }))
                         }
                         rows={4}
-                        className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-purple-500 resize-none"
+                        className="w-full bg-white border border-apple-gray-border rounded-lg px-3 py-2 text-sm text-apple-text-primary placeholder-apple-text-secondary/50 focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue outline-none transition-all resize-none"
                         placeholder="Add a commercial note for boss approval..."
                       />
                     </div>
 
                     {request.price_total !== undefined && request.price_total > 0 && (
-                      <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-4">
-                        <p className="text-xs uppercase tracking-wider text-purple-300/80 mb-1">
+                      <div className="rounded-apple bg-apple-blue/5 border border-apple-blue/10 p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-apple-blue/80 mb-1">
                           Current Price
                         </p>
-                        <p className="text-lg font-semibold text-gray-900">
+                        <p className="text-lg font-bold text-apple-text-primary tracking-tight">
                           Rp{request.price_total.toLocaleString('id-ID')}
                         </p>
                       </div>
@@ -286,7 +293,7 @@ await workflowEngine.transitionOrder({
                     <button
                       onClick={() => saveRequestReview(request)}
                       disabled={savingId === request.id}
-                      className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                      className="w-full py-2.5 bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-semibold rounded-apple transition-all active:scale-95 shadow-sm disabled:opacity-50"
                     >
                       {savingId === request.id ? 'Saving...' : 'Save Pricing & Notify Boss'}
                     </button>

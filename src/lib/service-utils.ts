@@ -31,21 +31,44 @@ export class ServiceError extends Error {
 
 function normalizeMetadata(value: unknown): Record<string, unknown> | null {
   if (value === null || value === undefined) return null;
-  if (value instanceof Error) {
-    return {
-      name: value.name,
-      message: value.message,
-      stack: value.stack || null,
+
+  try {
+    if (value instanceof Error) {
+      return {
+        name: value.name,
+        message: value.message,
+        stack: value.stack || null,
+        cause: value.cause ? String(value.cause) : undefined,
+      };
+    }
+
+    // Standard serialization to strip non-serializable bits and break circular refs
+    const jsonString = JSON.stringify(value, (key, val) => {
+      if (typeof val === 'function') return undefined;
+      return val;
+    });
+
+    if (!jsonString) return null;
+    const parsed = JSON.parse(jsonString);
+
+    if (Array.isArray(parsed)) {
+      return { items: parsed };
+    }
+
+    if (typeof parsed === 'object' && parsed !== null) {
+      return parsed as Record<string, unknown>;
+    }
+
+    return { value: parsed };
+  } catch (err) {
+    return { 
+      error: 'serialization_failed', 
+      original_type: typeof value,
+      message: err instanceof Error ? err.message : 'Unknown serialization error'
     };
   }
-  if (Array.isArray(value)) {
-    return { items: value };
-  }
-  if (typeof value === 'object') {
-    return value as Record<string, unknown>;
-  }
-  return { value };
 }
+
 
 export async function logSystemEvent(params: {
   level: SystemLogLevel;

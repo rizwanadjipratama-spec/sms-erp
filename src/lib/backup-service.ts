@@ -328,7 +328,7 @@ export const backupService = {
         await uploadBackupFile({
           path,
           bytes,
-          contentType: MIME_TYPES.JSON,
+          contentType: 'application/octet-stream', // Use octet-stream to avoid MIME type restrictions
         });
 
         const completedLog = await updateBackupLog(log.id, {
@@ -439,7 +439,7 @@ export const backupService = {
         await uploadBackupFile({
           path,
           bytes,
-          contentType: MIME_TYPES.JSON,
+          contentType: 'application/octet-stream', // Use octet-stream to avoid MIME type restrictions
         });
 
         const totalBytes = Object.values(buckets)
@@ -529,7 +529,7 @@ export const backupService = {
         await uploadBackupFile({
           path,
           bytes,
-          contentType: MIME_TYPES.JSON,
+          contentType: 'application/octet-stream', // Use octet-stream to avoid MIME type restrictions
         });
 
         const completedLog = await updateBackupLog(log.id, {

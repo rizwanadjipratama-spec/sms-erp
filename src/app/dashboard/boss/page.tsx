@@ -78,6 +78,11 @@ export default function BossDashboard() {
   const pendingCount = useMemo(() => requests.length, [requests]);
 
   const approve = async (request: DbRequest) => {
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setProcessingId(request.id);
     try {
       const actor = await getCurrentAuthUser();
@@ -85,7 +90,7 @@ export default function BossDashboard() {
         request,
         actorId: actor.id,
         actorEmail: actor.email || profile?.email,
-        actorRole: profile?.role || 'boss',
+        actorRole: profile.role,
         nextStatus: 'approved',
         action: 'approve',
         message: `Request ${request.id} approved`,
@@ -111,6 +116,11 @@ export default function BossDashboard() {
       return;
     }
 
+    if (!profile) {
+      alert('Authentication profile not loaded');
+      return;
+    }
+
     setProcessingId(request.id);
     try {
       const actor = await getCurrentAuthUser();
@@ -118,7 +128,7 @@ export default function BossDashboard() {
         request,
         actorId: actor.id,
         actorEmail: actor.email || profile?.email,
-        actorRole: profile?.role || 'boss',
+        actorRole: profile.role,
         nextStatus: 'rejected',
         action: 'reject',
         message: `Request ${request.id} rejected`,
@@ -149,10 +159,10 @@ export default function BossDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Boss Approval Queue</h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Boss Approval Queue</h1>
+        <p className="text-apple-text-secondary text-sm mt-1">
           {pendingCount} pending request{pendingCount === 1 ? '' : 's'} awaiting a decision.
         </p>
       </div>
@@ -171,23 +181,23 @@ export default function BossDashboard() {
               (clientProfile.debt_amount || 0) > (clientProfile.debt_limit || 0);
 
             return (
-              <div key={request.id} className="bg-white border border-gray-200 shadow-sm rounded-xl p-6">
+              <div key={request.id} className="bg-white border border-apple-gray-border rounded-apple p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
                   <div>
-                    <p className="font-medium text-gray-900">{request.user_email || request.user_id}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="font-semibold text-apple-text-primary">{request.user_email || request.user_id}</p>
+                    <p className="text-xs text-apple-text-secondary mt-1 font-medium">
                       {new Date(request.created_at).toLocaleString('id-ID')}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className="text-xs px-2 py-1 bg-fuchsia-500/20 text-fuchsia-300 rounded-full">
+                    <span className="text-[10px] font-bold px-2 py-1 bg-apple-blue-light text-apple-blue rounded-full uppercase tracking-wider">
                       PRICED
                     </span>
-                    <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                    <span className="text-[10px] font-bold px-2 py-1 bg-apple-gray-bg text-apple-text-secondary rounded-full uppercase tracking-wider">
                       {request.priority.toUpperCase()}
                     </span>
                     {clientProfile && (
-                      <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                      <span className="text-[10px] font-bold px-2 py-1 bg-apple-gray-bg text-apple-text-secondary rounded-full uppercase tracking-wider">
                         {clientProfile.client_type || 'regular'}
                       </span>
                     )}
@@ -259,21 +269,21 @@ export default function BossDashboard() {
                         }))
                       }
                       rows={3}
-                      className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-amber-500 resize-none"
+                      className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-lg px-3 py-2 text-sm text-apple-text-primary placeholder-apple-text-secondary/50 focus:ring-2 focus:ring-apple-warning/20 focus:border-apple-warning outline-none transition-all resize-none"
                     />
 
                     <div className="flex gap-3">
                       <button
                         onClick={() => approve(request)}
                         disabled={processingId === request.id}
-                        className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                        className="flex-1 py-2.5 bg-apple-success hover:bg-apple-success/90 text-white text-sm font-semibold rounded-apple transition-all active:scale-95 shadow-sm disabled:opacity-50"
                       >
                         {processingId === request.id ? 'Processing...' : 'Approve'}
                       </button>
                       <button
                         onClick={() => reject(request)}
                         disabled={processingId === request.id}
-                        className="flex-1 py-2 bg-red-600/80 hover:bg-red-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                        className="flex-1 py-2.5 bg-apple-danger hover:bg-apple-danger/90 text-white text-sm font-semibold rounded-apple transition-all active:scale-95 shadow-sm disabled:opacity-50"
                       >
                         Reject
                       </button>
