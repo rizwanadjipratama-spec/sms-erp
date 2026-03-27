@@ -8,6 +8,7 @@ import { useRequest } from '@/lib/request-context';
 import Link from 'next/link';
 import { productService } from '@/lib/product-service';
 import { Product } from '@/types/types';
+import { formatCurrency } from '@/lib/format-utils';
 
 export default function RequestPage() {
   const { profile, loading } = useAuth();
@@ -166,7 +167,7 @@ export default function RequestPage() {
                       </svg>
                       <span className="text-xs font-black uppercase tracking-widest">DEBT LIMIT NOTICE</span>
                     </div>
-                    <p className="text-[10px] font-bold text-apple-text-secondary leading-relaxed uppercase tracking-wider">Your debt (Rp{profile.debt_amount.toLocaleString()}) exceeds limit (Rp{profile.debt_limit.toLocaleString()}). Payment promise required.</p>
+                    <p className="text-[10px] font-bold text-apple-text-secondary leading-relaxed uppercase tracking-wider">Your debt ({formatCurrency(profile.debt_amount)}) exceeds limit ({formatCurrency(profile.debt_limit)}). Payment promise required.</p>
                     <div className="space-y-3">
                       <input type="date" value={promiseDate} onChange={(e) => setPromiseDate(e.target.value)} className="w-full border border-apple-gray-border rounded-xl p-3 text-sm font-bold bg-white" required />
                       <textarea value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} className="w-full border border-apple-gray-border rounded-xl p-3 text-sm font-medium bg-white resize-none" placeholder="Payment plan details..." rows={2} required />

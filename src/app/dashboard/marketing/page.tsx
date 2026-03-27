@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import type { ClientType, DbRequest, Profile } from '@/types/types';
 import { calculatePriceTotal, fetchProfilesByEmails, getCurrentAuthUser } from '@/lib/workflow';
 import { workflowEngine } from '@/lib/workflow-engine';
+import { formatCurrency } from '@/lib/format-utils';
 
 export default function MarketingDashboard() {
   const { profile, loading } = useAuth();
@@ -285,7 +286,7 @@ export default function MarketingDashboard() {
                           Current Price
                         </p>
                         <p className="text-lg font-bold text-apple-text-primary tracking-tight">
-                          Rp{request.price_total.toLocaleString('id-ID')}
+                          {formatCurrency(request.price_total)}
                         </p>
                       </div>
                     )}

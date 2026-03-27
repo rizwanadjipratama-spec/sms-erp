@@ -8,6 +8,7 @@ import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { getRoleRedirect } from '@/lib/auth';
 import { canAccessRoute } from '@/lib/permissions';
 import { getSystemHealthSnapshot, type SystemHealthSnapshot } from '@/lib/system-health-service';
+import { formatCurrency } from '@/lib/format-utils';
 
 export default function SystemHealthPage() {
   const { profile, loading } = useAuth();
@@ -210,7 +211,7 @@ export default function SystemHealthPage() {
           { label: 'Total Deliveries', value: health.metrics.totalDeliveries, tone: 'text-violet-300' },
           {
             label: 'Total Revenue',
-            value: `Rp${health.metrics.totalRevenue.toLocaleString('id-ID')}`,
+            value: formatCurrency(health.metrics.totalRevenue),
             tone: 'text-emerald-300',
           },
           {
@@ -232,7 +233,7 @@ export default function SystemHealthPage() {
           },
           {
             label: 'Stock Value',
-            value: `Rp${health.metrics.stockValue.toLocaleString('id-ID')}`,
+            value: formatCurrency(health.metrics.stockValue),
             tone: 'text-lime-300',
           },
         ].map((card) => (
@@ -253,7 +254,7 @@ export default function SystemHealthPage() {
               {String(health.monthlyClosing.lastClosing.month).padStart(2, '0')}/{health.monthlyClosing.lastClosing.year}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              Revenue Rp{health.monthlyClosing.lastClosing.total_revenue.toLocaleString('id-ID')} • Orders {health.monthlyClosing.lastClosing.orders_count}
+              Revenue {formatCurrency(health.monthlyClosing.lastClosing.total_revenue)} • Orders {health.monthlyClosing.lastClosing.orders_count}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               Paid {health.monthlyClosing.lastClosing.paid_invoices} • Unpaid {health.monthlyClosing.lastClosing.unpaid_invoices}

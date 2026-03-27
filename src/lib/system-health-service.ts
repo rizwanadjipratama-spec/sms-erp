@@ -200,25 +200,84 @@ export async function getSystemHealthSnapshot(): Promise<SystemHealthSnapshot> {
       getStockValue(),
     ]);
 
+    if (dbRes.error) {
+      console.error('Supabase error:', dbRes.error);
+      // Database health check failing is a special case, we might not want to throw immediately
+      // but logic-wise, if the first head check fails, the DB is likely down.
+    }
     const databaseHealthy = !dbRes.error;
-    if (pendingEventsRes.error) throw new Error(pendingEventsRes.error.message);
-    if (failedEventsRes.error) throw new Error(failedEventsRes.error.message);
-    if (processedEventsRes.error) throw new Error(processedEventsRes.error.message);
-    if (unpaidInvoicesRes.error) throw new Error(unpaidInvoicesRes.error.message);
-    if (lowStockRes.error) throw new Error(lowStockRes.error.message);
-    if (openIssuesRes.error) throw new Error(openIssuesRes.error.message);
-    if (closingRes.error) throw new Error(closingRes.error.message);
-    if (totalRequestsRes.error) throw new Error(totalRequestsRes.error.message);
-    if (totalInvoicesRes.error) throw new Error(totalInvoicesRes.error.message);
-    if (totalDeliveriesRes.error) throw new Error(totalDeliveriesRes.error.message);
-    if (paidInvoicesRes.error) throw new Error(paidInvoicesRes.error.message);
-    if (emailsSentRes.error) throw new Error(emailsSentRes.error.message);
-    if (pdfGeneratedRes.error) throw new Error(pdfGeneratedRes.error.message);
-    if (systemLogsRes.error) throw new Error(systemLogsRes.error.message);
-    if (requestTimelineRes.error) throw new Error(requestTimelineRes.error.message);
-    if (invoiceTimelineRes.error) throw new Error(invoiceTimelineRes.error.message);
-    if (deliveryTimelineRes.error) throw new Error(deliveryTimelineRes.error.message);
-    if (inventoryTimelineRes.error) throw new Error(inventoryTimelineRes.error.message);
+    if (pendingEventsRes.error) {
+      console.error('Supabase error:', pendingEventsRes.error);
+      throw new Error(pendingEventsRes.error.message);
+    }
+    if (failedEventsRes.error) {
+      console.error('Supabase error:', failedEventsRes.error);
+      throw new Error(failedEventsRes.error.message);
+    }
+    if (processedEventsRes.error) {
+      console.error('Supabase error:', processedEventsRes.error);
+      throw new Error(processedEventsRes.error.message);
+    }
+    if (unpaidInvoicesRes.error) {
+      console.error('Supabase error:', unpaidInvoicesRes.error);
+      throw new Error(unpaidInvoicesRes.error.message);
+    }
+    if (lowStockRes.error) {
+      console.error('Supabase error:', lowStockRes.error);
+      throw new Error(lowStockRes.error.message);
+    }
+    if (openIssuesRes.error) {
+      console.error('Supabase error:', openIssuesRes.error);
+      throw new Error(openIssuesRes.error.message);
+    }
+    if (closingRes.error) {
+      console.error('Supabase error:', closingRes.error);
+      throw new Error(closingRes.error.message);
+    }
+    if (totalRequestsRes.error) {
+      console.error('Supabase error:', totalRequestsRes.error);
+      throw new Error(totalRequestsRes.error.message);
+    }
+    if (totalInvoicesRes.error) {
+      console.error('Supabase error:', totalInvoicesRes.error);
+      throw new Error(totalInvoicesRes.error.message);
+    }
+    if (totalDeliveriesRes.error) {
+      console.error('Supabase error:', totalDeliveriesRes.error);
+      throw new Error(totalDeliveriesRes.error.message);
+    }
+    if (paidInvoicesRes.error) {
+      console.error('Supabase error:', paidInvoicesRes.error);
+      throw new Error(paidInvoicesRes.error.message);
+    }
+    if (emailsSentRes.error) {
+      console.error('Supabase error:', emailsSentRes.error);
+      throw new Error(emailsSentRes.error.message);
+    }
+    if (pdfGeneratedRes.error) {
+      console.error('Supabase error:', pdfGeneratedRes.error);
+      throw new Error(pdfGeneratedRes.error.message);
+    }
+    if (systemLogsRes.error) {
+      console.error('Supabase error:', systemLogsRes.error);
+      throw new Error(systemLogsRes.error.message);
+    }
+    if (requestTimelineRes.error) {
+      console.error('Supabase error:', requestTimelineRes.error);
+      throw new Error(requestTimelineRes.error.message);
+    }
+    if (invoiceTimelineRes.error) {
+      console.error('Supabase error:', invoiceTimelineRes.error);
+      throw new Error(invoiceTimelineRes.error.message);
+    }
+    if (deliveryTimelineRes.error) {
+      console.error('Supabase error:', deliveryTimelineRes.error);
+      throw new Error(deliveryTimelineRes.error.message);
+    }
+    if (inventoryTimelineRes.error) {
+      console.error('Supabase error:', inventoryTimelineRes.error);
+      throw new Error(inventoryTimelineRes.error.message);
+    }
 
     const paidRevenue = ((paidInvoicesRes.data || []) as Array<{ amount: number }>).reduce(
       (sum, invoice) => sum + (invoice.amount || 0),

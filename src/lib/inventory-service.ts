@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, requireAuthUser } from './supabase';
 import { logActivity } from './activity';
 import { handleServiceError, logServiceExecution, withOperationLock } from './service-utils';
 import type { DbRequest, InventoryLog, Product, RequestStatus, UserRole } from '@/types/types';
@@ -48,7 +48,10 @@ async function fetchProductsByIds(productIds: string[]) {
     .select('*')
     .in('id', uniqueIds);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return (data || []) as Product[];
 }
 
@@ -59,7 +62,10 @@ async function hasPreparationLogs(orderId: string) {
     .eq('order_id', orderId)
     .eq('reason', 'request_preparing');
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return (count || 0) > 0;
 }
 
@@ -74,7 +80,10 @@ async function insertInventoryLog(log: Omit<InventoryLog, 'id' | 'created_at'>) 
       .eq('change', log.change)
       .maybeSingle();
 
-    if (duplicateRes.error) throw new Error(duplicateRes.error.message);
+    if (duplicateRes.error) {
+      console.error('Supabase error:', duplicateRes.error);
+      throw new Error(duplicateRes.error.message);
+    }
     if (duplicateRes.data) return;
   }
 
@@ -86,7 +95,10 @@ async function insertInventoryLog(log: Omit<InventoryLog, 'id' | 'created_at'>) 
     by_user: log.by_user || null,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
 }
 
 export const inventoryService = {
@@ -109,9 +121,18 @@ export const inventoryService = {
         supabase.from('inventory_logs').select('*').order('created_at', { ascending: false }).limit(20),
       ]);
 
-      if (requestRes.error) throw new Error(requestRes.error.message);
-      if (productRes.error) throw new Error(productRes.error.message);
-      if (logRes.error) throw new Error(logRes.error.message);
+      if (requestRes.error) {
+        console.error('Supabase error:', requestRes.error);
+        throw new Error(requestRes.error.message);
+      }
+      if (productRes.error) {
+        console.error('Supabase error:', productRes.error);
+        throw new Error(productRes.error.message);
+      }
+      if (logRes.error) {
+        console.error('Supabase error:', logRes.error);
+        throw new Error(logRes.error.message);
+      }
 
       await logServiceExecution({
         service: 'inventory-service',
@@ -143,6 +164,7 @@ export const inventoryService = {
 
   async consumeStockForPreparing(params: { request: DbRequest; actor: InventoryActor }) {
     return withOperationLock(`inventory:consume:${params.request.id}`, async () => {
+      await requireAuthUser();
       const { request, actor } = params;
       const startedAt = Date.now();
       await logServiceExecution({
@@ -199,7 +221,10 @@ export const inventoryService = {
             p_qty: item.qty,
           });
 
-          if (rpcError) throw new Error(rpcError.message);
+          if (rpcError) {
+            console.error('Supabase error:', rpcError);
+            throw new Error(rpcError.message);
+          }
 
           await insertInventoryLog({
             product_id: item.id,
@@ -260,6 +285,7 @@ export const inventoryService = {
     reason: StockAdjustmentReason;
   }) {
     return withOperationLock(`inventory:adjust:${params.product.id}`, async () => {
+      await requireAuthUser();
       const { product, nextStock, actor, reason } = params;
       const startedAt = Date.now();
       await logServiceExecution({
@@ -306,7 +332,10 @@ export const inventoryService = {
           .eq('id', product.id)
           .eq('stock', product.stock);
 
-        if (error) throw new Error(error.message);
+        if (error) {
+          console.error('Supabase error:', error);
+          throw new Error(error.message);
+        }
 
         await insertInventoryLog({
           product_id: product.id,
@@ -416,9 +445,18 @@ export const inventoryService = {
         supabase.from('price_list').select('product_id, price_regular'),
       ]);
 
-      if (logsRes.error) throw new Error(logsRes.error.message);
-      if (productsRes.error) throw new Error(productsRes.error.message);
-      if (pricesRes.error) throw new Error(pricesRes.error.message);
+      if (logsRes.error) {
+        console.error('Supabase error:', logsRes.error);
+        throw new Error(logsRes.error.message);
+      }
+      if (productsRes.error) {
+        console.error('Supabase error:', productsRes.error);
+        throw new Error(productsRes.error.message);
+      }
+      if (pricesRes.error) {
+        console.error('Supabase error:', pricesRes.error);
+        throw new Error(pricesRes.error.message);
+      }
 
       const logs = (logsRes.data || []) as InventoryLog[];
       const products = (productsRes.data || []) as Product[];

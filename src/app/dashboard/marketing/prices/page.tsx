@@ -7,6 +7,7 @@ import { getRoleRedirect } from '@/lib/auth';
 import { canAccessRoute } from '@/lib/permissions';
 import { supabase } from '@/lib/supabase';
 import { getPriceList, upsertPriceList, deletePriceEntry } from '@/lib/prices';
+import { formatCurrency } from '@/lib/format-utils';
 import type { PriceList, Product } from '@/types/types';
 
 export default function PriceListPage() {
@@ -170,8 +171,8 @@ export default function PriceListPage() {
                 {prices.map((price) => (
                   <tr key={price.id} className="border-b border-gray-200/50 hover:bg-gray-100/30 transition-colors">
                     <td className="px-4 py-3 text-gray-900">{price.product_name || price.product_id}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">Rp{price.price_regular.toLocaleString('id-ID')}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">Rp{price.price_kso.toLocaleString('id-ID')}</td>
+                    <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(price.price_regular)}</td>
+                    <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(price.price_kso)}</td>
                     <td className="px-4 py-3 text-right text-gray-500 text-xs">
                       {new Date(price.updated_at).toLocaleDateString('id-ID')}
                     </td>

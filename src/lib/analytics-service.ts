@@ -95,7 +95,10 @@ async function fetchRequests(options: RequestFetchOptions = {}) {
   if (limit) query = query.limit(limit);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return ((data || []) as unknown) as DbRequest[];
 }
 
@@ -116,7 +119,10 @@ async function fetchInvoices(options: InvoiceFetchOptions = {}) {
   if (limit) query = query.limit(limit);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return ((data || []) as unknown) as Invoice[];
 }
 
@@ -126,8 +132,14 @@ async function fetchProductsAndPrices() {
     supabase.from('price_list').select('product_id, price_regular'),
   ]);
 
-  if (productsRes.error) throw new Error(productsRes.error.message);
-  if (pricesRes.error) throw new Error(pricesRes.error.message);
+  if (productsRes.error) {
+    console.error('Supabase error:', productsRes.error);
+    throw new Error(productsRes.error.message);
+  }
+  if (pricesRes.error) {
+    console.error('Supabase error:', pricesRes.error);
+    throw new Error(pricesRes.error.message);
+  }
 
   return {
     products: (productsRes.data || []) as Product[],
@@ -177,7 +189,10 @@ export async function getMonthlyDeliveries(): Promise<MonthlyMetric[]> {
     .gte('delivered_at', getWindowStart())
     .order('delivered_at', { ascending: false });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
 
   const grouped = ((data || []) as Array<{ delivered_at?: string }>).reduce<Record<string, number>>((acc, log) => {
     const key = monthKey(log.delivered_at);
@@ -207,7 +222,10 @@ export async function getOpenIssuesCount() {
     .select('*', { count: 'exact', head: true })
     .neq('status', 'resolved');
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return count || 0;
 }
 
@@ -222,7 +240,10 @@ export async function getUnpaidInvoices() {
     .select('*', { count: 'exact', head: true })
     .eq('paid', false);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
 
   const unpaid = invoices.filter((invoice) => !invoice.paid);
   return {
@@ -271,8 +292,14 @@ export async function getTopProducts(limit = 5): Promise<TopProduct[]> {
     supabase.from('products').select('id, name'),
   ]);
 
-  if (logsRes.error) throw new Error(logsRes.error.message);
-  if (productsRes.error) throw new Error(productsRes.error.message);
+  if (logsRes.error) {
+    console.error('Supabase error:', logsRes.error);
+    throw new Error(logsRes.error.message);
+  }
+  if (productsRes.error) {
+    console.error('Supabase error:', productsRes.error);
+    throw new Error(productsRes.error.message);
+  }
 
   const productMap = ((productsRes.data || []) as Product[]).reduce<Record<string, string>>((acc, product) => {
     acc[product.id] = product.name;
@@ -304,8 +331,14 @@ export async function getEmployeePerformance(limit = 5): Promise<EmployeePerform
     supabase.from('profiles').select('id, email, name, role').eq('role', 'technician'),
   ]);
 
-  if (logsRes.error) throw new Error(logsRes.error.message);
-  if (profilesRes.error) throw new Error(profilesRes.error.message);
+  if (logsRes.error) {
+    console.error('Supabase error:', logsRes.error);
+    throw new Error(logsRes.error.message);
+  }
+  if (profilesRes.error) {
+    console.error('Supabase error:', profilesRes.error);
+    throw new Error(profilesRes.error.message);
+  }
 
   const profileMap = ((profilesRes.data || []) as Profile[]).reduce<Record<string, Profile>>((acc, profile) => {
     if (profile.id) acc[profile.id] = profile;
@@ -405,7 +438,10 @@ export async function getMonthlyClosingSummary() {
     .order('created_at', { ascending: false })
     .limit(12);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return (data || []) as MonthlyClosing[];
 }
 
@@ -576,7 +612,10 @@ export async function getRecentActivityLogs(limit = 12): Promise<ActivityLog[]> 
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return (data || []) as ActivityLog[];
 }
 
@@ -587,6 +626,9 @@ export async function getRecentOrders(limit = 10): Promise<DbRequest[]> {
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return (data || []) as DbRequest[];
 }

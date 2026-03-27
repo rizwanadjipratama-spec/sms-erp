@@ -1,6 +1,7 @@
 import { logActivity } from './activity';
 import { handleServiceError, logServiceExecution, withOperationLock } from './service-utils';
 import { supabase } from './supabase';
+import { formatCurrency } from './format-utils';
 import type { DbRequest, DeliveryLog, DocumentFile, Invoice } from '@/types/types';
 import { SYSTEM_USER_ID, SYSTEM_USER_EMAIL, MIME_TYPES } from './constants';
 
@@ -107,13 +108,13 @@ async function uploadDocumentFile(params: {
   return {
     fileName: params.fileName,
     path,
-    contentType: params.contentType,
+    contentType: params.contentType || 'application/octet-stream',
     signedUrl: await createSignedUrl(path),
   };
 }
 
-function formatCurrency(value: number | undefined) {
-  return `Rp${(value || 0).toLocaleString('id-ID')}`;
+function formatCurrencyLocal(value: number | undefined | null) {
+  return formatCurrency(value);
 }
 
 export const pdfService = {

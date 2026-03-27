@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import type { DbRequest, Profile } from '@/types/types';
 import { fetchProfilesByEmails, getCurrentAuthUser } from '@/lib/workflow';
 import { workflowEngine } from '@/lib/workflow-engine';
+import { formatCurrency } from '@/lib/format-utils';
 
 export default function BossDashboard() {
   const { profile, loading } = useAuth();
@@ -237,7 +238,7 @@ export default function BossDashboard() {
                       <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Commercial Summary</p>
                       <p className="text-xl font-semibold text-gray-900">
                         {request.price_total && request.price_total > 0
-                          ? `Rp${request.price_total.toLocaleString('id-ID')}`
+                          ? formatCurrency(request.price_total)
                           : 'Price not set'}
                       </p>
                     </div>
@@ -246,10 +247,10 @@ export default function BossDashboard() {
                       <div className={`rounded-xl border p-4 ${debtExceeded ? 'bg-amber-500/10 border-amber-500/20' : 'bg-slate-950/60 border-gray-200'}`}>
                         <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Client Debt</p>
                         <p className="text-sm text-gray-900">
-                          Rp{(clientProfile.debt_amount || 0).toLocaleString('id-ID')}
+                          {formatCurrency(clientProfile.debt_amount)}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          Limit: Rp{(clientProfile.debt_limit || 0).toLocaleString('id-ID')}
+                          Limit: {formatCurrency(clientProfile.debt_limit)}
                         </p>
                         {debtExceeded && (
                           <p className="text-xs text-amber-300 mt-2">

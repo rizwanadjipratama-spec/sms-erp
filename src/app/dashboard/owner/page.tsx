@@ -9,6 +9,7 @@ import { getRoleRedirect } from '@/lib/auth';
 import {
   getOwnerDashboardBundle,
 } from '@/lib/analytics-service';
+import { formatCurrency } from '@/lib/format-utils';
 import { canAccessRoute } from '@/lib/permissions';
 type OwnerDashboardData = Awaited<ReturnType<typeof getOwnerDashboardBundle>>;
 
@@ -164,14 +165,14 @@ export default function OwnerDashboard() {
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: 'Total Revenue This Month', value: `Rp${dashboard.stats.totalRevenueThisMonth.toLocaleString('id-ID')}`, color: 'text-apple-success' },
+          { label: 'Total Revenue This Month', value: formatCurrency(dashboard.stats.totalRevenueThisMonth), color: 'text-apple-success' },
           { label: 'Total Orders This Month', value: dashboard.stats.totalOrdersThisMonth, color: 'text-apple-text-primary' },
           { label: 'Unpaid Invoices', value: dashboard.stats.unpaidInvoices, color: 'text-apple-danger' },
-          { label: 'Stock Value', value: `Rp${dashboard.stats.stockValue.toLocaleString('id-ID')}`, color: 'text-apple-warning' },
+          { label: 'Stock Value', value: formatCurrency(dashboard.stats.stockValue), color: 'text-apple-warning' },
           { label: 'Orders In Progress', value: dashboard.stats.ordersInProgress, color: 'text-apple-warning' },
           { label: 'Deliveries In Progress', value: dashboard.stats.deliveriesInProgress, color: 'text-apple-blue' },
           { label: 'Open Issues', value: dashboard.openIssues, color: 'text-apple-danger' },
-          { label: 'Paid Revenue This Month', value: `Rp${dashboard.stats.paidRevenueThisMonth.toLocaleString('id-ID')}`, color: 'text-apple-success' },
+          { label: 'Paid Revenue This Month', value: formatCurrency(dashboard.stats.paidRevenueThisMonth), color: 'text-apple-success' },
         ].map((stat) => (
           <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-4 shadow-sm">
             <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-2">{stat.label}</p>
@@ -211,7 +212,7 @@ export default function OwnerDashboard() {
                   <p className="text-xs text-gray-500">{customer.invoicesCount} invoice(s)</p>
                 </div>
                 <p className="text-sm font-semibold text-emerald-400">
-                  Rp{customer.totalSpending.toLocaleString('id-ID')}
+                  {formatCurrency(customer.totalSpending)}
                 </p>
               </div>
             ))}

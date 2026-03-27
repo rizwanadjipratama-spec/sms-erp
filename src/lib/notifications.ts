@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, requireAuthUser } from './supabase';
 import type { Notification } from '@/types/types';
 
 export const createNotification = async (
@@ -7,6 +7,7 @@ export const createNotification = async (
   type: Notification['type'] = 'info',
   orderId?: string
 ): Promise<void> => {
+  await requireAuthUser();
   const { error } = await supabase.from('notifications').insert({
     user_id: userId,
     message,
@@ -15,7 +16,10 @@ export const createNotification = async (
     order_id: orderId || null,
   });
 
-  if (error) console.error('Notification insert failed:', error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
 };
 
 export const getNotifications = async (userId: string): Promise<Notification[]> => {
@@ -26,28 +30,46 @@ export const getNotifications = async (userId: string): Promise<Notification[]> 
     .order('created_at', { ascending: false })
     .limit(50);
 
-  if (error) return [];
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return (data || []) as Notification[];
 };
 
 export const markNotificationRead = async (id: string): Promise<void> => {
-  await supabase.from('notifications').update({ read: true }).eq('id', id);
+  await requireAuthUser();
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
 };
 
 export const markAllRead = async (userId: string): Promise<void> => {
-  await supabase
+  await requireAuthUser();
+  const { error } = await supabase
     .from('notifications')
     .update({ read: true })
     .eq('user_id', userId)
     .eq('read', false);
+  
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
 };
 
 export const getUnreadCount = async (userId: string): Promise<number> => {
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from('notifications')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('read', false);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
 
   return count || 0;
 };

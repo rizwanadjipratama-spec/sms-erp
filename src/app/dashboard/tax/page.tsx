@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getRoleRedirect } from '@/lib/auth';
 import { canAccessRoute } from '@/lib/permissions';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/format-utils';
 import type { Invoice } from '@/types/types';
 
 export default function TaxDashboard() {
@@ -95,9 +96,9 @@ export default function TaxDashboard() {
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Sales', value: `Rp${totalRevenue.toLocaleString('id-ID')}`, color: 'text-apple-text-primary' },
-          { label: 'Tax Collected (11%)', value: `Rp${totalTax.toLocaleString('id-ID')}`, color: 'text-apple-blue' },
-          { label: 'Paid Revenue', value: `Rp${paidRevenue.toLocaleString('id-ID')}`, color: 'text-apple-success' },
+          { label: 'Total Sales', value: formatCurrency(totalRevenue), color: 'text-apple-text-primary' },
+          { label: 'Tax Collected (11%)', value: formatCurrency(totalTax), color: 'text-apple-blue' },
+          { label: 'Paid Revenue', value: formatCurrency(paidRevenue), color: 'text-apple-success' },
         ].map((stat) => (
           <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
             <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">{stat.label}</p>
@@ -128,8 +129,8 @@ export default function TaxDashboard() {
                 invoices.map((invoice) => (
                   <tr key={invoice.id} className="border-b border-gray-200/50 hover:bg-gray-100/30 transition-colors">
                     <td className="px-4 py-3 text-gray-900 font-mono text-xs">{invoice.invoice_number}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">Rp{invoice.amount.toLocaleString('id-ID')}</td>
-                    <td className="px-4 py-3 text-right text-teal-400">Rp{(invoice.tax_amount || 0).toLocaleString('id-ID')}</td>
+                    <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(invoice.amount)}</td>
+                    <td className="px-4 py-3 text-right text-teal-400">{formatCurrency(invoice.tax_amount)}</td>
                     <td className="px-4 py-3 text-right">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${invoice.paid ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
                         {invoice.paid ? 'PAID' : 'UNPAID'}

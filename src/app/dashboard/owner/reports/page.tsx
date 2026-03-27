@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { downloadCsvExport, exportCustomerReportCsv, exportDeliveryReportCsv, exportInventoryReportCsv, exportInvoiceReportCsv, exportSalesReportCsv } from '@/lib/export-service';
 import { pdfService } from '@/lib/pdf-service';
 import { getCustomerReport, getDeliveryReport, getInventoryReport, getInvoiceReport, getSalesReport } from '@/lib/report-service';
+import { formatCurrency } from '@/lib/format-utils';
 
 type ReportState = {
   sales: Awaited<ReturnType<typeof getSalesReport>> | null;
@@ -174,9 +175,9 @@ export default function OwnerReportsPage() {
         <div className="grid xl:grid-cols-2 gap-5">
           <section className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 space-y-3">
             <h2 className="text-lg font-semibold text-gray-900">Sales Report</h2>
-            <p className="text-sm text-gray-500">Total sales Rp{reports.sales.totalSales.toLocaleString('id-ID')}</p>
-            <p className="text-sm text-gray-500">Paid sales Rp{reports.sales.paidSales.toLocaleString('id-ID')}</p>
-            <p className="text-sm text-gray-500">Unpaid sales Rp{reports.sales.unpaidSales.toLocaleString('id-ID')}</p>
+            <p className="text-sm text-gray-500">Total sales {formatCurrency(reports.sales.totalSales)}</p>
+            <p className="text-sm text-gray-500">Paid sales {formatCurrency(reports.sales.paidSales)}</p>
+            <p className="text-sm text-gray-500">Unpaid sales {formatCurrency(reports.sales.unpaidSales)}</p>
             <p className="text-sm text-gray-500">Invoices {reports.sales.invoicesCount}</p>
           </section>
 
@@ -215,7 +216,7 @@ export default function OwnerReportsPage() {
                   <p className="text-xs text-gray-500">{customer.invoices} invoice(s)</p>
                 </div>
                 <p className="text-sm font-semibold text-emerald-400">
-                  Rp{customer.total.toLocaleString('id-ID')}
+                  {formatCurrency(customer.total)}
                 </p>
               </div>
             ))}

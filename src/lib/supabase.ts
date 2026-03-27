@@ -11,3 +11,9 @@ export const supabase = createClient(
     },
   }
 );
+
+export async function requireAuthUser() {
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) throw new Error("User not authenticated");
+  return data.user;
+}

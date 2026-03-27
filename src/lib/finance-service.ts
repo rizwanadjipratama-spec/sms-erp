@@ -1,7 +1,7 @@
 import { logActivity } from './activity';
 import { handleServiceError, logServiceExecution, withOperationLock } from './service-utils';
 import { createNotificationsForUsers, fetchProfilesByRoles } from './workflow';
-import { supabase } from './supabase';
+import { supabase, requireAuthUser } from './supabase';
 import { workflowEngine } from './workflow-engine';
 import type { DbRequest, Invoice, MonthlyClosing, UserRole } from '@/types/types';
 
@@ -41,7 +41,10 @@ async function getNextInvoiceNumber(date: Date) {
     .order('invoice_number', { ascending: false })
     .limit(1);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
 
   const latest = data?.[0]?.invoice_number as string | undefined;
   const latestSequence = latest ? Number(latest.split('/').pop() || '0') : 0;
@@ -55,7 +58,10 @@ async function getRequestOwnerId(orderId: string) {
     .eq('id', orderId)
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return data?.user_id as string | undefined;
 }
 
@@ -79,9 +85,18 @@ export const financeService = {
         supabase.from('monthly_closing').select('*').order('created_at', { ascending: false }),
       ]);
 
-      if (requestRes.error) throw new Error(requestRes.error.message);
-      if (invoiceRes.error) throw new Error(invoiceRes.error.message);
-      if (closingRes.error) throw new Error(closingRes.error.message);
+      if (requestRes.error) {
+        console.error('Supabase error:', requestRes.error);
+        throw new Error(requestRes.error.message);
+      }
+      if (invoiceRes.error) {
+        console.error('Supabase error:', invoiceRes.error);
+        throw new Error(invoiceRes.error.message);
+      }
+      if (closingRes.error) {
+        console.error('Supabase error:', closingRes.error);
+        throw new Error(closingRes.error.message);
+      }
 
       await logServiceExecution({
         service: 'finance-service',
@@ -118,6 +133,7 @@ export const financeService = {
     dueDate?: string;
   }) {
     return withOperationLock(`finance:create-invoice:${params.request.id}`, async () => {
+      await requireAuthUser();
       const { request, actor, notes, dueDate } = params;
       const startedAt = Date.now();
       await logServiceExecution({
@@ -147,7 +163,10 @@ export const financeService = {
           .eq('order_id', request.id)
           .maybeSingle();
 
-        if (existingRes.error) throw new Error(existingRes.error.message);
+        if (existingRes.error) {
+          console.error('Supabase error:', existingRes.error);
+          throw new Error(existingRes.error.message);
+        }
         if (existingRes.data) {
           await logServiceExecution({
             service: 'finance-service',
@@ -278,6 +297,7 @@ export const financeService = {
 
   async markInvoicePaid(params: { invoice: Invoice; actor: FinanceActor }) {
     return withOperationLock(`finance:mark-paid:${params.invoice.id}`, async () => {
+      await requireAuthUser();
       const { invoice, actor } = params;
       const startedAt = Date.now();
       await logServiceExecution({
@@ -320,11 +340,17 @@ export const financeService = {
           .select('*')
           .maybeSingle();
 
-        if (error) throw new Error(error.message);
+        if (error) {
+          console.error('Supabase error:', error);
+          throw new Error(error.message);
+        }
 
         if (!data) {
           const existingRes = await supabase.from('invoices').select('*').eq('id', invoice.id).single();
-          if (existingRes.error) throw new Error(existingRes.error.message);
+          if (existingRes.error) {
+            console.error('Supabase error:', existingRes.error);
+            throw new Error(existingRes.error.message);
+          }
           await logServiceExecution({
             service: 'finance-service',
             action: 'markInvoicePaid',
@@ -405,6 +431,7 @@ export const financeService = {
     return withOperationLock(
       `finance:monthly-closing:${dateKey.getFullYear()}-${dateKey.getMonth() + 1}`,
       async () => {
+        await requireAuthUser();
         const { actor, notes, date = new Date() } = params;
         const startedAt = Date.now();
         await logServiceExecution({
@@ -432,7 +459,10 @@ export const financeService = {
             .gte('created_at', start)
             .lte('created_at', end);
 
-          if (error) throw new Error(error.message);
+          if (error) {
+            console.error('Supabase error:', error);
+            throw new Error(error.message);
+          }
 
           const monthInvoices = (data || []) as Invoice[];
           const totalRevenue = monthInvoices.reduce((sum, invoice) => sum + invoice.amount, 0);
@@ -460,7 +490,10 @@ export const financeService = {
             .select('*')
             .single();
 
-          if (upsertError) throw new Error(upsertError.message);
+          if (upsertError) {
+            console.error('Supabase error:', upsertError);
+            throw new Error(upsertError.message);
+          }
 
           await logActivity(
             actor.id,

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, requireAuthUser } from './supabase';
 import { createNotificationsForUsers, fetchProfilesByRoles } from './workflow';
 import { logActivity } from './activity';
 import { inventoryService } from './inventory-service';
@@ -23,21 +23,37 @@ export const WORKFLOW_STATUSES: RequestStatus[] = [
   'cancelled',
 ];
 
-export const WORKFLOW_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
-  submitted: ['pending', 'cancelled'],
-  pending: ['priced', 'cancelled'],
-  priced: ['approved', 'rejected', 'cancelled'],
-  approved: ['invoice_ready', 'cancelled'],
-  rejected: [],
-  invoice_ready: ['preparing'],
-  preparing: ['ready'],
-  ready: ['on_delivery'],
-  on_delivery: ['delivered'],
-  delivered: ['completed', 'issue'],
-  completed: [],
-  issue: ['resolved'],
-  resolved: [],
-  cancelled: [],
+export const WORKFLOW_ROLE_TRANSITIONS: Record<UserRole, Partial<Record<RequestStatus, RequestStatus[]>>> = {
+  client: {
+    submitted: [],
+    delivered: ['completed'],
+  },
+  marketing: {
+    submitted: ['priced'],
+  },
+  boss: {
+    priced: ['approved', 'rejected'],
+  },
+  finance: {
+    approved: ['invoice_ready'],
+  },
+  warehouse: {
+    invoice_ready: ['preparing'],
+    preparing: ['ready'],
+  },
+  technician: {
+    ready: ['on_delivery'],
+    on_delivery: ['delivered'],
+  },
+  admin: {
+    delivered: ['resolved'],
+  },
+  owner: {},
+  tax: {},
+  user: {
+    submitted: [],
+    delivered: ['completed'],
+  },
 };
 
 export type TransitionOrderInput = {
@@ -57,31 +73,15 @@ export type TransitionOrderInput = {
 };
 
 function validateTransition(input: TransitionOrderInput) {
-  const currentStatus = String(input.request.status).toLowerCase().trim();
-  const nextStatus = String(input.nextStatus).toLowerCase().trim();
-  const key = `${currentStatus}->${nextStatus}`;
+  const roleMap = WORKFLOW_ROLE_TRANSITIONS[input.actorRole];
 
-  console.log('WORKFLOW DEBUG');
-  console.log('ROLE:', input.actorRole);
-  console.log('CURRENT:', currentStatus);
-  console.log('NEXT:', nextStatus);
-  console.log('KEY:', key);
-
-  const allowed = WORKFLOW_TRANSITIONS[input.request.status] || [];
-  if (!allowed.includes(input.nextStatus)) {
-    throw new Error(`Invalid transition: ${input.request.status} -> ${input.nextStatus}`);
-  }
-
-  const rolePermissions = PERMISSIONS[input.actorRole];
-
-  if (!rolePermissions) {
+  if (!roleMap) {
     throw new Error(`Unknown role: ${input.actorRole}`);
   }
 
-  const allowedTransitions = rolePermissions.workflowTransitions || [];
+  const allowedNextStatuses = roleMap[input.request.status] || [];
 
-  if (!allowedTransitions.includes(key as any)) {
-    console.log('ALLOWED:', allowedTransitions);
+  if (!allowedNextStatuses.includes(input.nextStatus)) {
     throw new Error(`role ${input.actorRole} cannot change request workflow`);
   }
 
@@ -180,6 +180,7 @@ async function appendTransitionLog(
 
 export const workflowEngine = {
   async transitionOrder(input: TransitionOrderInput): Promise<DbRequest> {
+    const user = await requireAuthUser();
     const startedAt = Date.now();
 
     // DEBUG & ROLE VALIDATION
@@ -214,9 +215,7 @@ console.log('To:', input.nextStatus);
     try {
       validateTransition(input);
 
-      if (input.nextStatus === 'invoice_ready') {
-        await ensureInvoiceExists(input.request.id);
-      }
+      // Status-specific pre-conditions could be added here
 
       const nowIso = new Date().toISOString();
       const statusTimestamps: Record<RequestStatus, Record<string, string>> = {
@@ -251,7 +250,8 @@ console.log('To:', input.nextStatus);
         .single();
 
       if (error) {
-        throw new Error(error.message || 'Request transition failed');
+        console.error('Supabase error:', error);
+        throw new Error(error.message);
       }
 
       const updatedRequest = data as DbRequest;
@@ -266,6 +266,27 @@ console.log('To:', input.nextStatus);
               role: input.actorRole,
             },
           });
+        }
+
+        if (input.nextStatus === 'invoice_ready') {
+          // Check if invoice exists first to avoid dual-creation loops
+          const { count } = await supabase
+            .from('invoices')
+            .select('*', { count: 'exact', head: true })
+            .eq('order_id', updatedRequest.id);
+          
+          if (!count) {
+             // We need to import financeService or use a delayed import to avoid circular dependency
+             const { financeService } = await import('./finance-service');
+             await financeService.createInvoiceForRequest({
+               request: updatedRequest,
+               actor: {
+                 id: input.actorId,
+                 email: input.actorEmail,
+                 role: input.actorRole,
+               },
+             });
+          }
         }
 
         // Part 6: Automate Notification Mapping
@@ -308,14 +329,6 @@ console.log('To:', input.nextStatus);
           : new Error('Workflow side effects failed');
       }
 
-      await logServiceExecution({
-        service: 'workflow-engine',
-        action: 'transitionOrder',
-        stage: 'success',
-        startedAt,
-        metadata: logContext,
-      });
-
       return updatedRequest;
     } catch (error) {
       await logServiceExecution({
@@ -331,4 +344,20 @@ console.log('To:', input.nextStatus);
       throw handleServiceError('workflow-engine', 'transitionOrder', error, logContext);
     }
   },
+
+  async confirmCompleted(input: { 
+    request: DbRequest; 
+    actorId: string; 
+    actorEmail?: string; 
+    actorRole: UserRole 
+  }): Promise<DbRequest> {
+    return this.transitionOrder({
+      ...input,
+      nextStatus: 'completed',
+      action: 'complete_request',
+      message: `Request ${input.request.id} completed by client`,
+      notifyRoles: ['admin', 'owner'],
+      type: 'success'
+    });
+  }
 };

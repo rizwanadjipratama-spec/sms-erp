@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { getProductsByIds } from './data';
 import type { CartItem, DbRequest } from '@/types/types';
+import { formatCurrency } from './format-utils';
 import { calculatePriceTotal, getCurrentAuthUser, recordOrderEvent } from './workflow';
 
 type RequestContextType = {
@@ -80,7 +81,7 @@ export default function RequestProvider({
     ) {
       if (!promise_date) {
         throw new Error(
-          `Debt exceeds limit (Rp${profile.debt_amount.toLocaleString()}). Promise date required`
+          `Debt exceeds limit (${formatCurrency(profile.debt_amount)}). Promise date required`
         );
       }
 

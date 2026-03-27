@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, requireAuthUser } from './supabase';
 import type { Product } from '@/types/types';
 import { storageService } from './storage-service';
 
@@ -10,9 +10,12 @@ export const productService = {
       query = query.eq('is_priced', true);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await query.order('name', { ascending: true });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error(error.message);
+    }
     return (data || []) as Product[];
   },
 
@@ -23,13 +26,17 @@ export const productService = {
       .eq('id', id)
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error(error.message);
+    }
     return data as Product;
   },
 
   async createProduct(product: Omit<Product, 'id' | 'created_at'>, imageFile?: File): Promise<Product> {
-    let image_url = product.image_url;
+    await requireAuthUser();
     
+    let image_url = product.image_url;
     if (imageFile) {
       image_url = await storageService.uploadProductImage(imageFile);
     }
@@ -40,7 +47,8 @@ export const productService = {
       description: product.description,
       image_url,
       price: null,
-      is_priced: false 
+      is_priced: false,
+      stock: 0
     };
 
     const { data, error } = await supabase
@@ -50,15 +58,16 @@ export const productService = {
       .single();
 
     if (error) {
-      console.error('Create product error:', error);
+      console.error('Supabase error:', error);
       throw new Error(error.message);
     }
     return data as Product;
   },
 
   async updateProduct(id: string, updates: Partial<Product>, imageFile?: File): Promise<Product> {
-    let image_url = updates.image_url;
+    await requireAuthUser();
 
+    let image_url = updates.image_url;
     if (imageFile) {
       image_url = await storageService.uploadProductImage(imageFile);
     }
@@ -77,16 +86,24 @@ export const productService = {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error(error.message);
+    }
     return data as Product;
   },
 
   async deleteProduct(id: string): Promise<void> {
+    await requireAuthUser();
+
     const { error } = await supabase
       .from('products')
       .delete()
       .eq('id', id);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error(error.message);
+    }
   },
 };

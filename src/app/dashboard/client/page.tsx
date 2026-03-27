@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import type { DbRequest, RequestStatus } from '@/types/types';
 import { ACTIVE_ORDER_STATUSES, getCurrentAuthUser } from '@/lib/workflow';
 import { workflowEngine } from '@/lib/workflow-engine';
+import { formatCurrency } from '@/lib/format-utils';
 
 const STATUS_STYLE: Record<string, string> = {
   pending: 'bg-apple-warning/10 text-apple-warning',
@@ -121,16 +122,11 @@ export default function ClientDashboard() {
     setProcessingId(request.id);
     try {
       const actor = await getCurrentAuthUser();
-
-      await workflowEngine.transitionOrder({
+      await workflowEngine.confirmCompleted({
         request,
         actorId: actor.id,
         actorEmail: actor.email,
         actorRole: profile.role,
-        nextStatus: 'completed',
-        action: 'complete_request',
-        message: `Request ${request.id} completed by client`,
-        notifyRoles: ['admin', 'owner'],
       });
       await refresh();
     } catch (error) {
@@ -205,7 +201,7 @@ export default function ClientDashboard() {
           <div>
             <p className="text-apple-danger font-bold text-sm">Debt limit exceeded</p>
             <p className="text-apple-text-secondary text-xs mt-0.5">
-              Current debt Rp{profile.debt_amount.toLocaleString('id-ID')} • limit Rp{profile.debt_limit.toLocaleString('id-ID')}.
+              Current debt {formatCurrency(profile.debt_amount)} • limit {formatCurrency(profile.debt_limit)}.
             </p>
           </div>
         </div>
@@ -242,7 +238,7 @@ export default function ClientDashboard() {
                   </div>
                   {request.price_total !== undefined && request.price_total > 0 && (
                     <p className="text-sm font-semibold text-gray-900">
-                      Rp{request.price_total.toLocaleString('id-ID')}
+                      {formatCurrency(request.price_total)}
                     </p>
                   )}
                 </div>
@@ -397,7 +393,7 @@ export default function ClientDashboard() {
                   )}
                 </div>
                 {request.price_total !== undefined && request.price_total > 0 && (
-                  <p className="text-sm font-medium text-gray-900">Rp{request.price_total.toLocaleString('id-ID')}</p>
+                  <p className="text-sm font-medium text-gray-900">{formatCurrency(request.price_total)}</p>
                 )}
               </div>
             ))}

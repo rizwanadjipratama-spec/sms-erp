@@ -19,7 +19,10 @@ export async function getSalesReport(startDate: string, endDate: string) {
     if (range.end) query = query.lte('created_at', range.end);
 
     const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error(error.message);
+    }
 
     const invoices = (data || []) as Invoice[];
     return {
@@ -43,7 +46,10 @@ export async function getInventoryReport(startDate: string, endDate: string) {
     if (range.end) query = query.lte('created_at', range.end);
 
     const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error(error.message);
+    }
 
     const logs = (data || []) as InventoryLog[];
     return {
@@ -66,7 +72,10 @@ export async function getDeliveryReport(startDate: string, endDate: string) {
     if (range.end) query = query.lte('delivered_at', range.end);
 
     const { data, error } = await query.order('delivered_at', { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error(error.message);
+    }
 
     const logs = (data || []) as DeliveryLog[];
     return {
@@ -109,8 +118,14 @@ export async function getCustomerReport(startDate: string, endDate: string) {
       requestsQuery,
     ]);
 
-    if (invoiceRes.error) throw new Error(invoiceRes.error.message);
-    if (requestRes.error) throw new Error(requestRes.error.message);
+    if (invoiceRes.error) {
+      console.error('Supabase error:', invoiceRes.error);
+      throw new Error(invoiceRes.error.message);
+    }
+    if (requestRes.error) {
+      console.error('Supabase error:', requestRes.error);
+      throw new Error(requestRes.error.message);
+    }
 
     const invoices = (invoiceRes.data || []) as Invoice[];
     const requests = (requestRes.data || []) as DbRequest[];

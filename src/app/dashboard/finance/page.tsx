@@ -9,6 +9,7 @@ import { financeService } from '@/lib/finance-service';
 import { canAccessRoute } from '@/lib/permissions';
 import type { DbRequest, Invoice, MonthlyClosing } from '@/types/types';
 import { getCurrentAuthUser } from '@/lib/workflow';
+import { formatCurrency } from '@/lib/format-utils';
 
 export default function FinanceDashboard() {
   const { profile, loading } = useAuth();
@@ -180,8 +181,8 @@ export default function FinanceDashboard() {
           { label: 'Needs Invoice', value: approved.length, color: 'text-apple-warning' },
           { label: 'Invoice Ready', value: invoiced.length, color: 'text-apple-blue' },
           { label: 'Unpaid Invoices', value: unpaidInvoices.length, color: 'text-apple-danger' },
-          { label: 'Monthly Revenue', value: `Rp${monthlyRevenue.toLocaleString('id-ID')}`, color: 'text-apple-success' },
-          { label: 'Paid Revenue', value: `Rp${paidTotal.toLocaleString('id-ID')}`, color: 'text-apple-success' },
+          { label: 'Monthly Revenue', value: formatCurrency(monthlyRevenue), color: 'text-apple-success' },
+          { label: 'Paid Revenue', value: formatCurrency(paidTotal), color: 'text-apple-success' },
         ].map((stat) => (
           <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-4 shadow-sm">
             <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">{stat.label}</p>
@@ -233,7 +234,7 @@ export default function FinanceDashboard() {
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <p className="font-semibold text-gray-900">
-                    {request.price_total ? `Rp${request.price_total.toLocaleString('id-ID')}` : 'Price not set'}
+                    {request.price_total ? formatCurrency(request.price_total) : 'Price not set'}
                   </p>
                   <button
                     onClick={() => generateInvoice(request)}
@@ -264,8 +265,8 @@ export default function FinanceDashboard() {
                     {new Date(invoice.created_at).toLocaleDateString('id-ID')} • Due: {invoice.due_date}
                   </p>
                   <p className="text-sm text-gray-900 mt-1">
-                    Rp{invoice.amount.toLocaleString('id-ID')}
-                    <span className="text-gray-500 text-xs"> (+Rp{(invoice.tax_amount || 0).toLocaleString('id-ID')} tax)</span>
+                    {formatCurrency(invoice.amount)}
+                    <span className="text-gray-500 text-xs"> (+{formatCurrency(invoice.tax_amount)} tax)</span>
                   </p>
                 </div>
                 <div className="text-right">
@@ -326,7 +327,7 @@ export default function FinanceDashboard() {
                       {String(closing.month).padStart(2, '0')}/{closing.year}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Revenue Rp{closing.total_revenue.toLocaleString('id-ID')} • Orders {closing.orders_count}
+                      Revenue {formatCurrency(closing.total_revenue)} • Orders {closing.orders_count}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       Paid {closing.paid_invoices} • Unpaid {closing.unpaid_invoices}

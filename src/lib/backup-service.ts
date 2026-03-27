@@ -1,7 +1,7 @@
 import { createNotificationsForUsers, fetchProfilesByRoles } from './workflow';
 import { logActivity } from './activity';
 import { handleServiceError, logServiceExecution, logSystemEvent, withOperationLock } from './service-utils';
-import { supabase } from './supabase';
+import { supabase, requireAuthUser } from './supabase';
 import { SYSTEM_USER_ID, SYSTEM_USER_EMAIL, MIME_TYPES, BACKUP_ROOTS, STORAGE_BUCKETS } from './constants';
 import type { BackupLog, UserRole } from '@/types/types';
 
@@ -68,7 +68,10 @@ type FullBackupSnapshot = {
 
 async function restoreDatabaseSnapshotFromPath(path: string) {
   const downloadRes = await supabase.storage.from(DOCUMENT_BUCKET).download(path);
-  if (downloadRes.error) throw new Error(downloadRes.error.message);
+  if (downloadRes.error) {
+    console.error('Supabase error:', downloadRes.error);
+    throw new Error(downloadRes.error.message);
+  }
 
   const text = await downloadRes.data.text();
   const parsed = JSON.parse(text) as DatabaseBackupSnapshot;
@@ -86,7 +89,10 @@ async function restoreDatabaseSnapshotFromPath(path: string) {
 
 async function restoreStorageSnapshotFromPath(path: string) {
   const downloadRes = await supabase.storage.from(DOCUMENT_BUCKET).download(path);
-  if (downloadRes.error) throw new Error(downloadRes.error.message);
+  if (downloadRes.error) {
+    console.error('Supabase error:', downloadRes.error);
+    throw new Error(downloadRes.error.message);
+  }
 
   const text = await downloadRes.data.text();
   const parsed = JSON.parse(text) as StorageBackupSnapshot;
@@ -97,7 +103,10 @@ async function restoreStorageSnapshotFromPath(path: string) {
   for (const files of Object.values(parsed.buckets)) {
     for (const file of files) {
       const source = await supabase.storage.from(DOCUMENT_BUCKET).download(file.backupPath);
-      if (source.error) throw new Error(source.error.message);
+      if (source.error) {
+        console.error('Supabase error:', source.error);
+        throw new Error(source.error.message);
+      }
       const bytes = new Uint8Array(await source.data.arrayBuffer());
       const { error } = await supabase.storage.from(file.bucket).upload(file.path, bytes, {
         upsert: true,
@@ -137,7 +146,10 @@ async function createBackupLog(backupType: BackupLog['backup_type'], notes?: str
     .select('*')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return data as BackupLog;
 }
 
@@ -149,7 +161,10 @@ async function updateBackupLog(id: string, updates: Partial<BackupLog>) {
     .select('*')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return data as BackupLog;
 }
 
@@ -170,7 +185,10 @@ async function uploadBackupFile(params: {
 
 async function createSignedDocumentUrl(path: string) {
   const { data, error } = await supabase.storage.from(DOCUMENT_BUCKET).createSignedUrl(path, 3600);
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return data.signedUrl;
 }
 
@@ -181,7 +199,10 @@ async function listStorageRecursive(bucket: string, prefix = ''): Promise<Array<
     sortBy: { column: 'name', order: 'asc' },
   });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
 
   const entries = data || [];
   const files: Array<{ name: string; id?: string; metadata?: { size?: number }; updated_at?: string }> = [];
@@ -237,7 +258,10 @@ async function copyStorageFileToBackup(params: {
 
 async function fetchTableRows(table: string) {
   const { data, error } = await supabase.from(table).select('*');
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error:', error);
+    throw new Error(error.message);
+  }
   return data || [];
 }
 
@@ -262,7 +286,10 @@ async function chunkedUpsert(table: string, rows: Record<string, unknown>[]) {
   for (let index = 0; index < rows.length; index += chunkSize) {
     const chunk = rows.slice(index, index + chunkSize);
     const { error } = await supabase.from(table).upsert(chunk, { onConflict: 'id' });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error(error.message);
+    }
   }
 }
 
@@ -282,6 +309,7 @@ export const backupService = {
     assertBackupActor(actor.role);
 
     return withOperationLock('backup:database', async () => {
+      await requireAuthUser();
       const startedAt = Date.now();
       await logServiceExecution({
         service: 'backup-service',
@@ -388,6 +416,7 @@ export const backupService = {
     assertBackupActor(actor.role);
 
     return withOperationLock('backup:storage', async () => {
+      await requireAuthUser();
       const startedAt = Date.now();
       await logServiceExecution({
         service: 'backup-service',
@@ -499,6 +528,7 @@ export const backupService = {
     assertBackupActor(actor.role);
 
     return withOperationLock('backup:full', async () => {
+      await requireAuthUser();
       const startedAt = Date.now();
       await logServiceExecution({
         service: 'backup-service',
@@ -594,6 +624,7 @@ export const backupService = {
     assertBackupActor('admin');
 
     return withOperationLock(`backup:verify:${log.id}`, async () => {
+      await requireAuthUser();
       const startedAt = Date.now();
       await logServiceExecution({
         service: 'backup-service',
@@ -672,6 +703,7 @@ export const backupService = {
     assertBackupActor(actor.role);
 
     return withOperationLock(`backup:restore:${log.id}`, async () => {
+      await requireAuthUser();
       const startedAt = Date.now();
       await logServiceExecution({
         service: 'backup-service',

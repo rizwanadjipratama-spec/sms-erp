@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import type { DbRequest, Profile, UserRole } from '@/types/types';
 import { getCurrentAuthUser } from '@/lib/workflow';
 import { workflowEngine } from '@/lib/workflow-engine';
+import { formatCurrency } from '@/lib/format-utils';
 const ALL_ROLES: UserRole[] = ['client', 'marketing', 'boss', 'finance', 'warehouse', 'technician', 'admin', 'owner', 'tax'];
 
 type IssueRow = {
@@ -259,8 +260,8 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <div className="mt-3 flex gap-4 text-[10px] font-bold uppercase tracking-wider text-apple-text-secondary">
-                  <span className="bg-apple-gray-bg px-2 py-0.5 rounded-full">Debt: Rp{(user.debt_amount || 0).toLocaleString('id-ID')}</span>
-                  <span className="bg-apple-gray-bg px-2 py-0.5 rounded-full">Limit: Rp{(user.debt_limit || 0).toLocaleString('id-ID')}</span>
+                  <span className="bg-apple-gray-bg px-2 py-0.5 rounded-full">Debt: {formatCurrency(user.debt_amount)}</span>
+                  <span className="bg-apple-gray-bg px-2 py-0.5 rounded-full">Limit: {formatCurrency(user.debt_limit)}</span>
                 </div>
               </div>
             ))}
