@@ -7,22 +7,30 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { getRoleRedirect } from '@/lib/auth';
 import { canAccessRoute } from '@/lib/permissions';
-import { supabase } from '@/lib/supabase';
-import type { ClientType, DbRequest, Profile } from '@/types/types';
-import { calculatePriceTotal, fetchProfilesByEmails, getCurrentAuthUser } from '@/lib/workflow';
-import { workflowEngine } from '@/lib/workflow-engine';
-import { formatCurrency } from '@/lib/format-utils';
+import { requestsDb, priceListDb, profilesDb } from '@/lib/db';
+import { workflowEngine } from '@/lib/services';
+import { formatCurrency, formatDateTime, formatOrderId } from '@/lib/format-utils';
+import { StatCard } from '@/components/ui/StatCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
+import type { ClientType, DbRequest, PriceList, Profile } from '@/types/types';
 
 export default function MarketingDashboard() {
-  const { profile, loading } = useAuth();
+  const { profile, role, loading } = useAuth();
   const router = useRouter();
+
   const [requests, setRequests] = useState<DbRequest[]>([]);
   const [clientProfiles, setClientProfiles] = useState<Record<string, Profile>>({});
+  const [priceMap, setPriceMap] = useState<Map<string, PriceList>>(new Map());
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [pricingModes, setPricingModes] = useState<Record<string, ClientType>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // ---------- Auth guard ----------
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/marketing')) {
@@ -30,243 +38,292 @@ export default function MarketingDashboard() {
     }
   }, [loading, profile, router]);
 
+  // ---------- Data fetching ----------
   const refresh = useCallback(async () => {
     if (!profile) return;
-
     setFetching(true);
-    const { data, error } = await supabase
-      .from('requests')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Marketing fetch failed:', error.message);
-      setFetching(false);
-      return;
-    }
-
-    const orders = (data || []) as DbRequest[];
-    setRequests(orders);
-    setNotes(
-      orders.reduce<Record<string, string>>((acc, request) => {
-        acc[request.id] = request.marketing_note || '';
-        return acc;
-      }, {})
-    );
+    setError(null);
 
     try {
-      const profiles = await fetchProfilesByEmails(
-        orders.map((request) => request.user_email || '').filter(Boolean)
-      );
-      const nextProfiles = profiles.reduce<Record<string, Profile>>((acc, item) => {
-        acc[item.email] = item;
-        return acc;
-      }, {});
-      setClientProfiles(nextProfiles);
-      setPricingModes(
-        orders.reduce<Record<string, ClientType>>((acc, request) => {
-          const clientType = request.user_email
-            ? nextProfiles[request.user_email]?.client_type || 'regular'
-            : 'regular';
-          acc[request.id] = clientType;
+      const [requestsResult, allPrices] = await Promise.all([
+        requestsDb.getByStatus(['submitted']),
+        priceListDb.getAll(),
+      ]);
+
+      const orders = requestsResult.data;
+      setRequests(orders);
+
+      // Build price lookup map
+      const nextPriceMap = new Map<string, PriceList>();
+      allPrices.forEach((p) => nextPriceMap.set(p.product_id, p));
+      setPriceMap(nextPriceMap);
+
+      // Initialize notes from existing request data
+      setNotes(
+        orders.reduce<Record<string, string>>((acc, r) => {
+          acc[r.id] = r.note || '';
           return acc;
         }, {})
       );
-    } catch (profileError) {
-      console.error('Marketing profile lookup failed:', profileError);
-    }
 
-    setFetching(false);
+      // Fetch client profiles
+      const emails = orders
+        .map((r) => r.user_email)
+        .filter((e): e is string => Boolean(e));
+      const uniqueEmails = [...new Set(emails)];
+
+      if (uniqueEmails.length > 0) {
+        const profiles: Profile[] = [];
+        for (const email of uniqueEmails) {
+          const p = await profilesDb.getByEmail(email);
+          if (p) profiles.push(p);
+        }
+
+        const nextProfiles = profiles.reduce<Record<string, Profile>>((acc, p) => {
+          acc[p.email] = p;
+          return acc;
+        }, {});
+        setClientProfiles(nextProfiles);
+
+        // Set pricing modes based on client type
+        setPricingModes(
+          orders.reduce<Record<string, ClientType>>((acc, r) => {
+            const ct = r.user_email
+              ? nextProfiles[r.user_email]?.client_type || 'regular'
+              : 'regular';
+            acc[r.id] = ct;
+            return acc;
+          }, {})
+        );
+      } else {
+        setClientProfiles({});
+        setPricingModes(
+          orders.reduce<Record<string, ClientType>>((acc, r) => {
+            acc[r.id] = 'regular';
+            return acc;
+          }, {})
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load marketing data');
+    } finally {
+      setFetching(false);
+    }
   }, [profile]);
 
   useEffect(() => {
-    if (!profile) return;
-    refresh();
+    if (profile) refresh();
   }, [profile, refresh]);
 
-  useRealtimeTable('requests', 'status=eq.pending', {
+  // ---------- Realtime ----------
+  useRealtimeTable('requests', 'status=eq.submitted', refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 250,
-    channelName: 'marketing-pending-requests',
   });
 
-  useRealtimeTable('price_list', undefined, {
+  useRealtimeTable('price_list', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'marketing-price-list',
   });
 
+  // ---------- Computed ----------
   const pricedCount = useMemo(
-    () => requests.filter((request) => (request.price_total || 0) > 0).length,
+    () => requests.filter((r) => (r.total_price || 0) > 0).length,
     [requests]
   );
 
-  const saveRequestReview = async (request: DbRequest) => {
-    if (!profile) {
-      alert('Authentication profile not loaded');
-      return;
-    }
+  const calculateTotalPrice = useCallback(
+    (request: DbRequest, clientType: ClientType): number => {
+      const items = request.request_items ?? [];
+      return items.reduce((sum, item) => {
+        const price = priceMap.get(item.product_id);
+        if (!price) return sum;
+        const unitPrice = clientType === 'kso' ? price.price_kso : price.price_regular;
+        return sum + unitPrice * item.quantity;
+      }, 0);
+    },
+    [priceMap]
+  );
 
-    setSavingId(request.id);
-    try {
-      const actor = await getCurrentAuthUser();
-      if (!actor) {
-        alert('Actor profile not loaded');
-        return;
+  // ---------- Handlers ----------
+  const handleSaveReview = useCallback(
+    async (request: DbRequest) => {
+      if (!profile) return;
+      setSavingId(request.id);
+
+      try {
+        const selectedType = pricingModes[request.id] || 'regular';
+        const note = notes[request.id]?.trim() || undefined;
+        const totalPrice = calculateTotalPrice(request, selectedType);
+
+        await workflowEngine.transition({
+          request,
+          actorId: profile.id,
+          actorEmail: profile.email,
+          actorRole: role,
+          nextStatus: 'priced',
+          action: 'price_request',
+          message: `Request ${formatOrderId(request.id)} priced and ready for boss approval`,
+          type: 'info',
+          notifyRequester: false,
+          notifyRoles: ['boss', 'admin', 'owner'],
+          extraUpdates: {
+            total_price: totalPrice,
+            note,
+          },
+          metadata: {
+            pricing_mode: selectedType,
+          },
+        });
+
+        // Remove from local state immediately
+        setRequests((prev) => prev.filter((r) => r.id !== request.id));
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to save marketing review');
+      } finally {
+        setSavingId(null);
       }
+    },
+    [profile, role, pricingModes, notes, calculateTotalPrice]
+  );
 
-      const selectedType = pricingModes[request.id] || 'regular';
-      const note = notes[request.id]?.trim() || undefined;
-      const priceTotal = await calculatePriceTotal(request.items, selectedType);
-
-      console.log('MARKETING ROLE:', profile.role);
-      console.log('ACTOR ROLE:', actor.role);
-      console.log('TRANSITION pending -> priced');
-
-      await workflowEngine.transitionOrder({
-        request,
-        actorId: actor.id,
-        actorEmail: actor.email || profile?.email,
-        actorRole: profile.role,
-        nextStatus: 'priced',
-        action: 'price_request',
-        message: `Request ${request.id} priced and ready for boss approval`,
-        type: 'info',
-        notifyRequester: false,
-        notifyRoles: ['boss', 'admin', 'owner'],
-        extraUpdates: {
-          price_total: priceTotal,
-          marketing_note: note,
-        },
-        metadata: {
-          pricing_mode: selectedType,
-        },
-      });
-
-      setRequests((prev) =>
-        prev.filter((item) => item.id !== request.id)
-      );
-    } catch (saveError) {
-      alert(saveError instanceof Error ? saveError.message : 'Failed to save marketing review');
-    } finally {
-      setSavingId(null);
-    }
-  };
-
+  // ---------- Render: loading ----------
   if (loading || fetching) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        <DashboardSkeleton />
       </div>
     );
   }
 
+  // ---------- Render: error ----------
+  if (error) {
+    return (
+      <div className="mx-auto max-w-6xl p-4 sm:p-6">
+        <ErrorState message={error} onRetry={refresh} />
+      </div>
+    );
+  }
+
+  // ---------- Render: main ----------
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Marketing</h1>
-          <p className="text-apple-text-secondary text-sm mt-1">
-            Price pending client requests before boss approval.
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Marketing</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Price submitted client requests before boss approval.
           </p>
         </div>
         <Link
           href="/dashboard/marketing/prices"
-          className="bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-medium px-4 py-2 rounded-apple transition-all active:scale-95 shadow-sm"
+          className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95"
         >
           Price List
         </Link>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
-          <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">Pending Review</p>
-          <p className="text-3xl font-bold text-apple-warning">{requests.length}</p>
-        </div>
-        <div className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
-          <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">Priced Orders</p>
-          <p className="text-3xl font-bold text-apple-blue">{pricedCount}</p>
-        </div>
+        <StatCard label="Submitted Review" value={requests.length} color="yellow" />
+        <StatCard label="Priced Orders" value={pricedCount} color="blue" />
       </div>
 
+      {/* Request list */}
       {requests.length === 0 ? (
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-10 text-center text-gray-500">
-          No pending requests
-        </div>
+        <EmptyState
+          title="No pending requests"
+          description="All submitted requests have been priced. Check back later for new submissions."
+        />
       ) : (
         <div className="space-y-4">
           {requests.map((request) => {
-            const clientProfile = request.user_email ? clientProfiles[request.user_email] : undefined;
+            const clientProfile = request.user_email
+              ? clientProfiles[request.user_email]
+              : undefined;
+            const selectedType = pricingModes[request.id] || 'regular';
+            const computedPrice = calculateTotalPrice(request, selectedType);
+
             return (
-              <div key={request.id} className="bg-white border border-apple-gray-border rounded-apple p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
+              <div
+                key={request.id}
+                className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6"
+              >
+                {/* Header row */}
+                <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-apple-text-primary">{request.user_email || request.user_id}</p>
-                    <p className="text-xs text-apple-text-secondary mt-1 font-medium">
-                      {new Date(request.created_at).toLocaleString('id-ID')}
+                    <p className="text-sm font-semibold text-gray-900">
+                      {request.user_email || formatOrderId(request.id)}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-gray-500">
+                      {formatDateTime(request.created_at)}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-apple-warning/10 text-apple-warning uppercase tracking-wider">
-                      PENDING
+                    <StatusBadge status={request.status} />
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 uppercase">
+                      {request.priority}
                     </span>
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-apple-gray-bg text-apple-text-secondary uppercase tracking-wider">
-                      {request.priority.toUpperCase()}
-                    </span>
-                    {clientProfile && (
-                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-apple-blue-light text-apple-blue uppercase tracking-wider">
-                        {clientProfile.client_type || 'regular'}
+                    {clientProfile?.client_type && (
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 uppercase">
+                        {clientProfile.client_type}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="grid lg:grid-cols-[1.6fr_1fr] gap-5">
+                {/* Content grid */}
+                <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
+                  {/* Left: items & note */}
                   <div className="space-y-3">
-                    <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
-                      <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Items</p>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                      <p className="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Items
+                      </p>
                       <div className="space-y-2 text-sm text-gray-700">
-                        {request.items.map((item, index) => (
-                          <div key={`${request.id}-${index}`} className="flex justify-between gap-3">
-                            <span>{item.name || item.id}</span>
-                            <span className="text-gray-500">x{item.qty}</span>
+                        {(request.request_items ?? []).map((item, idx) => (
+                          <div
+                            key={`${request.id}-item-${idx}`}
+                            className="flex justify-between gap-3"
+                          >
+                            <span>{item.products?.name || item.product_id}</span>
+                            <span className="text-gray-500">x{item.quantity}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {request.reason && (
-                      <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-200">
-                        Client note: {request.reason}
+                    {request.note && (
+                      <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-800">
+                        Note: {request.note}
                       </div>
                     )}
                   </div>
 
+                  {/* Right: pricing controls */}
                   <div className="space-y-4">
-                    <div className="rounded-apple bg-apple-gray-bg border border-apple-gray-border p-4">
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-apple-text-secondary mb-2">
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                      <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-gray-500">
                         Pricing Mode
                       </label>
                       <select
-                        value={pricingModes[request.id] || 'regular'}
+                        value={selectedType}
                         onChange={(e) =>
                           setPricingModes((prev) => ({
                             ...prev,
                             [request.id]: e.target.value as ClientType,
                           }))
                         }
-                        className="w-full bg-white border border-apple-gray-border rounded-lg px-3 py-2 text-sm text-apple-text-primary focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue outline-none transition-all"
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                       >
                         <option value="regular">Regular</option>
                         <option value="kso">KSO</option>
                       </select>
                     </div>
 
-                    <div className="rounded-apple bg-apple-gray-bg border border-apple-gray-border p-4">
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-apple-text-secondary mb-2">
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                      <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-gray-500">
                         Marketing Note
                       </label>
                       <textarea
@@ -275,26 +332,26 @@ export default function MarketingDashboard() {
                           setNotes((prev) => ({ ...prev, [request.id]: e.target.value }))
                         }
                         rows={4}
-                        className="w-full bg-white border border-apple-gray-border rounded-lg px-3 py-2 text-sm text-apple-text-primary placeholder-apple-text-secondary/50 focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue outline-none transition-all resize-none"
+                        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         placeholder="Add a commercial note for boss approval..."
                       />
                     </div>
 
-                    {request.price_total !== undefined && request.price_total > 0 && (
-                      <div className="rounded-apple bg-apple-blue/5 border border-apple-blue/10 p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-apple-blue/80 mb-1">
-                          Current Price
+                    {computedPrice > 0 && (
+                      <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                        <p className="mb-1 text-xs font-medium uppercase tracking-wider text-blue-600">
+                          Calculated Price
                         </p>
-                        <p className="text-lg font-bold text-apple-text-primary tracking-tight">
-                          {formatCurrency(request.price_total)}
+                        <p className="text-lg font-bold tracking-tight text-gray-900">
+                          {formatCurrency(computedPrice)}
                         </p>
                       </div>
                     )}
 
                     <button
-                      onClick={() => saveRequestReview(request)}
+                      onClick={() => handleSaveReview(request)}
                       disabled={savingId === request.id}
-                      className="w-full py-2.5 bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-semibold rounded-apple transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                      className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50"
                     >
                       {savingId === request.id ? 'Saving...' : 'Save Pricing & Notify Boss'}
                     </button>

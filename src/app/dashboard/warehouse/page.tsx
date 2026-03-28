@@ -5,22 +5,22 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { getRoleRedirect } from '@/lib/auth';
-import { inventoryService } from '@/lib/inventory-service';
 import { canAccessRoute } from '@/lib/permissions';
-import type { DbRequest, InventoryLog, Product } from '@/types/types';
-import { getCurrentAuthUser } from '@/lib/workflow';
-import { workflowEngine } from '@/lib/workflow-engine';
-import { productService } from '@/lib/product-service';
+import { inventoryService, productService, workflowEngine } from '@/lib/services';
+import { requireAuthUser } from '@/lib/db';
+import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
+import type { DbRequest, InventoryLog, Product, Actor } from '@/types/types';
 
 import { WarehouseConsole } from '@/components/dashboard/WarehouseConsole';
 import { AddProductPanel } from '@/components/dashboard/AddProductPanel';
 import { ProductForm } from '@/components/dashboard/ProductForm';
 
 export default function WarehouseDashboard() {
-  const { profile, loading } = useAuth();
+  const { profile, role, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Panel state
   const [warehouseView, setWarehouseView] = useState<'console' | 'add-product'>('console');
 
@@ -30,19 +30,21 @@ export default function WarehouseDashboard() {
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLog[]>([]);
   const [stockInputs, setStockInputs] = useState<Record<string, number>>({});
   const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  
-  // Legacy modal state (for editing existing products)
+
+  // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>();
 
-  // Sync state with URL to allow Sidebar control
+  // Sync state with URL
   useEffect(() => {
     const view = searchParams.get('view');
     if (view === 'add-product') setWarehouseView('add-product');
     else setWarehouseView('console');
   }, [searchParams]);
 
+  // Auth guard
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/warehouse')) {
@@ -50,137 +52,182 @@ export default function WarehouseDashboard() {
     }
   }, [loading, profile, router]);
 
+  // Build actor helper
+  const getActor = useCallback(async (): Promise<Actor> => {
+    const user = await requireAuthUser();
+    return {
+      id: user.id,
+      email: user.email ?? profile?.email,
+      role: role,
+    };
+  }, [profile, role]);
+
+  // Data fetch
   const refresh = useCallback(async () => {
     setFetching(true);
+    setError(null);
     try {
-      const { requests: nextRequests, products: nextProducts, inventoryLogs: nextLogs } =
-        await inventoryService.fetchWarehouseDashboardData();
-
-      setRequests(nextRequests);
-      setProducts(nextProducts);
-      setInventoryLogs(nextLogs);
+      const data = await inventoryService.getWarehouseDashboard();
+      setRequests(data.requests);
+      setProducts(data.products);
+      setInventoryLogs(data.recentLogs);
       setStockInputs(
-        nextProducts.reduce<Record<string, number>>((acc, product) => {
+        data.products.reduce<Record<string, number>>((acc, product) => {
           acc[product.id] = product.stock;
           return acc;
         }, {})
       );
-    } catch (error) {
-      console.error('Refresh failed:', error);
+    } catch (err) {
+      console.error('Warehouse refresh failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
     } finally {
       setFetching(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!profile) return;
-    refresh();
+    if (profile) refresh();
   }, [profile, refresh]);
 
-  useRealtimeTable('requests', undefined, {
+  // Realtime subscriptions
+  useRealtimeTable('requests', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 250,
-    channelName: 'warehouse-requests',
   });
 
-  useRealtimeTable('products', undefined, {
+  useRealtimeTable('products', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 250,
-    channelName: 'warehouse-products',
   });
 
-  useRealtimeTable('inventory_logs', undefined, {
+  useRealtimeTable('inventory_logs', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 250,
-    channelName: 'warehouse-inventory-logs',
   });
 
-  const updateOrder = async (request: DbRequest, status: 'preparing' | 'ready') => {
-    if (!profile) return;
-    setProcessingId(request.id);
-    try {
-      const actor = await getCurrentAuthUser();
-      await workflowEngine.transitionOrder({
-        request,
-        actorId: actor.id,
-        actorEmail: actor.email || profile?.email,
-        actorRole: profile.role,
-        nextStatus: status,
-        action: status,
-        message: status === 'preparing' ? `Preparing ${request.id}` : `Ready ${request.id}`,
-        type: status === 'ready' ? 'success' : 'info',
-        notifyRoles: status === 'ready' ? ['technician', 'admin'] : ['admin'],
-        metadata: { previous_status: request.status },
-      });
-      await refresh();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Update failed');
-    } finally {
-      setProcessingId(null);
-    }
-  };
+  // Order status transition
+  const updateOrder = useCallback(
+    async (request: DbRequest, status: 'preparing' | 'ready') => {
+      if (!profile) return;
+      setProcessingId(request.id);
+      try {
+        const actor = await getActor();
 
-  const updateStock = async (product: Product) => {
-    if (!profile) return;
-    setProcessingId(product.id);
-    try {
-      const actor = await getCurrentAuthUser();
-      const nextStock = Number(stockInputs[product.id] ?? product.stock);
-      await inventoryService.adjustStock({
-        product,
-        nextStock,
-        actor: { id: actor.id, email: actor.email, role: profile.role },
-        reason: 'manual_adjustment',
-      });
-      await refresh();
-    } catch (error) {
-      alert('Stock update failed');
-    } finally {
-      setProcessingId(null);
-    }
-  };
+        // When preparing, consume stock first
+        if (status === 'preparing') {
+          await inventoryService.consumeStockForPreparing(request, actor);
+        }
 
-  const handleEditProduct = (product: Product) => {
+        await workflowEngine.transition({
+          request,
+          actorId: actor.id,
+          actorEmail: actor.email,
+          actorRole: actor.role,
+          nextStatus: status,
+          action: status,
+          message: status === 'preparing' ? `Preparing order` : `Order is ready for pickup`,
+          type: status === 'ready' ? 'success' : 'info',
+          notifyRoles: status === 'ready' ? ['technician', 'admin'] : ['admin'],
+          metadata: { previous_status: request.status },
+        });
+        await refresh();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Update failed');
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [profile, getActor, refresh]
+  );
+
+  // Stock adjustment
+  const updateStock = useCallback(
+    async (product: Product) => {
+      if (!profile) return;
+      setProcessingId(product.id);
+      try {
+        const actor = await getActor();
+        const nextStock = Number(stockInputs[product.id] ?? product.stock);
+        const change = nextStock - product.stock;
+
+        if (change !== 0) {
+          await inventoryService.adjustStock(
+            product.id,
+            change,
+            'manual_adjustment',
+            actor
+          );
+        }
+        await refresh();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Stock update failed');
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [profile, getActor, stockInputs, refresh]
+  );
+
+  // Product management
+  const handleEditProduct = useCallback((product: Product) => {
     setEditingProduct(product);
     setIsEditModalOpen(true);
-  };
+  }, []);
 
-  const handleDeleteProduct = async (id: string) => {
-    if (!confirm('Delete this product?')) return;
-    try {
-      await productService.deleteProduct(id);
-      await refresh();
-    } catch (error) {
-      alert('Delete failed');
-    }
-  };
-
-  const handleSaveProduct = async (data: Partial<Product>, imageFile?: File) => {
-    try {
-      if (editingProduct) {
-        await productService.updateProduct(editingProduct.id, data, imageFile);
-      } else {
-        await productService.createProduct(data as Omit<Product, 'id' | 'created_at'>, imageFile);
+  const handleDeleteProduct = useCallback(
+    async (id: string) => {
+      if (!confirm('Delete this product?')) return;
+      try {
+        const actor = await getActor();
+        await productService.delete(id, actor);
+        await refresh();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Delete failed');
       }
-      setIsEditModalOpen(false);
-      setEditingProduct(undefined);
-      setWarehouseView('console'); // Switch back to console after adding
-      // Update URL to match
-      router.push('/dashboard/warehouse');
-      await refresh();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Save failed');
-      throw error;
-    }
-  };
+    },
+    [getActor, refresh]
+  );
 
-  if (loading || fetching) {
+  const handleSaveProduct = useCallback(
+    async (data: Partial<Product>, imageFile?: File) => {
+      try {
+        const actor = await getActor();
+        if (editingProduct) {
+          await productService.update(editingProduct.id, data, imageFile, actor);
+        } else {
+          await productService.create(
+            data as { name: string; description?: string; sku?: string; category?: Product['category']; stock?: number; min_stock?: number; unit?: string },
+            imageFile,
+            actor
+          );
+        }
+        setIsEditModalOpen(false);
+        setEditingProduct(undefined);
+        setWarehouseView('console');
+        router.push('/dashboard/warehouse');
+        await refresh();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Save failed');
+        throw err;
+      }
+    },
+    [editingProduct, getActor, refresh, router]
+  );
+
+  // Loading state
+  if (loading || (fetching && products.length === 0 && requests.length === 0)) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-apple-blue border-t-transparent rounded-full animate-spin" />
+      <div className="max-w-6xl mx-auto pb-24 p-4">
+        <DashboardSkeleton />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && products.length === 0 && requests.length === 0) {
+    return (
+      <div className="max-w-6xl mx-auto pb-24 p-4">
+        <ErrorState message={error} onRetry={refresh} />
       </div>
     );
   }
@@ -190,10 +237,14 @@ export default function WarehouseDashboard() {
       {warehouseView === 'console' ? (
         <div className="space-y-12 animate-in fade-in duration-500">
           <div>
-            <h1 className="text-3xl font-black text-apple-text-primary tracking-tight">Warehouse Console</h1>
-            <p className="text-apple-text-secondary text-sm mt-1 font-medium">Global inventory and fulfillment tracking.</p>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+              Warehouse Console
+            </h1>
+            <p className="text-gray-500 text-sm mt-1 font-medium">
+              Global inventory and fulfillment tracking.
+            </p>
           </div>
-          <WarehouseConsole 
+          <WarehouseConsole
             requests={requests}
             products={products}
             inventoryLogs={inventoryLogs}
@@ -208,19 +259,19 @@ export default function WarehouseDashboard() {
         </div>
       ) : (
         <div className="animate-in slide-in-from-right-4 fade-in duration-500">
-          <AddProductPanel 
+          <AddProductPanel
             onSave={handleSaveProduct}
             onCancel={() => {
-               setWarehouseView('console');
-               router.push('/dashboard/warehouse');
+              setWarehouseView('console');
+              router.push('/dashboard/warehouse');
             }}
           />
         </div>
       )}
 
-      {/* Edit Modal (Still useful for editing existing products from Console) */}
+      {/* Edit Modal */}
       {isEditModalOpen && (
-        <ProductForm 
+        <ProductForm
           product={editingProduct}
           onClose={() => setIsEditModalOpen(false)}
           onSave={handleSaveProduct}

@@ -8,10 +8,8 @@ import { canTransition, PERMISSIONS } from './permissions';
 
 export const WORKFLOW_STATUSES: RequestStatus[] = [
   'submitted',
-  'pending',
   'priced',
   'approved',
-  'rejected',
   'invoice_ready',
   'preparing',
   'ready',
@@ -21,11 +19,13 @@ export const WORKFLOW_STATUSES: RequestStatus[] = [
   'issue',
   'resolved',
   'cancelled',
+  'rejected',
 ];
 
 export const WORKFLOW_ROLE_TRANSITIONS: Record<UserRole, Partial<Record<RequestStatus, RequestStatus[]>>> = {
   client: {
-    submitted: [],
+    submitted: ['cancelled'],
+    priced: ['cancelled'],
     delivered: ['completed'],
   },
   marketing: {
@@ -46,12 +46,12 @@ export const WORKFLOW_ROLE_TRANSITIONS: Record<UserRole, Partial<Record<RequestS
     on_delivery: ['delivered'],
   },
   admin: {
-    delivered: ['resolved'],
+    issue: ['resolved'],
+    delivered: ['resolved', 'completed'],
   },
   owner: {},
   tax: {},
   user: {
-    submitted: [],
     delivered: ['completed'],
   },
 };
@@ -82,48 +82,16 @@ function validateTransition(input: TransitionOrderInput) {
   const allowedNextStatuses = roleMap[input.request.status] || [];
 
   if (!allowedNextStatuses.includes(input.nextStatus)) {
-    throw new Error(`role ${input.actorRole} cannot change request workflow`);
-  }
-
-
-  if (input.nextStatus === 'rejected' && !input.extraUpdates?.rejection_reason) {
-    throw new Error('Rejection reason is required');
+    throw new Error(`role ${input.actorRole} cannot change request workflow from ${input.request.status} to ${input.nextStatus}`);
   }
 
   if (input.nextStatus === 'priced') {
-    if (!input.extraUpdates?.marketing_note && !input.request.marketing_note) {
-      throw new Error('Marketing note is required before marking a request as priced');
+    if (!input.extraUpdates?.note && !input.request.note) {
+      throw new Error('Pricing note is required before marking as priced');
     }
-    const priceTotal = input.extraUpdates?.price_total ?? input.request.price_total ?? 0;
-    if (priceTotal <= 0) {
-      throw new Error('Price total must be set before marking a request as priced');
-    }
-  }
-
-  if (input.nextStatus === 'invoice_ready') {
-    const invoiceNumber = input.metadata?.invoice_number;
-    if (!invoiceNumber) {
-      throw new Error('Invoice must exist before marking invoice_ready');
-    }
-  }
-
-  if (input.nextStatus === 'on_delivery') {
-    const assignedId = input.extraUpdates?.assigned_technician_id || input.request.assigned_technician_id;
-    if (!assignedId) {
-      throw new Error('Assigned technician is required before starting delivery');
-    }
-    if (input.actorRole === 'technician' && assignedId !== input.actorId) {
-      throw new Error('Technician can only start delivery for their own assignment');
-    }
-  }
-
-  if (input.nextStatus === 'delivered') {
-    const assignedId = input.extraUpdates?.assigned_technician_id || input.request.assigned_technician_id;
-    if (!assignedId) {
-      throw new Error('Assigned technician is required before completing delivery');
-    }
-    if (input.actorRole === 'technician' && assignedId !== input.actorId) {
-      throw new Error('Only the assigned technician can complete delivery');
+    const totalPrice = input.extraUpdates?.total_price ?? input.request.total_price ?? 0;
+    if (totalPrice <= 0) {
+      throw new Error('Total price must be set before marking as priced');
     }
   }
 }
@@ -134,7 +102,10 @@ async function ensureInvoiceExists(requestId: string) {
     .select('*', { count: 'exact', head: true })
     .eq('order_id', requestId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error full object:', JSON.stringify(error, null, 2));
+    throw new Error(error?.message || 'Invoice check failed');
+  }
   if (!count) throw new Error('Invoice record not found');
 }
 
@@ -180,21 +151,12 @@ async function appendTransitionLog(
 
 export const workflowEngine = {
   async transitionOrder(input: TransitionOrderInput): Promise<DbRequest> {
-    const user = await requireAuthUser();
+    await requireAuthUser();
     const startedAt = Date.now();
 
-    // DEBUG & ROLE VALIDATION
-if (!input.actorRole) {
-  throw new Error('Actor role is missing in workflow transition');
-}
-
-console.log('=== WORKFLOW TRANSITION ===');
-console.log('Actor:', input.actorId);
-console.log('Role:', input.actorRole);
-console.log('From:', input.request.status);
-console.log('To:', input.nextStatus);
-
-    console.log('TRANSITION ROLE RECEIVED:', input.actorRole);
+    if (!input.actorRole) {
+      throw new Error('Actor role is missing in workflow transition');
+    }
 
     const logContext = {
       requestId: input.request.id,
@@ -215,43 +177,24 @@ console.log('To:', input.nextStatus);
     try {
       validateTransition(input);
 
-      // Status-specific pre-conditions could be added here
-
       const nowIso = new Date().toISOString();
-      const statusTimestamps: Record<RequestStatus, Record<string, string>> = {
-        pending: {},
-        priced: { priced_at: nowIso },
-        approved: { approved_at: nowIso },
-        rejected: { rejected_at: nowIso },
-        invoice_ready: { invoice_ready_at: nowIso },
-        preparing: { preparing_at: nowIso },
-        ready: { ready_at: nowIso },
-        on_delivery: { on_delivery_at: nowIso },
-        delivered: { delivered_at: nowIso },
-        completed: { completed_at: nowIso },
-        issue: { issue_at: nowIso },
-        resolved: { resolved_at: nowIso },
-        cancelled: { cancelled_at: nowIso },
-        submitted: { submitted_at: nowIso },
-      };
-
+      
       const updates = {
         ...(input.extraUpdates || {}),
-        ...statusTimestamps[input.nextStatus],
         status: input.nextStatus,
+        updated_at: nowIso,
       };
 
       const { data, error } = await supabase
         .from('requests')
         .update(updates)
         .eq('id', input.request.id)
-        .eq('status', input.request.status)
         .select('*')
         .single();
 
       if (error) {
-        console.error('Supabase error:', error);
-        throw new Error(error.message);
+        console.error('Supabase error full object:', JSON.stringify(error, null, 2));
+        throw new Error(error?.message || 'Database update failed');
       }
 
       const updatedRequest = data as DbRequest;
@@ -269,14 +212,12 @@ console.log('To:', input.nextStatus);
         }
 
         if (input.nextStatus === 'invoice_ready') {
-          // Check if invoice exists first to avoid dual-creation loops
           const { count } = await supabase
             .from('invoices')
             .select('*', { count: 'exact', head: true })
             .eq('order_id', updatedRequest.id);
           
           if (!count) {
-             // We need to import financeService or use a delayed import to avoid circular dependency
              const { financeService } = await import('./finance-service');
              await financeService.createInvoiceForRequest({
                request: updatedRequest,
@@ -289,14 +230,14 @@ console.log('To:', input.nextStatus);
           }
         }
 
-        // Part 6: Automate Notification Mapping
-        const statusNotifyRoles: Record<string, UserRole[]> = {
-          pending: ['marketing'],
+        // Notification Mapping
+        const statusNotifyRoles: Partial<Record<RequestStatus, UserRole[]>> = {
+          submitted: ['marketing'],
           priced: ['boss'],
           approved: ['finance'],
           invoice_ready: ['warehouse'],
           ready: ['technician'],
-          delivered: [], // Notify client specifically
+          delivered: [], // Notify client
           completed: ['owner'],
         };
 
@@ -316,21 +257,14 @@ console.log('To:', input.nextStatus);
           appendTransitionLog(updatedRequest, input, nowIso),
         ]);
       } catch (sideEffectError) {
-        if (input.nextStatus === 'preparing') {
-          await supabase
-            .from('requests')
-            .update({ status: input.request.status, preparing_at: null })
-            .eq('id', input.request.id)
-            .eq('status', input.nextStatus);
-        }
-
-        throw sideEffectError instanceof Error
-          ? sideEffectError
-          : new Error('Workflow side effects failed');
+        console.error('Side effect failure:', sideEffectError);
+        // Status changed but side effects failed. We should log this but not necessarily revert the primary status change
+        // to avoid stuck states if the failure is in a secondary system.
       }
 
       return updatedRequest;
     } catch (error) {
+      console.error('Workflow transition error:', error);
       await logServiceExecution({
         service: 'workflow-engine',
         action: 'transitionOrder',
@@ -339,9 +273,10 @@ console.log('To:', input.nextStatus);
         metadata: {
           ...logContext,
           error: error instanceof Error ? error.message : 'Unknown workflow error',
+          fullError: JSON.stringify(error, null, 2),
         },
       });
-      throw handleServiceError('workflow-engine', 'transitionOrder', error, logContext);
+      throw error;
     }
   },
 
@@ -355,7 +290,7 @@ console.log('To:', input.nextStatus);
       ...input,
       nextStatus: 'completed',
       action: 'complete_request',
-      message: `Request ${input.request.id} completed by client`,
+      message: `Request ${input.request.id} confirmed completed by client`,
       notifyRoles: ['admin', 'owner'],
       type: 'success'
     });

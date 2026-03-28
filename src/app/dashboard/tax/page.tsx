@@ -1,151 +1,295 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getRoleRedirect } from '@/lib/auth';
-import { canAccessRoute } from '@/lib/permissions';
-import { supabase } from '@/lib/supabase';
-import { formatCurrency } from '@/lib/format-utils';
-import type { Invoice } from '@/types/types';
+import { useRealtimeTable } from '@/hooks/useRealtimeTable';
+import { invoicesDb, monthlyClosingDb } from '@/lib/db';
+import { formatCurrency, formatDate } from '@/lib/format-utils';
+import { StatCard, DashboardSkeleton, EmptyState, ErrorState } from '@/components/ui';
+import type { Invoice, MonthlyClosing } from '@/types/types';
 
 export default function TaxDashboard() {
   const { profile, loading } = useAuth();
-  const router = useRouter();
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [closings, setClosings] = useState<MonthlyClosing[]>([]);
   const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'closings'>('invoices');
 
-  useEffect(() => {
-    if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/tax')) {
-      router.replace(getRoleRedirect(profile.role));
-    }
-  }, [loading, profile, router]);
-
-  const refresh = async (fromDate = from, toDate = to) => {
-    let query = supabase.from('invoices').select('*').order('created_at', { ascending: false });
-    if (fromDate) query = query.gte('created_at', fromDate);
-    if (toDate) query = query.lte('created_at', `${toDate}T23:59:59`);
-    const { data } = await query;
-    setInvoices((data || []) as Invoice[]);
-    setFetching(false);
-  };
-
-  useEffect(() => {
-    if (!profile) return;
-
-    const run = async () => {
-      const query = supabase.from('invoices').select('*').order('created_at', { ascending: false });
-      const { data } = await query;
-      setInvoices((data || []) as Invoice[]);
+  const fetchData = useCallback(async () => {
+    if (!profile?.id) return;
+    try {
+      setError(null);
+      setFetching(true);
+      const [invoiceResult, closingResult] = await Promise.all([
+        invoicesDb.getAll(),
+        monthlyClosingDb.getAll(),
+      ]);
+      setInvoices(invoiceResult.data);
+      setClosings(closingResult);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tax data');
+    } finally {
       setFetching(false);
-    };
+    }
+  }, [profile?.id]);
 
-    run();
-  }, [profile]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const totalRevenue = invoices.reduce((sum, invoice) => sum + invoice.amount, 0);
-  const totalTax = invoices.reduce((sum, invoice) => sum + (invoice.tax_amount || 0), 0);
-  const paidRevenue = invoices.filter((invoice) => invoice.paid).reduce((sum, invoice) => sum + invoice.amount, 0);
+  useRealtimeTable('invoices', undefined, fetchData, {
+    enabled: Boolean(profile?.id),
+    debounceMs: 500,
+  });
+
+  useRealtimeTable('monthly_closing', undefined, fetchData, {
+    enabled: Boolean(profile?.id),
+    debounceMs: 500,
+  });
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((inv) => {
+      if (from && inv.created_at < from) return false;
+      if (to && inv.created_at > `${to}T23:59:59`) return false;
+      return true;
+    });
+  }, [invoices, from, to]);
+
+  const stats = useMemo(() => {
+    const totalRevenue = filteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
+    const totalTax = filteredInvoices.reduce((sum, inv) => sum + (inv.tax_amount || 0), 0);
+    const paidInvoices = filteredInvoices.filter((inv) => inv.status === 'paid');
+    const paidRevenue = paidInvoices.reduce((sum, inv) => sum + inv.total, 0);
+    const unpaidCount = filteredInvoices.filter((inv) => inv.status !== 'paid' && inv.status !== 'cancelled').length;
+    return { totalRevenue, totalTax, paidRevenue, paidCount: paidInvoices.length, unpaidCount };
+  }, [filteredInvoices]);
+
+  const handleClearFilter = useCallback(() => {
+    setFrom('');
+    setTo('');
+  }, []);
 
   if (loading || fetching) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={fetchData} />;
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Tax & Sales Reports</h1>
-        <p className="text-apple-text-secondary text-sm mt-1">Invoice-based tax reporting.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+          Tax & Sales Reports
+        </h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Invoice-based tax reporting and monthly closings.
+        </p>
       </div>
 
-      <div className="flex gap-3 items-center bg-apple-gray-bg p-4 rounded-apple border border-apple-gray-border">
+      {/* Date filter */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
         <input
           type="date"
           value={from}
           onChange={(e) => setFrom(e.target.value)}
-          className="bg-white border border-apple-gray-border rounded-lg px-3 py-2 text-sm text-apple-text-primary focus:ring-2 focus:ring-apple-blue/20 outline-none transition-all"
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
         />
-        <span className="text-apple-text-secondary font-medium lowercase">to</span>
+        <span className="text-sm font-medium lowercase text-gray-500">to</span>
         <input
           type="date"
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="bg-white border border-apple-gray-border rounded-lg px-3 py-2 text-sm text-apple-text-primary focus:ring-2 focus:ring-apple-blue/20 outline-none transition-all"
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
         />
-        <button onClick={() => refresh()} className="px-6 py-2 bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-bold rounded-lg transition-all active:scale-95 shadow-sm">
-          Filter
-        </button>
         <button
-          onClick={() => {
-            setFrom('');
-            setTo('');
-            refresh('', '');
-          }}
-          className="px-6 py-2 bg-white border border-apple-gray-border text-apple-text-secondary hover:text-apple-text-primary text-sm font-bold rounded-lg transition-all active:scale-95"
+          onClick={handleClearFilter}
+          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 active:scale-95 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
         >
           Clear
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Total Sales', value: formatCurrency(totalRevenue), color: 'text-apple-text-primary' },
-          { label: 'Tax Collected (11%)', value: formatCurrency(totalTax), color: 'text-apple-blue' },
-          { label: 'Paid Revenue', value: formatCurrency(paidRevenue), color: 'text-apple-success' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
-            <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">{stat.label}</p>
-            <p className={`text-2xl font-black tracking-tight ${stat.color}`}>{stat.value}</p>
-          </div>
-        ))}
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          label="Total Sales"
+          value={formatCurrency(stats.totalRevenue)}
+          sub={`${filteredInvoices.length} invoices`}
+          color="blue"
+        />
+        <StatCard
+          label="Tax Collected (11%)"
+          value={formatCurrency(stats.totalTax)}
+          sub={`${stats.paidCount} paid, ${stats.unpaidCount} unpaid`}
+          color="purple"
+        />
+        <StatCard
+          label="Paid Revenue"
+          value={formatCurrency(stats.paidRevenue)}
+          sub={`${stats.paidCount} invoices paid`}
+          color="green"
+        />
       </div>
 
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Invoices ({invoices.length})</h2>
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Invoice No.</th>
-                <th className="text-right px-4 py-3 text-gray-500 font-medium">Amount</th>
-                <th className="text-right px-4 py-3 text-gray-500 font-medium">Tax</th>
-                <th className="text-right px-4 py-3 text-gray-500 font-medium">Status</th>
-                <th className="text-right px-4 py-3 text-gray-500 font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-8 text-gray-500">No invoices found</td>
-                </tr>
-              ) : (
-                invoices.map((invoice) => (
-                  <tr key={invoice.id} className="border-b border-gray-200/50 hover:bg-gray-100/30 transition-colors">
-                    <td className="px-4 py-3 text-gray-900 font-mono text-xs">{invoice.invoice_number}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">{formatCurrency(invoice.amount)}</td>
-                    <td className="px-4 py-3 text-right text-teal-400">{formatCurrency(invoice.tax_amount)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${invoice.paid ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-                        {invoice.paid ? 'PAID' : 'UNPAID'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-500 text-xs">
-                      {new Date(invoice.created_at).toLocaleDateString('id-ID')}
-                    </td>
+      {/* Tabs */}
+      <div className="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+        <button
+          onClick={() => setActiveTab('invoices')}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'invoices'
+              ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+          }`}
+        >
+          Invoices ({filteredInvoices.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('closings')}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'closings'
+              ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+          }`}
+        >
+          Monthly Closings ({closings.length})
+        </button>
+      </div>
+
+      {/* Invoices Table */}
+      {activeTab === 'invoices' && (
+        <section>
+          {filteredInvoices.length === 0 ? (
+            <EmptyState title="No invoices found" description="Adjust the date filter or wait for new invoices." />
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Invoice No.
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Tax
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Status
+                    </th>
+                    <th className="hidden px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell">
+                      Date
+                    </th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                  {filteredInvoices.map((invoice) => (
+                    <tr
+                      key={invoice.id}
+                      className="transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
+                    >
+                      <td className="px-4 py-3 font-mono text-xs text-gray-900 dark:text-white">
+                        {invoice.invoice_number}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-900 dark:text-white">
+                        {formatCurrency(invoice.total)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">
+                        {formatCurrency(invoice.tax_amount)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            invoice.status === 'paid'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : invoice.status === 'cancelled'
+                                ? 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                          }`}
+                        >
+                          {invoice.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="hidden px-4 py-3 text-right text-xs text-gray-500 sm:table-cell">
+                        {formatDate(invoice.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Monthly Closings Table */}
+      {activeTab === 'closings' && (
+        <section>
+          {closings.length === 0 ? (
+            <EmptyState title="No monthly closings" description="Closings will appear here once finance completes month-end reporting." />
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Period
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Revenue
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Tax
+                    </th>
+                    <th className="hidden px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell">
+                      Orders
+                    </th>
+                    <th className="hidden px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell">
+                      Paid / Unpaid
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                  {closings.map((closing) => (
+                    <tr
+                      key={closing.id}
+                      className="transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                        {new Date(closing.year, closing.month - 1).toLocaleDateString('id-ID', {
+                          month: 'long',
+                          year: 'numeric',
+                        })}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-900 dark:text-white">
+                        {formatCurrency(closing.total_revenue)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">
+                        {formatCurrency(closing.total_tax)}
+                      </td>
+                      <td className="hidden px-4 py-3 text-right text-gray-500 sm:table-cell">
+                        {closing.orders_count}
+                      </td>
+                      <td className="hidden px-4 py-3 text-right text-xs md:table-cell">
+                        <span className="text-green-600 dark:text-green-400">{closing.paid_invoices} paid</span>
+                        {' / '}
+                        <span className="text-amber-600 dark:text-amber-400">{closing.unpaid_invoices} unpaid</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

@@ -1,24 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { getRoleRedirect } from '@/lib/auth';
-import {
-  getOwnerDashboardBundle,
-} from '@/lib/analytics-service';
-import { formatCurrency } from '@/lib/format-utils';
 import { canAccessRoute } from '@/lib/permissions';
-type OwnerDashboardData = Awaited<ReturnType<typeof getOwnerDashboardBundle>>;
+import { analyticsService } from '@/lib/services';
+import { formatCurrency, formatNumber } from '@/lib/format-utils';
+import { DashboardSkeleton, StatCard, EmptyState, ErrorState, StatusBadge } from '@/components/ui';
+import type { RequestStatus } from '@/types/types';
+
+type OwnerDashboardData = Awaited<ReturnType<typeof analyticsService.getOwnerDashboard>>;
 
 export default function OwnerDashboard() {
   const { profile, loading } = useAuth();
   const router = useRouter();
   const [dashboard, setDashboard] = useState<OwnerDashboardData | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // ---------- Auth guard ----------
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/owner')) {
@@ -26,261 +29,261 @@ export default function OwnerDashboard() {
     }
   }, [loading, profile, router]);
 
+  // ---------- Data fetching via service layer ----------
   const refresh = useCallback(async () => {
     if (!profile) return;
-
     setFetching(true);
-    setDashboard(await getOwnerDashboardBundle());
-    setFetching(false);
+    setError(null);
+    try {
+      const data = await analyticsService.getOwnerDashboard();
+      setDashboard(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+    } finally {
+      setFetching(false);
+    }
   }, [profile]);
 
   useEffect(() => {
     if (!profile) return;
-    const timer = setTimeout(() => {
-      void refresh();
-    }, 0);
-
-    return () => clearTimeout(timer);
+    void refresh();
   }, [profile, refresh]);
 
-  useRealtimeTable('requests', undefined, {
+  // ---------- Realtime subscriptions ----------
+  useRealtimeTable('requests', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 300,
-    channelName: 'owner-requests',
   });
 
-  useRealtimeTable('invoices', undefined, {
+  useRealtimeTable('invoices', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 300,
-    channelName: 'owner-invoices',
   });
 
-  useRealtimeTable('products', undefined, {
+  useRealtimeTable('products', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'owner-products',
   });
 
-  useRealtimeTable('inventory_logs', undefined, {
+  useRealtimeTable('issues', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
-    debounceMs: 400,
-    channelName: 'owner-inventory-logs',
-  });
-
-  useRealtimeTable('delivery_logs', undefined, {
-    enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 300,
-    channelName: 'owner-delivery-logs',
   });
 
-  useRealtimeTable('activity_logs', undefined, {
-    enabled: Boolean(profile),
-    onEvent: refresh,
-    debounceMs: 300,
-    channelName: 'owner-activity-logs',
-  });
+  // ---------- Computed values ----------
+  const statCards = useMemo(() => {
+    if (!dashboard) return [];
+    return [
+      { label: 'Total Orders', value: formatNumber(dashboard.stats.totalOrders), color: 'blue' as const },
+      { label: 'Total Revenue (Paid)', value: formatCurrency(dashboard.stats.totalRevenue), color: 'green' as const },
+      { label: 'Total Products', value: formatNumber(dashboard.stats.totalProducts), color: 'purple' as const },
+      { label: 'Open Issues', value: formatNumber(dashboard.stats.openIssues), color: 'red' as const },
+      { label: 'Paid Invoices', value: formatNumber(dashboard.stats.paidInvoices), color: 'green' as const },
+      { label: 'Unpaid Invoices', value: formatNumber(dashboard.stats.unpaidInvoices), color: 'yellow' as const },
+    ];
+  }, [dashboard]);
 
-  useRealtimeTable('issues', undefined, {
-    enabled: Boolean(profile),
-    onEvent: refresh,
-    debounceMs: 300,
-    channelName: 'owner-issues',
-  });
+  const maxRevenue = useMemo(() => {
+    if (!dashboard?.monthlyRevenue.length) return 1;
+    return Math.max(...dashboard.monthlyRevenue.map((m) => m.total_revenue), 1);
+  }, [dashboard]);
 
-  useRealtimeTable('monthly_closing', undefined, {
-    enabled: Boolean(profile),
-    onEvent: refresh,
-    debounceMs: 300,
-    channelName: 'owner-monthly-closing',
-  });
-
+  // ---------- Loading state ----------
   if (loading || (fetching && !dashboard)) {
     return (
-      <div className="max-w-7xl mx-auto space-y-8 animate-pulse">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-3">
-            <div className="h-8 w-56 rounded-lg bg-gray-100" />
-            <div className="h-4 w-80 rounded bg-white border-gray-200 shadow-sm" />
-          </div>
-          <div className="h-10 w-32 rounded-lg bg-gray-100" />
-        </div>
-
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <div key={index} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 space-y-3">
-              <div className="h-3 w-28 rounded bg-gray-100" />
-              <div className="h-8 w-24 rounded bg-gray-100" />
-            </div>
-          ))}
-        </div>
-
-        <div className="grid xl:grid-cols-2 gap-5">
-          {Array.from({ length: 2 }).map((_, index) => (
-            <div key={index} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 space-y-3">
-              <div className="h-5 w-40 rounded bg-gray-100" />
-              {Array.from({ length: 5 }).map((__, inner) => (
-                <div key={inner} className="h-4 rounded bg-gray-100" />
-              ))}
-            </div>
-          ))}
-        </div>
+      <div className="mx-auto max-w-7xl">
+        <DashboardSkeleton />
       </div>
     );
   }
 
-  if (!dashboard) {
+  // ---------- Error state ----------
+  if (error && !dashboard) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="mx-auto max-w-7xl">
+        <ErrorState message={error} onRetry={refresh} />
       </div>
     );
   }
 
-  const chartBlocks = [
-    { label: 'Revenue per Month', data: dashboard.revenue.monthlyRevenue },
-    { label: 'Orders per Month', data: dashboard.orders.monthlyOrders },
-    { label: 'Deliveries per Month', data: dashboard.delivery.deliveriesPerMonth.map((item) => ({ month: item.month, value: item.deliveries })) },
-    { label: 'Stock Movement per Month', data: dashboard.inventory.movementByMonth.map((item) => ({ month: item.month, value: item.net })) },
-  ];
+  if (!dashboard) return null;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="mx-auto max-w-7xl space-y-6">
+      {/* ---------- Header ---------- */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Owner Analytics</h1>
-          <p className="text-apple-text-secondary text-sm mt-1">Executive-level company visibility across revenue, operations, and fulfillment.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Owner Analytics</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Executive-level visibility across revenue, operations, and fulfillment.
+          </p>
         </div>
         <Link
           href="/dashboard/owner/reports"
-          className="px-4 py-2 rounded-apple bg-apple-blue hover:bg-apple-blue-hover text-white text-sm font-medium transition-all active:scale-95 shadow-sm"
+          className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95"
         >
           View Reports
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Revenue This Month', value: formatCurrency(dashboard.stats.totalRevenueThisMonth), color: 'text-apple-success' },
-          { label: 'Total Orders This Month', value: dashboard.stats.totalOrdersThisMonth, color: 'text-apple-text-primary' },
-          { label: 'Unpaid Invoices', value: dashboard.stats.unpaidInvoices, color: 'text-apple-danger' },
-          { label: 'Stock Value', value: formatCurrency(dashboard.stats.stockValue), color: 'text-apple-warning' },
-          { label: 'Orders In Progress', value: dashboard.stats.ordersInProgress, color: 'text-apple-warning' },
-          { label: 'Deliveries In Progress', value: dashboard.stats.deliveriesInProgress, color: 'text-apple-blue' },
-          { label: 'Open Issues', value: dashboard.openIssues, color: 'text-apple-danger' },
-          { label: 'Paid Revenue This Month', value: formatCurrency(dashboard.stats.paidRevenueThisMonth), color: 'text-apple-success' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-4 shadow-sm">
-            <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-2">{stat.label}</p>
-            <p className={`text-2xl font-bold tracking-tight ${stat.color}`}>{stat.value}</p>
-          </div>
+      {/* ---------- Stat cards ---------- */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        {statCards.map((stat) => (
+          <StatCard key={stat.label} label={stat.label} value={stat.value} color={stat.color} />
         ))}
       </div>
 
-      <section className="grid xl:grid-cols-2 gap-5">
-        {chartBlocks.map((chart) => (
-          <div key={chart.label} className="bg-white border border-apple-gray-border rounded-apple p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-apple-text-primary mb-4 tracking-tight">{chart.label}</h2>
-            <div className="space-y-3">
-              {chart.data.length === 0 ? (
-                <p className="text-sm text-apple-text-secondary">No data available.</p>
-              ) : (
-                chart.data.map((point) => (
-                  <div key={point.month} className="flex items-center justify-between text-sm">
-                    <span className="text-apple-text-secondary font-medium">{point.month}</span>
-                    <span className="text-apple-text-primary font-bold">{point.value.toLocaleString('id-ID')}</span>
+      {/* ---------- Monthly Revenue (bar chart using divs) ---------- */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Monthly Revenue</h2>
+        {dashboard.monthlyRevenue.length === 0 ? (
+          <EmptyState title="No revenue data" description="Revenue data will appear once invoices are paid." />
+        ) : (
+          <div className="space-y-3">
+            {dashboard.monthlyRevenue.map((row) => {
+              const pct = Math.max((row.total_revenue / maxRevenue) * 100, 2);
+              return (
+                <div key={row.month} className="flex items-center gap-4">
+                  <span className="w-20 flex-shrink-0 text-xs font-medium text-gray-500 sm:w-24">
+                    {row.month}
+                  </span>
+                  <div className="relative flex-1">
+                    <div
+                      className="h-7 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <section className="grid xl:grid-cols-3 gap-5">
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Customers</h2>
-          <div className="space-y-3">
-            {dashboard.topCustomers.map((customer) => (
-              <div key={customer.userId} className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm text-gray-900">{customer.userEmail}</p>
-                  <p className="text-xs text-gray-500">{customer.invoicesCount} invoice(s)</p>
-                </div>
-                <p className="text-sm font-semibold text-emerald-400">
-                  {formatCurrency(customer.totalSpending)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Products</h2>
-          <div className="space-y-3">
-            {dashboard.topProducts.map((product) => (
-              <div key={product.productId} className="flex items-center justify-between gap-3">
-                <span className="text-sm text-gray-900">{product.productName}</span>
-                <span className="text-sm font-semibold text-indigo-400">{product.qtySold} units</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Best Technicians</h2>
-          <div className="space-y-3">
-            {dashboard.employeePerformance.map((employee) => (
-              <div key={employee.employeeId} className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm text-gray-900">{employee.employeeName}</p>
-                  <p className="text-xs text-gray-500">{employee.role}</p>
-                </div>
-                <span className="text-sm font-semibold text-cyan-400">
-                  {employee.deliveriesCompleted} deliveries
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid xl:grid-cols-[1.1fr_1fr] gap-5">
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity Logs</h2>
-          <div className="space-y-3">
-            {dashboard.recentActivity.map((log) => (
-              <div key={log.id} className="rounded-lg border border-gray-200 bg-slate-950/50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-gray-900">{log.action}</p>
-                  <p className="text-xs text-gray-500">{new Date(log.created_at).toLocaleString('id-ID')}</p>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">{log.entity_type} • {log.entity_id || 'system'}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Orders</h2>
-          <div className="space-y-3">
-            {dashboard.recentOrders.map((order) => (
-              <div key={order.id} className="rounded-lg border border-gray-200 bg-slate-950/50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-gray-900">{order.user_email || order.user_id}</p>
-                  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-                    {order.status}
+                  <span className="w-28 flex-shrink-0 text-right text-sm font-bold text-gray-900 sm:w-32">
+                    {formatCurrency(row.total_revenue)}
+                  </span>
+                  <span className="hidden w-20 flex-shrink-0 text-right text-xs text-gray-400 md:block">
+                    {row.invoice_count} inv
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">{new Date(order.created_at).toLocaleString('id-ID')}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
+        )}
+      </section>
+
+      {/* ---------- Order Pipeline & Top Products ---------- */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        {/* Order Pipeline */}
+        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Order Pipeline</h2>
+          {dashboard.orderPipeline.length === 0 ? (
+            <EmptyState title="No orders yet" description="Pipeline data will appear once orders are submitted." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="pb-2 pr-4 text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
+                    <th className="pb-2 pr-4 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Orders</th>
+                    <th className="pb-2 pr-4 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Value</th>
+                    <th className="hidden pb-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell">Avg Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboard.orderPipeline.map((row) => (
+                    <tr key={row.status} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2.5 pr-4">
+                        <StatusBadge status={row.status as RequestStatus} />
+                      </td>
+                      <td className="py-2.5 pr-4 text-right font-semibold text-gray-900">
+                        {formatNumber(row.order_count)}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right text-gray-700">
+                        {formatCurrency(row.total_value)}
+                      </td>
+                      <td className="hidden py-2.5 text-right text-gray-500 sm:table-cell">
+                        {row.avg_hours_in_status > 0 ? `${row.avg_hours_in_status.toFixed(1)}h` : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* Top Products */}
+        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Top Products</h2>
+          {dashboard.productPerformance.length === 0 ? (
+            <EmptyState title="No product data" description="Performance data appears as orders are fulfilled." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="pb-2 pr-4 text-xs font-medium uppercase tracking-wider text-gray-500">Product</th>
+                    <th className="pb-2 pr-4 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Ordered</th>
+                    <th className="pb-2 pr-4 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Revenue</th>
+                    <th className="hidden pb-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell">Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboard.productPerformance.map((prod) => (
+                    <tr key={prod.id} className="border-b border-gray-50 last:border-0">
+                      <td className="max-w-[160px] truncate py-2.5 pr-4 font-medium text-gray-900 sm:max-w-[220px]">
+                        {prod.name}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right text-gray-700">
+                        {formatNumber(prod.total_ordered)}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right font-semibold text-emerald-600">
+                        {formatCurrency(prod.total_revenue)}
+                      </td>
+                      <td className="hidden py-2.5 text-right text-gray-500 sm:table-cell">
+                        {formatNumber(prod.stock)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* ---------- Technician Performance ---------- */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Technician Performance</h2>
+        {dashboard.technicianPerformance.length === 0 ? (
+          <EmptyState title="No technician data" description="Delivery data will appear once technicians complete deliveries." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="pb-2 pr-4 text-xs font-medium uppercase tracking-wider text-gray-500">Technician</th>
+                  <th className="pb-2 pr-4 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Total</th>
+                  <th className="pb-2 pr-4 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Successful</th>
+                  <th className="hidden pb-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell">Avg Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dashboard.technicianPerformance.map((tech) => (
+                  <tr key={tech.technician_id} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2.5 pr-4 font-medium text-gray-900">
+                      {tech.technician_name || 'Unknown'}
+                    </td>
+                    <td className="py-2.5 pr-4 text-right text-gray-700">
+                      {formatNumber(tech.total_deliveries)}
+                    </td>
+                    <td className="py-2.5 pr-4 text-right font-semibold text-emerald-600">
+                      {formatNumber(tech.successful_deliveries)}
+                    </td>
+                    <td className="hidden py-2.5 text-right text-gray-500 sm:table-cell">
+                      {tech.avg_delivery_hours > 0 ? `${tech.avg_delivery_hours.toFixed(1)}h` : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

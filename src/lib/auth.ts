@@ -1,15 +1,15 @@
 import { supabase } from './supabase';
 import type { Profile, UserRole } from '@/types/types.ts';
-import { ADMIN_EMAILS } from './admin';
+import { ROLE_EMAILS } from './admin';
 import { ROLE_REDIRECTS } from './workflow';
 
-const OWNER_EMAIL = ADMIN_EMAILS[0];
-const OTHER_ADMINS = ADMIN_EMAILS.slice(1);
-
 export const getLegacyRole = (email?: string | null): UserRole => {
-  if (!email) return 'user';
-  if (email === OWNER_EMAIL) return 'owner';
-  if (OTHER_ADMINS.includes(email)) return 'admin';
+  if (!email) return 'client';
+  
+  // Find role by email in the mapping
+  const roleEntry = Object.entries(ROLE_EMAILS).find(([_, e]) => e === email);
+  if (roleEntry) return roleEntry[0] as UserRole;
+
   return 'client';
 };
 
@@ -65,6 +65,11 @@ export const getProfile = async (): Promise<Profile | null> => {
     .maybeSingle();
 
   if (profileById) {
+    const expectedRole = getLegacyRole(user.email);
+    if (profileById.role !== expectedRole) {
+      await supabase.from('profiles').update({ role: expectedRole }).eq('id', user.id);
+      return { ...profileById, role: expectedRole } as Profile;
+    }
     return profileById as Profile;
   }
 

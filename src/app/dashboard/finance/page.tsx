@@ -5,23 +5,36 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { getRoleRedirect } from '@/lib/auth';
-import { financeService } from '@/lib/finance-service';
 import { canAccessRoute } from '@/lib/permissions';
+import { financeService, workflowEngine } from '@/lib/services';
+import { formatCurrency, formatDate, formatDateTime, formatOrderId } from '@/lib/format-utils';
+import { StatCard } from '@/components/ui/StatCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { Modal } from '@/components/ui/Modal';
 import type { DbRequest, Invoice, MonthlyClosing } from '@/types/types';
-import { getCurrentAuthUser } from '@/lib/workflow';
-import { formatCurrency } from '@/lib/format-utils';
+
+type TabKey = 'queue' | 'invoices' | 'closing';
 
 export default function FinanceDashboard() {
-  const { profile, loading } = useAuth();
+  const { profile, role, loading } = useAuth();
   const router = useRouter();
+
   const [requests, setRequests] = useState<DbRequest[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [closings, setClosings] = useState<MonthlyClosing[]>([]);
-  const [tab, setTab] = useState<'queue' | 'invoices' | 'closing'>('queue');
+  const [tab, setTab] = useState<TabKey>('queue');
   const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [closingNotes, setClosingNotes] = useState('');
+  const [paymentModal, setPaymentModal] = useState<Invoice | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentRef, setPaymentRef] = useState('');
 
+  // ---------- Auth guard ----------
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/finance')) {
@@ -29,217 +42,242 @@ export default function FinanceDashboard() {
     }
   }, [loading, profile, router]);
 
+  // ---------- Data fetching ----------
   const refreshAll = useCallback(async () => {
     if (!profile) return;
     setFetching(true);
-    const nextData = await financeService.fetchDashboardData();
-    setRequests(nextData.requests);
-    setInvoices(nextData.invoices);
-    setClosings(nextData.closings);
-    setFetching(false);
+    setError(null);
+    try {
+      const dashboard = await financeService.getDashboard();
+      setRequests(dashboard.requests);
+      setInvoices(dashboard.invoices);
+      setClosings(dashboard.closings);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load finance data');
+    } finally {
+      setFetching(false);
+    }
   }, [profile]);
 
   useEffect(() => {
-    if (!profile) return;
-    refreshAll();
+    if (profile) refreshAll();
   }, [profile, refreshAll]);
 
-  useRealtimeTable('requests', undefined, {
+  // ---------- Realtime subscriptions ----------
+  useRealtimeTable('requests', undefined, refreshAll, {
     enabled: Boolean(profile),
-    onEvent: refreshAll,
     debounceMs: 250,
-    channelName: 'finance-requests',
   });
 
-  useRealtimeTable('invoices', undefined, {
+  useRealtimeTable('invoices', undefined, refreshAll, {
     enabled: Boolean(profile),
-    onEvent: refreshAll,
     debounceMs: 250,
-    channelName: 'finance-invoices',
   });
 
-  useRealtimeTable('monthly_closing', undefined, {
+  useRealtimeTable('monthly_closing', undefined, refreshAll, {
     enabled: Boolean(profile),
-    onEvent: refreshAll,
     debounceMs: 300,
-    channelName: 'finance-monthly-closing',
   });
 
-  const approved = useMemo(() => requests.filter((request) => request.status === 'approved'), [requests]);
-  const invoiced = useMemo(() => requests.filter((request) => request.status === 'invoice_ready'), [requests]);
-  const paidInvoices = useMemo(() => invoices.filter((invoice) => invoice.paid), [invoices]);
-  const unpaidInvoices = useMemo(() => invoices.filter((invoice) => !invoice.paid), [invoices]);
-  const paidTotal = useMemo(
-    () => paidInvoices.reduce((sum, invoice) => sum + invoice.amount, 0),
-    [paidInvoices]
+  // ---------- Computed values ----------
+  const approved = useMemo(
+    () => requests.filter((r) => r.status === 'approved'),
+    [requests]
   );
-  const monthlyRevenue = useMemo(() => {
+
+  const stats = useMemo(() => {
+    const paid = invoices.filter((i) => i.status === 'paid');
+    const unpaid = invoices.filter((i) => i.status !== 'paid');
+    const paidTotal = paid.reduce((sum, i) => sum + i.total, 0);
+
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    return invoices
-      .filter((invoice) => {
-        const createdAt = new Date(invoice.created_at);
-        return createdAt.getMonth() === currentMonth && createdAt.getFullYear() === currentYear;
+    const monthlyRevenue = invoices
+      .filter((i) => {
+        const d = new Date(i.created_at);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       })
-      .reduce((sum, invoice) => sum + invoice.amount, 0);
-  }, [invoices]);
+      .reduce((sum, i) => sum + i.total, 0);
 
-  const generateInvoice = async (request: DbRequest) => {
-    if (!profile) {
-      alert('Authentication profile not loaded');
-      return;
-    }
+    return {
+      needsInvoice: approved.length,
+      invoiceReady: requests.filter((r) => r.status === 'invoice_ready').length,
+      unpaidCount: unpaid.length,
+      monthlyRevenue,
+      paidTotal,
+    };
+  }, [requests, invoices, approved]);
 
-    setProcessingId(request.id);
-    try {
-      const actor = await getCurrentAuthUser();
-      await financeService.createInvoiceForRequest({
-        request,
-        actor: {
-          id: actor.id,
-          email: actor.email || profile?.email,
-          role: profile.role,
-        },
-      });
-      await refreshAll();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Invoice generation failed');
-    } finally {
-      setProcessingId(null);
-    }
-  };
+  // ---------- Handlers ----------
+  const handleGenerateInvoice = useCallback(
+    async (request: DbRequest) => {
+      if (!profile) return;
+      setProcessingId(request.id);
+      try {
+        await workflowEngine.transition({
+          request,
+          actorId: profile.id,
+          actorEmail: profile.email,
+          actorRole: role,
+          nextStatus: 'invoice_ready',
+          action: 'generate_invoice',
+          message: `Invoice generated for order ${formatOrderId(request.id)}`,
+          type: 'info',
+          notifyRoles: ['warehouse'],
+        });
+        await refreshAll();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Invoice generation failed');
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [profile, role, refreshAll]
+  );
 
-  const markPaid = async (invoice: Invoice) => {
-    if (!profile) {
-      alert('Authentication profile not loaded');
-      return;
-    }
+  const handleMarkPaid = useCallback(
+    async () => {
+      if (!profile || !paymentModal) return;
+      setProcessingId(paymentModal.id);
+      try {
+        await financeService.markInvoicePaid(
+          paymentModal.id,
+          paymentMethod || 'transfer',
+          paymentRef || '-',
+          { id: profile.id, email: profile.email, role }
+        );
+        setPaymentModal(null);
+        setPaymentMethod('');
+        setPaymentRef('');
+        await refreshAll();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to mark invoice paid');
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [profile, role, paymentModal, paymentMethod, paymentRef, refreshAll]
+  );
 
-    setProcessingId(invoice.id);
-    try {
-      const actor = await getCurrentAuthUser();
-      await financeService.markInvoicePaid({
-        invoice,
-        actor: {
-          id: actor.id,
-          email: actor.email || profile?.email,
-          role: profile.role,
-        },
-      });
-      await refreshAll();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to mark invoice paid');
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const closeCurrentMonth = async () => {
-    if (!profile) {
-      alert('Authentication profile not loaded');
-      return;
-    }
-
+  const handleMonthlyClosing = useCallback(async () => {
+    if (!profile) return;
     setProcessingId('monthly-close');
     try {
-      const actor = await getCurrentAuthUser();
-      await financeService.runMonthlyClosing({
-        actor: {
-          id: actor.id,
-          email: actor.email || profile?.email,
-          role: profile.role,
-        },
-        notes: closingNotes || undefined,
-      });
+      const now = new Date();
+      await financeService.runMonthlyClosing(
+        now.getMonth() + 1,
+        now.getFullYear(),
+        { id: profile.id, email: profile.email, role }
+      );
       setClosingNotes('');
       await refreshAll();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to close month');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to close month');
     } finally {
       setProcessingId(null);
     }
-  };
+  }, [profile, role, closingNotes, refreshAll]);
 
+  // ---------- Render: loading ----------
   if (loading || fetching) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        <DashboardSkeleton />
       </div>
     );
   }
 
+  // ---------- Render: error ----------
+  if (error) {
+    return (
+      <div className="mx-auto max-w-6xl p-4 sm:p-6">
+        <ErrorState message={error} onRetry={refreshAll} />
+      </div>
+    );
+  }
+
+  // ---------- Render: main ----------
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">Finance</h1>
-        <p className="text-apple-text-secondary text-sm mt-1">Invoice management, payments, and monthly closing.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Finance</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Invoice management, payments, and monthly closing.
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {[
-          { label: 'Needs Invoice', value: approved.length, color: 'text-apple-warning' },
-          { label: 'Invoice Ready', value: invoiced.length, color: 'text-apple-blue' },
-          { label: 'Unpaid Invoices', value: unpaidInvoices.length, color: 'text-apple-danger' },
-          { label: 'Monthly Revenue', value: formatCurrency(monthlyRevenue), color: 'text-apple-success' },
-          { label: 'Paid Revenue', value: formatCurrency(paidTotal), color: 'text-apple-success' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-apple-gray-border rounded-apple p-4 shadow-sm">
-            <p className="text-apple-text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">{stat.label}</p>
-            <p className={`text-2xl font-black tracking-tight ${stat.color}`}>{stat.value}</p>
-          </div>
-        ))}
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <StatCard label="Needs Invoice" value={stats.needsInvoice} color="yellow" />
+        <StatCard label="Invoice Ready" value={stats.invoiceReady} color="blue" />
+        <StatCard label="Unpaid Invoices" value={stats.unpaidCount} color="red" />
+        <StatCard label="Monthly Revenue" value={formatCurrency(stats.monthlyRevenue)} color="green" />
+        <StatCard label="Paid Revenue" value={formatCurrency(stats.paidTotal)} color="green" />
       </div>
 
-      <div className="flex gap-1 bg-apple-gray-bg border border-apple-gray-border p-1 rounded-apple w-fit">
-        {(['queue', 'invoices', 'closing'] as const).map((item) => (
+      {/* Tabs */}
+      <div className="flex gap-1 rounded-xl bg-gray-100 p-1 w-fit">
+        {([
+          { key: 'queue' as TabKey, label: 'Invoice Queue' },
+          { key: 'invoices' as TabKey, label: 'Invoices' },
+          { key: 'closing' as TabKey, label: 'Monthly Closing' },
+        ]).map((item) => (
           <button
-            key={item}
-            onClick={() => setTab(item)}
-            className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 ${
-              tab === item 
-                ? 'bg-white text-apple-text-primary shadow-sm' 
-                : 'text-apple-text-secondary hover:text-apple-text-primary'
+            key={item.key}
+            onClick={() => setTab(item.key)}
+            className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-all duration-200 ${
+              tab === item.key
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-900'
             }`}
           >
-            {item === 'queue' ? 'Invoice Queue' : item === 'invoices' ? 'Invoices' : 'Monthly Closing'}
+            {item.label}
           </button>
         ))}
       </div>
 
+      {/* Tab: Invoice Queue */}
       {tab === 'queue' && (
         <section className="space-y-4">
           {approved.length === 0 ? (
-            <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-8 text-center text-gray-500">
-              No approved requests waiting for invoicing
-            </div>
+            <EmptyState
+              title="No requests in queue"
+              description="No approved requests are waiting for invoicing."
+            />
           ) : (
             approved.map((request) => (
-              <div key={request.id} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-                <div className="flex justify-between items-start mb-3 gap-3">
+              <div
+                key={request.id}
+                className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="font-medium text-gray-900">{request.user_email || request.user_id}</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(request.created_at).toLocaleString('id-ID')}
+                    <p className="font-medium text-gray-900">
+                      {request.user_email || formatOrderId(request.id)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {formatDateTime(request.created_at)}
                     </p>
                   </div>
-                  <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full">
-                    APPROVED
-                  </span>
+                  <StatusBadge status={request.status} />
                 </div>
-                <div className="text-sm text-gray-500 mb-4 space-y-1">
-                  {request.items.map((item, index) => (
-                    <p key={`${request.id}-${index}`}>{item.name || item.id} x{item.qty}</p>
+
+                <div className="mb-4 space-y-1 text-sm text-gray-500">
+                  {(request.request_items ?? []).map((item, idx) => (
+                    <p key={`${request.id}-item-${idx}`}>
+                      {item.products?.name || item.product_id} x{item.quantity}
+                    </p>
                   ))}
                 </div>
-                <div className="flex items-center justify-between gap-4">
-                  <p className="font-semibold text-gray-900">
-                    {request.price_total ? formatCurrency(request.price_total) : 'Price not set'}
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-lg font-semibold text-gray-900">
+                    {request.total_price ? formatCurrency(request.total_price) : 'Price not set'}
                   </p>
                   <button
-                    onClick={() => generateInvoice(request)}
+                    onClick={() => handleGenerateInvoice(request)}
                     disabled={processingId === request.id}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                   >
                     {processingId === request.id ? 'Generating...' : 'Generate Invoice'}
                   </button>
@@ -250,35 +288,41 @@ export default function FinanceDashboard() {
         </section>
       )}
 
+      {/* Tab: Invoices */}
       {tab === 'invoices' && (
         <section className="space-y-3">
           {invoices.length === 0 ? (
-            <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-8 text-center text-gray-500">
-              No invoices yet
-            </div>
+            <EmptyState title="No invoices" description="No invoices have been created yet." />
           ) : (
             invoices.map((invoice) => (
-              <div key={invoice.id} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-medium text-gray-900">{invoice.invoice_number}</p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(invoice.created_at).toLocaleDateString('id-ID')} • Due: {invoice.due_date}
+              <div
+                key={invoice.id}
+                className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-gray-900">{invoice.invoice_number}</p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {formatDate(invoice.created_at)}
+                    {invoice.due_date && <> &middot; Due: {formatDate(invoice.due_date)}</>}
                   </p>
-                  <p className="text-sm text-gray-900 mt-1">
-                    {formatCurrency(invoice.amount)}
-                    <span className="text-gray-500 text-xs"> (+{formatCurrency(invoice.tax_amount)} tax)</span>
+                  <p className="mt-1 text-sm text-gray-900">
+                    {formatCurrency(invoice.total)}
+                    <span className="ml-1 text-xs text-gray-500">
+                      (+{formatCurrency(invoice.tax_amount)} tax)
+                    </span>
                   </p>
                 </div>
-                <div className="text-right">
-                  {invoice.paid ? (
-                    <span className="text-xs px-2 py-1 bg-green-500/20 text-green-300 rounded-full">
+
+                <div className="flex-shrink-0 text-right">
+                  {invoice.status === 'paid' ? (
+                    <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
                       PAID
                     </span>
                   ) : (
                     <button
-                      onClick={() => markPaid(invoice)}
+                      onClick={() => setPaymentModal(invoice)}
                       disabled={processingId === invoice.id}
-                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition-colors disabled:opacity-50"
+                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                     >
                       {processingId === invoice.id ? 'Saving...' : 'Mark Paid'}
                     </button>
@@ -290,12 +334,14 @@ export default function FinanceDashboard() {
         </section>
       )}
 
+      {/* Tab: Monthly Closing */}
       {tab === 'closing' && (
-        <section className="grid lg:grid-cols-[1.1fr_1fr] gap-5">
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 space-y-4">
+        <section className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+          {/* Close form */}
+          <div className="space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Close Current Month</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="mt-1 text-sm text-gray-500">
                 Snapshot finance totals from invoices into the monthly closing table.
               </p>
             </div>
@@ -303,34 +349,39 @@ export default function FinanceDashboard() {
               value={closingNotes}
               onChange={(e) => setClosingNotes(e.target.value)}
               rows={4}
-              className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500 resize-none"
+              className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               placeholder="Notes for this closing..."
             />
             <button
-              onClick={closeCurrentMonth}
+              onClick={handleMonthlyClosing}
               disabled={processingId === 'monthly-close'}
-              className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+              className="w-full rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
             >
               {processingId === 'monthly-close' ? 'Closing...' : 'Run Monthly Closing'}
             </button>
           </div>
 
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Closing History</h2>
+          {/* History */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">Closing History</h2>
             <div className="space-y-3">
               {closings.length === 0 ? (
                 <p className="text-sm text-gray-500">No monthly closings yet.</p>
               ) : (
                 closings.map((closing) => (
-                  <div key={closing.id} className="rounded-lg border border-gray-200 bg-slate-950/50 p-4">
+                  <div
+                    key={closing.id}
+                    className="rounded-xl border border-gray-100 bg-gray-50 p-4"
+                  >
                     <p className="text-sm font-medium text-gray-900">
                       {String(closing.month).padStart(2, '0')}/{closing.year}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Revenue {formatCurrency(closing.total_revenue)} • Orders {closing.orders_count}
+                    <p className="mt-1 text-xs text-gray-500">
+                      Revenue {formatCurrency(closing.total_revenue)} &middot; Orders{' '}
+                      {closing.orders_count}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Paid {closing.paid_invoices} • Unpaid {closing.unpaid_invoices}
+                    <p className="mt-1 text-xs text-gray-500">
+                      Paid {closing.paid_invoices} &middot; Unpaid {closing.unpaid_invoices}
                     </p>
                   </div>
                 ))
@@ -339,6 +390,62 @@ export default function FinanceDashboard() {
           </div>
         </section>
       )}
+
+      {/* Payment Modal */}
+      <Modal
+        isOpen={Boolean(paymentModal)}
+        onClose={() => setPaymentModal(null)}
+        title="Mark Invoice as Paid"
+        size="sm"
+      >
+        {paymentModal && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-gray-50 p-3">
+              <p className="text-sm font-medium text-gray-900">{paymentModal.invoice_number}</p>
+              <p className="mt-0.5 text-lg font-bold text-gray-900">
+                {formatCurrency(paymentModal.total)}
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">
+                Payment Method
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="">Select method...</option>
+                <option value="transfer">Bank Transfer</option>
+                <option value="cash">Cash</option>
+                <option value="check">Check</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">
+                Payment Reference
+              </label>
+              <input
+                type="text"
+                value={paymentRef}
+                onChange={(e) => setPaymentRef(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                placeholder="Transaction ID or reference..."
+              />
+            </div>
+
+            <button
+              onClick={handleMarkPaid}
+              disabled={processingId === paymentModal.id}
+              className="w-full rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {processingId === paymentModal.id ? 'Processing...' : 'Confirm Payment'}
+            </button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

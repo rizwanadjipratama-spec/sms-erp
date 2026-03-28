@@ -78,7 +78,10 @@ export async function fetchProfilesByRoles(roles: UserRole[]): Promise<Profile[]
     .select('*')
     .in('role', uniqueRoles);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error full object:', JSON.stringify(error, null, 2));
+    throw new Error(error?.message || 'Failed to fetch profiles by roles');
+  }
   return (data || []) as Profile[];
 }
 
@@ -91,7 +94,10 @@ export async function fetchProfilesByEmails(emails: string[]): Promise<Profile[]
     .select('*')
     .in('email', uniqueEmails);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error full object:', JSON.stringify(error, null, 2));
+    throw new Error(error?.message || 'Failed to fetch profiles by emails');
+  }
   return (data || []) as Profile[];
 }
 
@@ -107,7 +113,10 @@ export async function calculatePriceTotal(
     .select('product_id, price_regular, price_kso')
     .in('product_id', uniqueIds);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Supabase error full object:', JSON.stringify(error, null, 2));
+    throw new Error(error?.message || 'Failed to calculate price total');
+  }
 
   const priceMap = new Map<string, { regular: number; kso: number }>();
   (data || []).forEach((row: { product_id: string; price_regular: number; price_kso: number }) => {

@@ -57,7 +57,7 @@ export const deliveryService = {
       const [requestRes, logRes] = await Promise.all([
         supabase
           .from('requests')
-          .select('*')
+          .select('*, request_items(*, products(name))')
           .in('status', ['ready', 'on_delivery', 'delivered'])
           .order('created_at', { ascending: false }),
         supabase

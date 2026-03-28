@@ -78,7 +78,7 @@ export const financeService = {
       const [requestRes, invoiceRes, closingRes] = await Promise.all([
         supabase
           .from('requests')
-          .select('*')
+          .select('*, request_items(*, products(name))')
           .in('status', ['approved', 'invoice_ready'])
           .order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').order('created_at', { ascending: false }),
@@ -111,7 +111,7 @@ export const financeService = {
       });
 
       return {
-        requests: (requestRes.data || []) as DbRequest[],
+        requests: (requestRes.data || []) as any[],
         invoices: (invoiceRes.data || []) as Invoice[],
         closings: (closingRes.data || []) as MonthlyClosing[],
       };
@@ -153,8 +153,8 @@ export const financeService = {
           throw new Error('Only approved requests can be invoiced');
         }
 
-        if ((request.price_total || 0) <= 0) {
-          throw new Error('Request must have a valid price_total before invoice creation');
+        if ((request.total_price || 0) <= 0) {
+          throw new Error('Request must have a valid total_price before invoice creation');
         }
 
         const existingRes = await supabase
@@ -193,12 +193,10 @@ export const financeService = {
           .insert({
             order_id: request.id,
             invoice_number: invoiceNumber,
-            amount: request.price_total || 0,
-            tax_amount: Math.round((request.price_total || 0) * 0.11),
-            issued_by: actor.email || actor.id,
-            due_date: finalDueDate,
-            paid: false,
-            notes: notes || null,
+            total: request.total_price || 0,
+            status: 'unpaid',
+            issued_at: invoiceDate.toISOString(),
+            updated_at: new Date().toISOString(),
           })
           .select('*')
           .single();
@@ -237,9 +235,7 @@ export const financeService = {
           {
             order_id: request.id,
             invoice_number: invoice.invoice_number,
-            amount: invoice.amount,
-            tax_amount: invoice.tax_amount || 0,
-            due_date: invoice.due_date || null,
+            total: invoice.total,
           },
           actor.email
         );
@@ -258,7 +254,7 @@ export const financeService = {
             metadata: {
               invoice_id: invoice.id,
               invoice_number: invoice.invoice_number,
-              amount: invoice.amount,
+              total: invoice.total,
             },
           });
         }
@@ -313,7 +309,7 @@ export const financeService = {
       try {
         assertFinanceActor(actor.role);
 
-        if (invoice.paid) {
+        if (invoice.status === 'paid') {
           await logServiceExecution({
             service: 'finance-service',
             action: 'markInvoicePaid',
@@ -332,11 +328,11 @@ export const financeService = {
         const { data, error } = await supabase
           .from('invoices')
           .update({
-            paid: true,
-            paid_at: paidAt,
+            status: 'paid',
+            updated_at: paidAt,
           })
           .eq('id', invoice.id)
-          .eq('paid', false)
+          .neq('status', 'paid')
           .select('*')
           .maybeSingle();
 
@@ -375,7 +371,7 @@ export const financeService = {
           {
             order_id: invoice.order_id,
             invoice_number: invoice.invoice_number,
-            amount: invoice.amount,
+            total: invoice.total,
             paid_at: paidAt,
           },
           actor.email
@@ -465,12 +461,12 @@ export const financeService = {
           }
 
           const monthInvoices = (data || []) as Invoice[];
-          const totalRevenue = monthInvoices.reduce((sum, invoice) => sum + invoice.amount, 0);
-          const paidInvoices = monthInvoices.filter((invoice) => invoice.paid).length;
-          const unpaidInvoices = monthInvoices.filter((invoice) => !invoice.paid).length;
+          const totalRevenue = monthInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
+          const paidInvoices = monthInvoices.filter((invoice) => invoice.status === 'paid').length;
+          const unpaidInvoices = monthInvoices.filter((invoice) => invoice.status !== 'paid').length;
           const paidRevenue = monthInvoices
-            .filter((invoice) => invoice.paid)
-            .reduce((sum, invoice) => sum + invoice.amount, 0);
+            .filter((invoice) => invoice.status === 'paid')
+            .reduce((sum, invoice) => sum + invoice.total, 0);
 
           const { data: closingData, error: upsertError } = await supabase
             .from('monthly_closing')

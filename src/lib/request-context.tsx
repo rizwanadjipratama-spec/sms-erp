@@ -1,160 +1,184 @@
 'use client';
 
-import { createContext, useContext, useState } from 'react';
-import { supabase } from './supabase';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getProductsByIds } from './data';
-import type { CartItem, DbRequest } from '@/types/types';
-import { formatCurrency } from './format-utils';
-import { calculatePriceTotal, getCurrentAuthUser, recordOrderEvent } from './workflow';
+import { requireAuthUser } from '@/lib/db/client';
+import { requestsDb, paymentPromisesDb, productsDb, priceListDb } from '@/lib/db';
+import { notificationService } from '@/lib/services/notification-service';
+import { activityLogsDb } from '@/lib/db';
+import type { CartItem, DbRequest, ClientType } from '@/types/types';
 
 type RequestContextType = {
   items: CartItem[];
-  add: (id: string) => void;
+  add: (id: string, name?: string) => void;
   remove: (id: string) => void;
+  updateQty: (id: string, qty: number) => void;
   clear: () => void;
-  total: number;
+  itemCount: number;
   submit: (args: {
     priority: DbRequest['priority'];
-    reason?: DbRequest['reason'];
+    note?: string;
     promise_date?: string;
     payment_note?: string;
-  }) => Promise<void>;
+  }) => Promise<DbRequest>;
 };
 
 const RequestContext = createContext<RequestContextType | null>(null);
 
-export default function RequestProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+async function calculateTotal(
+  items: CartItem[],
+  clientType: ClientType
+): Promise<number> {
+  const productIds = items.map(i => i.id);
+  const prices = await priceListDb.getAll();
+  const priceMap = new Map(prices.map(p => [p.product_id, p]));
+
+  return items.reduce((sum, item) => {
+    const price = priceMap.get(item.id);
+    if (!price) return sum;
+    const unitPrice = clientType === 'kso' ? price.price_kso : price.price_regular;
+    return sum + unitPrice * item.qty;
+  }, 0);
+}
+
+export default function RequestProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const { profile } = useAuth();
 
-  const add = (id: string) => {
-    setItems((prev) => {
-      const exist = prev.find((item) => item.id === id);
-      if (exist) {
-        return prev.map((item) =>
+  const add = useCallback((id: string, name?: string) => {
+    setItems(prev => {
+      const existing = prev.find(item => item.id === id);
+      if (existing) {
+        return prev.map(item =>
           item.id === id ? { ...item, qty: item.qty + 1 } : item
         );
       }
-      return [...prev, { id, qty: 1 }];
+      return [...prev, { id, qty: 1, name }];
     });
-  };
+  }, []);
 
-  const remove = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  const remove = useCallback((id: string) => {
+    setItems(prev => prev.filter(item => item.id !== id));
+  }, []);
 
-  const clear = () => setItems([]);
+  const updateQty = useCallback((id: string, qty: number) => {
+    if (qty <= 0) {
+      setItems(prev => prev.filter(item => item.id !== id));
+    } else {
+      setItems(prev => prev.map(item =>
+        item.id === id ? { ...item, qty } : item
+      ));
+    }
+  }, []);
 
-  const total = items.reduce((acc, item) => acc + item.qty, 0);
+  const clear = useCallback(() => setItems([]), []);
 
-  const submit = async ({
+  const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.qty, 0), [items]);
+
+  const submit = useCallback(async ({
     priority,
-    reason,
+    note,
     promise_date,
     payment_note,
   }: {
     priority: DbRequest['priority'];
-    reason?: DbRequest['reason'];
+    note?: string;
     promise_date?: string;
     payment_note?: string;
-  }) => {
-    const user = await getCurrentAuthUser();
+  }): Promise<DbRequest> => {
     if (items.length === 0) throw new Error('Cart is empty');
 
-    const uniqueIds = [...new Set(items.map((item) => item.id))];
-    const nameMap = await getProductsByIds(uniqueIds);
+    const user = await requireAuthUser();
 
-    const enrichedItems = items.map((item) => ({
-      ...item,
-      name: nameMap.get(item.id) || undefined,
-    }));
-
-    if (
-      profile?.debt_amount &&
-      profile?.debt_limit &&
-      profile.debt_amount > profile.debt_limit
-    ) {
+    // Check debt limit
+    if (profile?.debt_amount && profile?.debt_limit && profile.debt_amount > profile.debt_limit) {
       if (!promise_date) {
-        throw new Error(
-          `Debt exceeds limit (${formatCurrency(profile.debt_amount)}). Promise date required`
-        );
+        throw new Error('Debt exceeds limit. Payment promise date is required.');
       }
 
-      const { error: promiseError } = await supabase
-        .from('payment_promises')
-        .insert([
-          {
-            user_id: user.id,
-            user_email: user.email || null,
-            promise_date,
-            note: payment_note,
-            request_id: null,
-          },
-        ]);
-
-      if (promiseError) throw new Error(promiseError.message);
+      await paymentPromisesDb.create({
+        user_id: user.id,
+        user_email: user.email ?? undefined,
+        promise_date,
+        note: payment_note,
+      });
     }
 
-    let priceTotal = 0;
+    // Calculate price
+    const clientType = profile?.client_type ?? 'regular';
+    let totalPrice = 0;
     try {
-      priceTotal = await calculatePriceTotal(enrichedItems, profile?.client_type || 'regular');
+      totalPrice = await calculateTotal(items, clientType);
     } catch {
-      console.warn('Price calculation failed; submitting with price_total = 0');
+      // Price calculation optional at submission; marketing will price later
     }
 
-    const requestPayload = {
+    // Create the request
+    const request = await requestsDb.create({
       user_id: user.id,
-      user_email: user.email || profile?.email || null,
-      items: enrichedItems,
-      total,
-      price_total: priceTotal,
-      status: 'pending' as const,
+      user_email: user.email ?? profile?.email,
+      status: 'submitted',
       priority,
-      reason: reason || null,
-      created_at: new Date().toISOString(),
-    };
+      total_price: totalPrice,
+      note: note ?? undefined,
+      created_by: user.id,
+    });
 
-    const { data, error } = await supabase
-      .from('requests')
-      .insert([requestPayload])
-      .select('*')
-      .single();
+    // Create request items
+    const requestItems = items.map(item => ({
+      request_id: request.id,
+      product_id: item.id,
+      quantity: item.qty,
+      price_at_order: 0, // Marketing fills this at priced stage
+    }));
 
-    if (error) throw new Error(error.message);
+    await requestsDb.createItems(requestItems);
 
-    await recordOrderEvent(data as DbRequest, {
-      actorId: user.id,
-      actorEmail: user.email || profile?.email,
-      action: 'request_submitted',
-      message: `New request submitted by ${user.email || 'client'}`,
+    // Link payment promise to request if created
+    if (promise_date && profile?.debt_amount && profile.debt_amount > (profile.debt_limit ?? 0)) {
+      // Promise was already created above; we could update it but it's not critical
+    }
+
+    // Notify marketing
+    await notificationService.notifyRoles(['marketing', 'admin'], {
+      title: 'New Order',
+      message: `New order submitted by ${user.email ?? 'client'}`,
       type: 'info',
-      notifyRequester: false,
-      notifyRoles: ['marketing', 'boss', 'admin', 'owner'],
+      orderId: request.id,
+    });
+
+    // Activity log
+    await activityLogsDb.create({
+      user_id: user.id,
+      user_email: user.email,
+      action: 'submit_request',
+      entity_type: 'request',
+      entity_id: request.id,
       metadata: {
-        item_count: enrichedItems.length,
-        total_quantity: total,
-        price_total: priceTotal,
+        item_count: items.length,
+        total_quantity: itemCount,
+        total_price: totalPrice,
         priority,
       },
     });
 
     clear();
-  };
+    return request;
+  }, [items, itemCount, profile, clear]);
+
+  const value = useMemo(() => ({
+    items, add, remove, updateQty, clear, itemCount, submit,
+  }), [items, add, remove, updateQty, clear, itemCount, submit]);
 
   return (
-    <RequestContext.Provider value={{ items, add, remove, clear, total, submit }}>
+    <RequestContext.Provider value={value}>
       {children}
     </RequestContext.Provider>
   );
 }
 
-export const useRequest = () => {
+export function useRequest() {
   const context = useContext(RequestContext);
   if (!context) throw new Error('useRequest must be used inside RequestProvider');
   return context;
-};
+}

@@ -1,17 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
-import { canAccessRoute } from '@/lib/permissions';
-import { supabase } from '@/lib/supabase';
-import type { DbRequest } from '@/types/types';
-import { getCurrentAuthUser } from '@/lib/workflow';
-import { workflowEngine } from '@/lib/workflow-engine';
-import { submitOrderIssue } from '@/lib/issues';
+import { issuesDb, requestsDb, requireAuthUser } from '@/lib/db';
+import { workflowEngine } from '@/lib/services';
+import { formatDate, formatOrderId, formatRelative } from '@/lib/format-utils';
+import { DashboardSkeleton, EmptyState, ErrorState, StatusBadge, StatCard, Modal } from '@/components/ui';
+import type { Issue, DbRequest } from '@/types/types';
 
 export default function IssuesPage() {
   const { profile, loading } = useAuth();
@@ -19,162 +17,249 @@ export default function IssuesPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id');
 
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [orders, setOrders] = useState<DbRequest[]>([]);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [issues, setIssues] = useState<
-    Array<{
-      id: string;
-      order_id: string;
-      description: string;
-      status: string;
-      created_at: string;
-    }>
-  >([]);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/client/issues')) {
-      router.replace(getRoleRedirect(profile.role));
-    }
-  }, [loading, profile, router]);
-
-  const refresh = useCallback(async () => {
+  // Fetch issues and orders
+  const fetchData = useCallback(async () => {
     if (!profile?.id) return;
-    const { data } = await supabase
-      .from('issues')
-      .select('*')
-      .eq('reported_by', profile.id)
-      .order('created_at', { ascending: false });
-
-    setIssues(data || []);
+    try {
+      setError(null);
+      const [issueData, orderData] = await Promise.all([
+        issuesDb.getByUser(profile.id),
+        requestsDb.getByUser(profile.id),
+      ]);
+      setIssues(issueData);
+      setOrders(orderData.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setFetching(false);
+    }
   }, [profile?.id]);
 
   useEffect(() => {
-    if (!profile) return;
-    refresh();
-  }, [profile, refresh]);
+    fetchData();
+  }, [fetchData]);
 
-  useRealtimeTable('issues', profile?.id ? `reported_by=eq.${profile.id}` : undefined, {
-    enabled: Boolean(profile?.id),
-    onEvent: refresh,
-    debounceMs: 250,
-    channelName: profile?.id ? `client-issues-page-${profile.id}` : undefined,
-  });
+  // Realtime subscriptions
+  useRealtimeTable(
+    'issues',
+    profile?.id ? `reported_by=eq.${profile.id}` : undefined,
+    fetchData,
+    { enabled: Boolean(profile?.id), debounceMs: 300 }
+  );
 
-  useRealtimeTable('requests', orderId ? `id=eq.${orderId}` : undefined, {
-    enabled: Boolean(orderId),
-    onEvent: refresh,
-    debounceMs: 250,
-    channelName: orderId ? `client-issue-request-${orderId}` : undefined,
-  });
+  useRealtimeTable(
+    'requests',
+    profile?.id ? `user_id=eq.${profile.id}` : undefined,
+    fetchData,
+    { enabled: Boolean(profile?.id), debounceMs: 300 }
+  );
 
-  const submitIssue = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!orderId || !description.trim()) return;
+  // Find the target order for issue submission
+  const targetOrder = useMemo(() => {
+    if (!orderId) return null;
+    return orders.find((o) => o.id === orderId) ?? null;
+  }, [orderId, orders]);
 
-    setSubmitting(true);
-    try {
-      const actor = await getCurrentAuthUser();
-      const { data: requestRow, error: requestError } = await supabase
-        .from('requests')
-        .select('*')
-        .eq('id', orderId)
-        .single();
+  // Stats
+  const stats = useMemo(() => {
+    const open = issues.filter((i) => i.status === 'open').length;
+    const inProgress = issues.filter((i) => i.status === 'in_progress').length;
+    const resolved = issues.filter((i) => i.status === 'resolved').length;
+    return { open, inProgress, resolved, total: issues.length };
+  }, [issues]);
 
-      if (requestError) throw new Error(requestError.message);
+  // Submit issue handler
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!orderId || !description.trim() || !profile?.id || !targetOrder) return;
 
-      const request = requestRow as DbRequest;
-      await submitOrderIssue(orderId, actor.id, description);
+      setSubmitting(true);
+      setSubmitError(null);
 
-      await workflowEngine.transitionOrder({
-        request,
-        actorId: actor.id,
-        actorEmail: actor.email || profile?.email,
-        actorRole: profile?.role || 'client',
-        nextStatus: 'issue',
-        action: 'issue',
-        message: `Issue reported for request ${request.id}`,
-        type: 'warning',
-        notifyRoles: ['admin', 'owner'],
-        metadata: {
+      try {
+        const user = await requireAuthUser();
+
+        // Create the issue record
+        await issuesDb.create({
+          order_id: orderId,
+          reported_by: profile.id,
           description: description.trim(),
-        },
-      });
+          status: 'open',
+        });
 
-      setDescription('');
-      await refresh();
-      router.push('/dashboard/client');
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to submit issue');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+        // Transition the order to 'issue' status
+        await workflowEngine.transition({
+          request: targetOrder,
+          actorId: user.id,
+          actorEmail: profile.email,
+          actorRole: 'client',
+          nextStatus: 'issue',
+          action: 'issue',
+          message: `Issue reported for order ${formatOrderId(orderId)}`,
+          type: 'warning',
+          notifyRoles: ['admin', 'owner'],
+          metadata: { description: description.trim() },
+        });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+        setDescription('');
+        await fetchData();
+        router.push('/dashboard/client');
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to submit issue');
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [orderId, description, profile?.id, profile?.email, targetOrder, fetchData, router]
+  );
+
+  if (loading || fetching) {
+    return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={fetchData} />;
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="mx-auto max-w-3xl space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/client" className="text-gray-500 hover:text-gray-900 transition-colors">
-          ←
+        <Link
+          href="/dashboard/client"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          aria-label="Back to dashboard"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Report an Issue</h1>
-          <p className="text-gray-500 text-sm mt-1">Tell the team what happened with this delivery.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+            {orderId ? 'Report an Issue' : 'My Issues'}
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {orderId
+              ? 'Tell the team what happened with this delivery.'
+              : 'View and track reported issues on your orders.'}
+          </p>
         </div>
       </div>
 
-      {orderId && (
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Issue Details</h2>
-          <form onSubmit={submitIssue} className="space-y-4">
-            <div className="text-xs text-gray-500">Order ID: {orderId}</div>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={5}
-              required
-              className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-rose-500 resize-none"
-              placeholder="Describe the issue..."
-            />
-            <button
-              type="submit"
-              disabled={submitting || !description.trim()}
-              className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
-            >
-              {submitting ? 'Submitting...' : 'Submit Issue'}
-            </button>
-          </form>
+      {/* Stats */}
+      {issues.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard label="Open" value={stats.open} color="red" />
+          <StatCard label="In Progress" value={stats.inProgress} color="yellow" />
+          <StatCard label="Resolved" value={stats.resolved} color="green" />
         </div>
       )}
 
-      {issues.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">My Issues</h2>
+      {/* Issue form (when orderId is provided) */}
+      {orderId && (
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-white">
+            Issue Details
+          </h2>
+
+          {!targetOrder ? (
+            <ErrorState
+              title="Order not found"
+              message={`Order ${formatOrderId(orderId)} was not found or does not belong to you.`}
+            />
+          ) : targetOrder.status !== 'delivered' ? (
+            <ErrorState
+              title="Cannot report issue"
+              message={`Order ${formatOrderId(orderId)} is in "${targetOrder.status}" status. Issues can only be reported for delivered orders.`}
+            />
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                Order: <span className="font-mono font-semibold">{formatOrderId(orderId)}</span>
+              </div>
+
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={5}
+                required
+                className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
+                placeholder="Describe the issue in detail..."
+              />
+
+              {submitError && (
+                <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting || !description.trim()}
+                className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? 'Submitting...' : 'Submit Issue'}
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* Issues list */}
+      <section>
+        {!orderId && <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">My Issues</h2>}
+
+        {issues.length === 0 ? (
+          <EmptyState
+            title="No issues reported"
+            description="If you have a problem with a delivery, you can report an issue from your order details."
+          />
+        ) : (
           <div className="space-y-3">
             {issues.map((issue) => (
-              <div key={issue.id} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+              <div
+                key={issue.id}
+                className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      issue.status === 'open'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        : issue.status === 'in_progress'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    }`}
+                  >
                     {issue.status.replace('_', ' ').toUpperCase()}
                   </span>
-                  <span className="text-xs text-gray-500">
-                    {new Date(issue.created_at).toLocaleDateString('id-ID')}
+                  <span className="flex-shrink-0 text-xs text-gray-400 dark:text-gray-500">
+                    {formatRelative(issue.created_at)}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600">{issue.description}</p>
+
+                <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
+                  Order: <span className="font-mono">{formatOrderId(issue.order_id)}</span>
+                </p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">{issue.description}</p>
+
+                {issue.resolution && (
+                  <div className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-300">
+                    <span className="font-medium">Resolution:</span> {issue.resolution}
+                  </div>
+                )}
               </div>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
     </div>
   );
 }

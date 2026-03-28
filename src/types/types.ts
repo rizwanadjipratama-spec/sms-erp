@@ -1,11 +1,12 @@
-export type Category =
-  | 'Equipment'
-  | 'Consumables'
-  | 'Service & Support'
-  | 'Reagents'
-  | 'Service';
+// ============================================================================
+// WEBSMS ERP SYSTEM — TYPE DEFINITIONS
+// All types match the database schema exactly
+// ============================================================================
 
-// All 9 system roles (+ legacy 'user' for backward compat)
+// ============================================================================
+// ENUMS (match PostgreSQL enums)
+// ============================================================================
+
 export type UserRole =
   | 'client'
   | 'marketing'
@@ -15,13 +16,61 @@ export type UserRole =
   | 'technician'
   | 'admin'
   | 'owner'
-  | 'tax'
-  | 'user'; // legacy fallback
+  | 'tax';
 
 export type ClientType = 'regular' | 'kso';
 
+export type RequestStatus =
+  | 'submitted'
+  | 'priced'
+  | 'approved'
+  | 'invoice_ready'
+  | 'preparing'
+  | 'ready'
+  | 'on_delivery'
+  | 'delivered'
+  | 'completed'
+  | 'issue'
+  | 'resolved'
+  | 'cancelled'
+  | 'rejected';
+
+export type RequestPriority = 'normal' | 'cito';
+
+export type InvoiceStatus = 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled' | 'credited';
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'error';
+
+export type IssueStatus = 'open' | 'in_progress' | 'resolved';
+
+export type LogLevel = 'info' | 'warning' | 'error';
+
+export type ChatChannelType =
+  | 'general'
+  | 'marketing'
+  | 'finance'
+  | 'warehouse'
+  | 'technician'
+  | 'admin'
+  | 'owner';
+
+export type ProductCategory =
+  | 'Equipment'
+  | 'Consumables'
+  | 'Service & Support'
+  | 'Reagents'
+  | 'Service';
+
+export type BackupType = 'database' | 'storage' | 'full';
+export type BackupStatus = 'pending' | 'completed' | 'failed' | 'verified' | 'restored' | 'partial';
+export type AutomationStatus = 'pending' | 'processed' | 'failed';
+
+// ============================================================================
+// CORE ENTITIES
+// ============================================================================
+
 export interface Profile {
-  id?: string;
+  id: string;
   email: string;
   role: UserRole;
   name?: string;
@@ -29,156 +78,176 @@ export interface Profile {
   address?: string;
   client_type?: ClientType;
   pic_name?: string;
+  company?: string;
+  avatar_url?: string;
   debt_amount: number;
   debt_limit: number;
   two_factor_secret?: string | null;
-  two_factor_enabled?: boolean;
+  two_factor_enabled: boolean;
+  is_active: boolean;
+  last_login?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
 }
 
-export type PaymentPromise = {
+export interface Product {
   id: string;
-  user_id: string;
-  user_email: string;
-  promise_date: string;
-  note?: string;
-  request_id?: string;
+  name: string;
+  description?: string;
+  sku?: string;
+  category?: ProductCategory;
+  image_url?: string;
+  stock: number;
+  min_stock: number;
+  unit: string;
+  is_active: boolean;
+  is_priced: boolean;
   created_at: string;
-};
-
-export type CartItem = {
-  id: string;
-  name?: string;
-  qty: number;
-};
-
-export type RequestStatus =
-  | 'submitted'           // client just clicked submit
-  | 'pending'             // client submitted and waiting for marketing
-  | 'priced'            // marketing reviewed and priced
-  | 'approved'          // boss approved
-  | 'rejected'          // boss rejected
-  | 'invoice_ready'     // finance generated invoice
-  | 'preparing'         // warehouse preparing
-  | 'ready'             // warehouse done, ready for pickup
-  | 'on_delivery'       // technician picked up
-  | 'delivered'         // technician delivered, waiting for client confirm
-  | 'completed'         // client confirmed
-  | 'issue'             // client reported issue
-  | 'resolved'          // issue resolved
-  | 'cancelled';        // client cancelled
-
-export type RequestPriority = 'normal' | 'cito';
-
-export type DbRequest = {
-  id: string;
-  user_id?: string;
-  user_email?: string;
-  items: CartItem[];
-  total: number;
-  price_total?: number;
-  status: RequestStatus;
-  priority: RequestPriority;
-  reason?: string;
-  rejection_reason?: string;
-  cancel_reason?: string;
-  marketing_note?: string;
-  assigned_technician_id?: string;
-  ready_at?: string;
-  on_delivery_at?: string;
-  delivered_at?: string;
-  created_at: string;
-};
-
-// =====================
-// NEW TYPES
-// =====================
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+  // Joined fields
+  price?: PriceList;
+}
 
 export interface PriceList {
   id: string;
   product_id: string;
-  product_name?: string;
   price_regular: number;
   price_kso: number;
+  effective_from: string;
+  effective_to?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+}
+
+export interface DbRequest {
+  id: string;
+  user_id: string;
+  user_email?: string;
+  status: RequestStatus;
+  priority: RequestPriority;
+  total_price: number;
+  note?: string;
+  invoice_id?: string;
+  assigned_technician_id?: string;
+  rejection_reason?: string;
+  priced_at?: string;
+  approved_at?: string;
+  rejected_at?: string;
+  invoice_ready_at?: string;
+  preparing_at?: string;
+  ready_at?: string;
+  on_delivery_at?: string;
+  delivered_at?: string;
+  completed_at?: string;
+  cancelled_at?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+  // Joined
+  request_items?: RequestItemWithProduct[];
+  profiles?: Pick<Profile, 'name' | 'email'>;
+}
+
+export interface RequestItem {
+  id: string;
+  request_id: string;
+  product_id: string;
+  quantity: number;
+  price_at_order: number;
+  created_at: string;
   updated_at: string;
 }
 
-export interface Client {
-  id: string;
-  user_id: string;
-  email?: string;
-  name: string;
-  client_type: ClientType;
-  phone?: string;
-  address?: string;
-  pic_name?: string;
-  created_at: string;
+export interface RequestItemWithProduct extends RequestItem {
+  products?: Pick<Product, 'name' | 'image_url' | 'unit'>;
 }
 
 export interface Invoice {
   id: string;
   order_id: string;
   invoice_number: string;
-  amount: number;
-  tax_amount?: number;
-  issued_by?: string;
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
+  total: number;
+  status: InvoiceStatus;
+  issued_at?: string;
   due_date?: string;
-  paid: boolean;
   paid_at?: string;
+  payment_method?: string;
+  payment_ref?: string;
   notes?: string;
   created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+  // Joined
+  request?: Pick<DbRequest, 'id' | 'user_id' | 'user_email' | 'status'>;
+}
+
+export interface PaymentPromise {
+  id: string;
+  user_id: string;
+  user_email?: string;
+  request_id?: string;
+  promise_date: string;
+  note?: string;
+  fulfilled: boolean;
+  fulfilled_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DeliveryLog {
   id: string;
   order_id: string;
   technician_id: string;
+  status: string;
+  note?: string;
   proof_url?: string;
   signature_url?: string;
-  note?: string;
   delivered_at?: string;
+  latitude?: number;
+  longitude?: number;
   created_at: string;
+  updated_at: string;
+  // Joined
+  technician?: Pick<Profile, 'name' | 'email'>;
 }
 
 export interface InventoryLog {
   id: string;
   product_id: string;
   order_id?: string;
-  product_name?: string;
-  change: number; // positive = added, negative = removed
+  change: number;
+  balance: number;
   reason: string;
-  by_user?: string;
+  created_by?: string;
   created_at: string;
-}
-
-export interface Notification {
-  id: string;
-  user_id: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  read: boolean;
-  order_id?: string;
-  created_at: string;
-}
-
-export interface ActivityLog {
-  id: string;
-  user_id: string;
-  user_email?: string;
-  action: string;
-  entity_type: string;
-  entity_id?: string;
-  metadata?: Record<string, unknown>;
-  created_at: string;
+  // Joined
+  product?: Pick<Product, 'name'>;
 }
 
 export interface Issue {
   id: string;
   order_id: string;
   reported_by: string;
+  assigned_to?: string;
   description: string;
-  status: 'open' | 'in_progress' | 'resolved';
+  status: IssueStatus;
+  resolution?: string;
   resolved_at?: string;
+  resolved_by?: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface MonthlyClosing {
@@ -186,20 +255,194 @@ export interface MonthlyClosing {
   month: number;
   year: number;
   total_revenue: number;
+  total_tax: number;
   orders_count: number;
   paid_invoices: number;
   unpaid_invoices: number;
   closed_by?: string;
   notes?: string;
   created_at: string;
+  updated_at: string;
 }
+
+// ============================================================================
+// NOTIFICATION SYSTEM
+// ============================================================================
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title?: string;
+  message: string;
+  type: NotificationType;
+  read: boolean;
+  read_at?: string;
+  order_id?: string;
+  action_url?: string;
+  created_at: string;
+}
+
+// ============================================================================
+// CHAT SYSTEM
+// ============================================================================
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  channel_type: ChatChannelType;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatChannelMember {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  joined_at: string;
+  last_read_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  channel_id: string;
+  sender_id: string;
+  content: string;
+  file_url?: string;
+  file_name?: string;
+  file_type?: string;
+  is_edited: boolean;
+  is_deleted: boolean;
+  reply_to?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  sender?: Pick<Profile, 'name' | 'email' | 'avatar_url' | 'role'>;
+}
+
+// ============================================================================
+// CMS SYSTEM
+// ============================================================================
+
+export interface CmsSection {
+  id: string;
+  section_key: string;
+  title?: string;
+  subtitle?: string;
+  body?: string;
+  image_url?: string;
+  video_url?: string;
+  cta_text?: string;
+  cta_link?: string;
+  sort_order: number;
+  is_visible: boolean;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  updated_by?: string;
+}
+
+export interface CmsMedia {
+  id: string;
+  section_id?: string;
+  title?: string;
+  alt_text?: string;
+  file_url: string;
+  file_type: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  uploaded_by?: string;
+}
+
+export interface CmsPartner {
+  id: string;
+  name: string;
+  logo_url: string;
+  website_url?: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CmsSolution {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string;
+  category?: ProductCategory;
+  image_url?: string;
+  specs: string[];
+  use_case?: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeOfMonth {
+  id: string;
+  user_id: string;
+  month: number;
+  year: number;
+  reason?: string;
+  photo_url?: string;
+  created_at: string;
+  created_by?: string;
+  // Joined
+  profile?: Pick<Profile, 'name' | 'email' | 'role'>;
+}
+
+// ============================================================================
+// LOGGING & SYSTEM
+// ============================================================================
+
+export interface ActivityLog {
+  id: string;
+  user_id?: string;
+  user_email?: string;
+  action: string;
+  entity_type?: string;
+  entity_id?: string;
+  metadata?: Record<string, unknown>;
+  ip_address?: string;
+  created_at: string;
+}
+
+export interface SystemLog {
+  id: string;
+  level: LogLevel;
+  service: string;
+  action: string;
+  message: string;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface BackupLog {
+  id: string;
+  backup_type: BackupType;
+  file_url?: string | null;
+  status: BackupStatus;
+  size?: number | null;
+  notes?: string | null;
+  created_at: string;
+  completed_at?: string | null;
+}
+
+// ============================================================================
+// AUTOMATION
+// ============================================================================
 
 export interface AutomationEvent {
   id: string;
   event_type: string;
   payload?: Record<string, unknown>;
-  status: 'pending' | 'processed' | 'failed';
-  retry_count?: number;
+  status: AutomationStatus;
+  retry_count: number;
   last_error?: string | null;
   created_at: string;
   processed_at?: string | null;
@@ -215,9 +458,9 @@ export interface AutomationWebhook {
 
 export interface AutomationLog {
   id: string;
-  event_id: string;
-  webhook_url: string;
-  status: 'success' | 'failed';
+  event_id?: string;
+  webhook_url?: string;
+  status: string;
   response?: string | null;
   created_at: string;
 }
@@ -228,75 +471,78 @@ export interface EmailTemplate {
   subject: string;
   body_html: string;
   variables?: string[];
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
 }
 
-export interface DocumentFile {
-  fileName: string;
-  path: string;
-  contentType: string;
-  signedUrl?: string | null;
-}
+// ============================================================================
+// APPLICATION-LEVEL TYPES
+// ============================================================================
 
-export type EmailAttachment = DocumentFile;
-
-export interface SystemLog {
+export interface CartItem {
   id: string;
-  level: 'info' | 'warning' | 'error';
-  service: string;
-  action: string;
-  message: string;
-  metadata?: Record<string, unknown> | null;
-  created_at: string;
-}
-
-export interface BackupLog {
-  id: string;
-  backup_type: 'database' | 'storage' | 'full';
-  file_url?: string | null;
-  status: 'pending' | 'completed' | 'failed' | 'verified' | 'restored' | 'partial';
-  created_at: string;
-  completed_at?: string | null;
-  size?: number | null;
-  notes?: string | null;
-}
-
-// =====================
-// EXISTING TYPES (unchanged)
-// =====================
-
-export interface Solution {
-  slug: string;
-  title: string;
-  description: string;
-  category: Category;
-  image: string;
-  specs: string[];
-  useCase: string;
-}
-
-export interface Product {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
+  name?: string;
+  qty: number;
+  price?: number;
   image_url?: string;
-  category?: string;
-  stock: number;
-  status?: string;
-  is_priced?: boolean;
-  created_at: string;
 }
 
-export interface Partner {
-  name: string;
-  logo: string;
-}
-
-export type Location = string;
-
-export interface CMSContent {
+export interface Actor {
   id: string;
-  section: string;
-  content: Record<string, string>;
+  email?: string;
+  role: UserRole;
+}
+
+export interface PaginationParams {
+  page: number;
+  pageSize: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ServiceResult<T> {
+  data: T | null;
+  error: string | null;
+}
+
+// Analytics types
+export interface MonthlyRevenue {
+  month: string;
+  invoice_count: number;
+  total_revenue: number;
+  total_tax: number;
+  paid_count: number;
+  unpaid_count: number;
+}
+
+export interface OrderPipeline {
+  status: RequestStatus;
+  order_count: number;
+  total_value: number;
+  avg_hours_in_status: number;
+}
+
+export interface ProductPerformance {
+  id: string;
+  name: string;
+  category?: ProductCategory;
+  stock: number;
+  total_ordered: number;
+  total_revenue: number;
+  order_count: number;
+}
+
+export interface TechnicianPerformance {
+  technician_id: string;
+  technician_name?: string;
+  total_deliveries: number;
+  successful_deliveries: number;
+  avg_delivery_hours: number;
 }

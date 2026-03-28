@@ -1,76 +1,92 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { supabase } from '@/lib/db/client';
+import { authService } from '@/lib/services/auth-service';
 import type { UserRole, Profile } from '@/types/types';
-import { getProfile, signInWithPassword } from '@/lib/auth';
 
 type AuthContextType = {
   profile: Profile | null;
   role: UserRole;
   loading: boolean;
-  signIn: (email: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const role = profile?.role || 'user';
+  const role = (profile?.role ?? 'client') as UserRole;
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const prof = await authService.getProfile();
+      setProfile(prof);
+    } catch {
+      setProfile(null);
+    }
+  }, []);
 
   useEffect(() => {
-    // Initial load
+    let mounted = true;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       if (session) {
-        getProfile().then(setProfile);
+        loadProfile().finally(() => {
+          if (mounted) setLoading(false);
+        });
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    // Listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+      if (!mounted) return;
       if (event === 'SIGNED_IN') {
-        const prof = await getProfile();
-        setProfile(prof);
+        await loadProfile();
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
       }
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [loadProfile]);
+
+  const signIn = useCallback(async (email: string, password: string) => {
+    await authService.signIn(email, password);
   }, []);
 
-  const signIn = async (email: string, password?: string) => {
-    if (password) {
-      try {
-        await signInWithPassword(email, password);
-      } catch (error) {
-        console.error('Sign in error:', error);
-        throw error;
-      }
-    }
-  };
-
-  const logoutFn = async () => {
-    await supabase.auth.signOut();
+  const logout = useCallback(async () => {
+    await authService.signOut();
     setProfile(null);
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    profile,
+    role,
+    loading,
+    signIn,
+    logout,
+    refreshProfile: loadProfile,
+  }), [profile, role, loading, signIn, logout, loadProfile]);
 
   return (
-    <AuthContext.Provider value={{ profile, role, loading, signIn, logout: logoutFn }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
-};
-
+}

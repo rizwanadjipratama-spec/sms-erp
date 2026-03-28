@@ -91,11 +91,13 @@ export async function logSystemEvent(params: {
       .single();
 
     if (error) {
-      console.error('[system-log-failed]', {
+      console.error('[system-log-failed]', JSON.stringify({
         service: params.service,
         action: params.action,
         message: error.message,
-      });
+        code: error.code,
+        details: error.details,
+      }, null, 2));
     }
   } catch (error) {
     console.error('[system-log-exception]', {

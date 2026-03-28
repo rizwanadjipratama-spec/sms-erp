@@ -2,161 +2,124 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getRoleRedirect } from '@/lib/auth';
-import { canAccessRoute, type AppRoute } from '@/lib/permissions';
-import { supabase } from '@/lib/supabase';
+import { authService } from '@/lib/services/auth-service';
+import { canAccessRoute } from '@/lib/permissions';
+import { chatService } from '@/lib/services/chat-service';
 
 import { Sidebar } from '@/components/dashboard/Sidebar';
+import { NotificationBell } from '@/components/ui/NotificationBell';
+import { ChatPanel } from '@/components/chat/ChatPanel';
 import { NAV_ITEMS } from '@/lib/navigation';
-
+import { PageSpinner } from '@/components/ui/LoadingSkeleton';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { profile, loading } = useAuth();
+  const { profile, loading, role } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [unreadCount, setUnreadCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
+  // Auth redirect
   useEffect(() => {
     if (!loading && !profile) {
       router.push('/login');
     }
   }, [loading, profile, router]);
 
-  const role = profile?.role || 'user';
-  const visibleNav = NAV_ITEMS.filter((item) => canAccessRoute(role, item.href));
-
-
+  // Route guard
   useEffect(() => {
     if (loading || !profile) return;
     if (pathname === '/dashboard') return;
 
     const hasDirectAccess = canAccessRoute(profile.role, pathname);
     const hasNestedAccess = NAV_ITEMS.some(
-      (item) => pathname.startsWith(item.href + '/') && canAccessRoute(profile.role, item.href)
+      item => pathname.startsWith(item.href + '/') && canAccessRoute(profile.role, item.href)
     );
 
     if (!hasDirectAccess && !hasNestedAccess) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, pathname, profile, router]);
 
+  // Close sidebar on route change
   useEffect(() => {
-    if (!profile?.id) return;
+    setSidebarOpen(false);
+  }, [pathname]);
 
-    const fetchUnread = async () => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', profile.id)
-        .eq('read', false);
-      setUnreadCount(count || 0);
-    };
+  const canChat = profile?.role ? chatService.canUseChat(profile.role) : false;
 
-    fetchUnread();
+  const visibleNav = NAV_ITEMS.filter(item => canAccessRoute(role, item.href));
+  const currentPageLabel = visibleNav.find(
+    item => pathname === item.href || pathname.startsWith(item.href + '/')
+  )?.label ?? 'Dashboard';
 
-    const channel = supabase
-      .channel('notifications-count')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${profile.id}`,
-        },
-        () => {
-          fetchUnread();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [profile?.id]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-apple-gray-bg">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-apple-blue border-t-transparent rounded-full animate-spin" />
-          <p className="text-apple-text-secondary text-sm font-medium">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
+  if (loading) return <PageSpinner />;
   if (!profile) return null;
 
   return (
-    <div className="flex min-h-screen bg-apple-gray-bg text-apple-text-primary antialiased">
-      {/* Mobile Backdrop */}
+    <div className="flex min-h-screen bg-[var(--apple-gray-bg)] text-[var(--apple-text-primary)] antialiased">
+      {/* Mobile backdrop */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[35] lg:hidden transition-opacity duration-300" 
+        <div
+          className="fixed inset-0 z-[35] bg-black/20 backdrop-blur-sm transition-opacity lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      <Sidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
-        unreadCount={unreadCount}
-      />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <header className="h-14 bg-white/80 backdrop-blur-xl border-b border-apple-gray-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 transition-all duration-300">
-          <div className="flex items-center gap-4">
-            <button 
-              className="lg:hidden p-2 rounded-apple hover:bg-apple-gray-bg text-apple-text-secondary transition-all active:scale-95" 
+      <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--apple-gray-border)] bg-white/80 px-4 backdrop-blur-xl sm:px-6">
+          <div className="flex items-center gap-3">
+            <button
+              className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 lg:hidden"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open menu"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h2 className="text-sm font-semibold tracking-tight text-apple-text-primary hidden sm:block">
-              {visibleNav.find(item => pathname === item.href || pathname.startsWith(item.href + '/'))?.label || 'Dashboard'}
+            <h2 className="hidden text-sm font-semibold tracking-tight sm:block">
+              {currentPageLabel}
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link 
-              href="/dashboard/notifications" 
-              className="relative p-2 rounded-apple hover:bg-apple-gray-bg text-apple-text-secondary transition-all active:scale-95 group"
-            >
-              <svg className="w-5 h-5 group-hover:text-apple-blue transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11 6 0v-1m-6 0H9" />
-              </svg>
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-apple-danger rounded-full ring-2 ring-white" />
-              )}
-            </Link>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
 
-            <div className="w-8 h-8 bg-apple-blue/10 text-apple-blue rounded-full flex items-center justify-center text-xs font-bold uppercase ring-1 ring-apple-blue/20">
-              {(profile.name || profile.email || 'U')[0]}
+            {canChat && (
+              <button
+                onClick={() => setChatOpen(prev => !prev)}
+                className="relative rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800"
+                aria-label="Toggle chat"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                </svg>
+              </button>
+            )}
+
+            <div className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-xs font-bold uppercase text-blue-600 ring-1 ring-blue-100">
+              {(profile.name ?? profile.email ?? 'U')[0]}
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-white p-4 sm:p-6 lg:p-8 custom-scrollbar">
-          <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <button
-              onClick={() => router.back()}
-              className="mb-6 px-4 py-1.5 rounded-apple bg-apple-gray-bg hover:bg-apple-gray-border text-apple-text-secondary text-xs font-semibold transition-all active:scale-95 flex items-center gap-2 group shadow-sm border border-apple-gray-border/50"
-            >
-              <span className="group-hover:-translate-x-0.5 transition-transform duration-300">←</span> Back
-            </button>
+        {/* Main content */}
+        <main className="custom-scrollbar flex-1 overflow-y-auto bg-white p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl">
             {children}
           </div>
         </main>
       </div>
+
+      {/* Chat panel */}
+      <ChatPanel isOpen={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   );
 }
-

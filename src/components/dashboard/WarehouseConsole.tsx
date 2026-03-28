@@ -2,6 +2,10 @@
 
 import { useMemo } from 'react';
 import type { DbRequest, InventoryLog, Product } from '@/types/types';
+import { formatRelative } from '@/lib/format-utils';
+import { StatCard } from '@/components/ui/StatCard';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ProductList } from '@/components/dashboard/ProductList';
 
 interface WarehouseConsoleProps {
@@ -31,27 +35,62 @@ export function WarehouseConsole({
 }: WarehouseConsoleProps) {
   const byStatus = useMemo(
     () => ({
-      invoice_ready: requests.filter((request) => request.status === 'invoice_ready'),
-      preparing: requests.filter((request) => request.status === 'preparing'),
-      ready: requests.filter((request) => request.status === 'ready'),
+      invoice_ready: requests.filter((r) => r.status === 'invoice_ready'),
+      preparing: requests.filter((r) => r.status === 'preparing'),
+      ready: requests.filter((r) => r.status === 'ready'),
     }),
     [requests]
+  );
+
+  const lowStockCount = useMemo(
+    () => products.filter((p) => p.stock <= (p.min_stock ?? 5)).length,
+    [products]
   );
 
   return (
     <div className="space-y-12">
       {/* Stats Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {[
-          { label: 'Pending Fulfillment', value: byStatus.invoice_ready.length, color: 'text-apple-blue', bg: 'bg-apple-blue/5' },
-          { label: 'Currently Preparing', value: byStatus.preparing.length, color: 'text-apple-warning', bg: 'bg-apple-warning/5' },
-          { label: 'Ready for Tech', value: byStatus.ready.length, color: 'text-apple-success', bg: 'bg-apple-success/5' },
-        ].map((stat) => (
-          <div key={stat.label} className={`${stat.bg} border border-apple-gray-border rounded-[1.5rem] p-6 text-center transition-all hover:scale-[1.02] duration-300`}>
-            <p className="text-apple-text-secondary text-[10px] font-black uppercase tracking-widest mb-2">{stat.label}</p>
-            <p className={`text-4xl font-black tracking-tight ${stat.color}`}>{stat.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Pending Fulfillment"
+          value={byStatus.invoice_ready.length}
+          color="blue"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Currently Preparing"
+          value={byStatus.preparing.length}
+          color="yellow"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Ready for Tech"
+          value={byStatus.ready.length}
+          color="green"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Low Stock Items"
+          value={lowStockCount}
+          color={lowStockCount > 0 ? 'red' : 'gray'}
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.834-1.964-.834-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          }
+        />
       </div>
 
       {/* Workflow Section */}
@@ -72,43 +111,64 @@ export function WarehouseConsole({
         ].map((section) => (
           <section key={section.title} className="space-y-4">
             <div className="flex items-baseline justify-between px-1">
-               <h2 className="text-xl font-black text-apple-text-primary tracking-tight">{section.title}</h2>
-               <span className="text-[10px] font-bold text-apple-text-secondary">{section.items.length} ORDERS</span>
+              <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+                {section.title}
+              </h2>
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                {section.items.length} orders
+              </span>
             </div>
-            
+
             {section.items.length === 0 ? (
-              <div className="bg-apple-gray-bg/50 border border-apple-gray-border rounded-[2rem] p-12 text-center">
-                <p className="text-apple-text-secondary text-xs font-bold uppercase tracking-widest leading-loose">No orders in this stage</p>
-              </div>
+              <EmptyState
+                icon="📋"
+                title="No orders in this stage"
+                description="Orders will appear here as they progress through the workflow."
+              />
             ) : (
               <div className="space-y-4">
                 {section.items.map((request) => (
-                  <div key={request.id} className="bg-white border border-apple-gray-border rounded-apple p-6 shadow-sm hover:shadow-md transition-shadow">
+                  <div
+                    key={request.id}
+                    className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                  >
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="font-bold text-apple-text-primary text-sm">{request.user_email || 'Client'}</p>
-                        <p className="text-[10px] text-apple-text-secondary font-black tracking-wider uppercase mt-0.5">
-                          {new Date(request.created_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
+                        <p className="font-bold text-gray-900 text-sm">
+                          {request.user_email || 'Client'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {formatRelative(request.created_at)}
                         </p>
                       </div>
-                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-tighter ${request.priority === 'cito' ? 'bg-apple-danger/10 text-apple-danger' : 'bg-apple-gray-bg text-apple-text-secondary'}`}>
-                        {request.priority}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={request.status} />
+                        {request.priority === 'cito' && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 uppercase">
+                            {request.priority}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div className="space-y-2 mb-6 bg-apple-gray-bg/50 p-4 rounded-xl border border-apple-gray-border/30">
-                      {request.items.map((item, idx) => (
+
+                    <div className="space-y-2 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                      {(request.request_items || []).map((item, idx) => (
                         <div key={idx} className="flex justify-between text-xs font-medium">
-                          <span className="text-apple-text-secondary">{item.name || 'Unknown Item'}</span>
-                          <span className="text-apple-text-primary font-black">x{item.qty}</span>
+                          <span className="text-gray-600">
+                            {item.products?.name || item.product_id}
+                          </span>
+                          <span className="text-gray-900 font-bold">x{item.quantity}</span>
                         </div>
                       ))}
+                      {(!request.request_items || request.request_items.length === 0) && (
+                        <p className="text-xs text-gray-400 text-center italic">No items found</p>
+                      )}
                     </div>
 
                     <button
                       onClick={() => updateOrder(request, section.nextStatus)}
                       disabled={processingId === request.id}
-                      className="w-full py-3 bg-apple-text-primary hover:bg-black text-white text-[10px] font-black rounded-xl shadow-lg shadow-black/5 active:scale-95 transition-all disabled:opacity-50 tracking-widest"
+                      className="w-full py-3 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm active:scale-95 transition-all disabled:opacity-50 tracking-wider uppercase"
                     >
                       {processingId === request.id ? 'UPDATING...' : section.nextLabel}
                     </button>
@@ -121,95 +181,144 @@ export function WarehouseConsole({
       </div>
 
       {/* Inventory Management Section */}
-      <section className="bg-white border border-apple-gray-border rounded-[2rem] p-8 sm:p-12 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-apple-blue/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
-        
+      <section className="bg-white border border-gray-200 rounded-2xl p-8 sm:p-12 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 relative z-10">
           <div>
-            <h2 className="text-2xl font-black text-apple-text-primary tracking-tight">Real-time Inventory</h2>
-            <p className="text-apple-text-secondary text-sm font-medium mt-1">Adjust stock levels and monitor availability.</p>
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+              Real-time Inventory
+            </h2>
+            <p className="text-gray-500 text-sm font-medium mt-1">
+              Adjust stock levels and monitor availability.
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-          {products.map((product) => (
-            <div key={product.id} className="rounded-2xl border border-apple-gray-border bg-apple-gray-bg/30 p-5 hover:bg-white hover:shadow-xl transition-all duration-500 group">
-              <div className="flex items-center justify-between mb-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-black text-apple-text-primary truncate">{product.name}</p>
-                  <p className="text-[10px] font-bold text-apple-text-secondary uppercase tracking-widest mt-0.5">{product.category || 'General'}</p>
+        {products.length === 0 ? (
+          <EmptyState
+            icon="📦"
+            title="No Products"
+            description="Add products to start managing inventory."
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="rounded-2xl border border-gray-200 bg-gray-50/50 p-5 hover:bg-white hover:shadow-lg transition-all duration-300"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">{product.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {product.category || 'General'}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      product.stock > (product.min_stock ?? 5)
+                        ? 'bg-emerald-50 text-emerald-600'
+                        : product.stock > 0
+                          ? 'bg-amber-50 text-amber-600'
+                          : 'bg-red-50 text-red-600'
+                    }`}
+                  >
+                    {product.stock > 0 ? `${product.stock} ${product.unit}` : 'OUT'}
+                  </span>
                 </div>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${product.stock > 0 ? 'bg-apple-success/10 text-apple-success' : 'bg-apple-danger/10 text-apple-danger'}`}>
-                  {product.stock > 0 ? 'IN STOCK' : 'OUT'}
-                </span>
-              </div>
-              
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                   <input
-                    type="number"
-                    min="0"
-                    value={stockInputs[product.id] ?? product.stock}
-                    onChange={(e) => setStockInputs(prev => ({ ...prev, [product.id]: Number(e.target.value) }))}
-                    className="w-full bg-white border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm font-bold text-apple-text-primary focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-apple-text-secondary">QTY</span>
+
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={stockInputs[product.id] ?? product.stock}
+                      onChange={(e) =>
+                        setStockInputs((prev) => ({
+                          ...prev,
+                          [product.id]: Number(e.target.value),
+                        }))
+                      }
+                      className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
+                      QTY
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => updateStock(product)}
+                    disabled={processingId === product.id || stockInputs[product.id] === product.stock}
+                    className="px-6 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-sm"
+                  >
+                    {processingId === product.id ? '...' : 'SAVE'}
+                  </button>
                 </div>
-                <button
-                  onClick={() => updateStock(product)}
-                  disabled={processingId === product.id}
-                  className="px-6 bg-apple-blue hover:bg-apple-blue-hover text-white text-[10px] font-black rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-apple-blue/10"
-                >
-                  {processingId === product.id ? '...' : 'SAVE'}
-                </button>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Product Management Section */}
-      <section className="pt-12 border-t border-apple-gray-border">
+      <section className="pt-12 border-t border-gray-200">
         <div className="mb-8">
-            <h2 className="text-3xl font-black text-apple-text-primary tracking-tight">Catalog Items</h2>
-            <p className="text-apple-text-secondary text-sm font-medium mt-1">Edit or remove existing items from the public catalog.</p>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Catalog Items</h2>
+          <p className="text-gray-500 text-sm font-medium mt-1">
+            Edit or remove existing items from the public catalog.
+          </p>
         </div>
 
-        <ProductList 
+        <ProductList
           products={products}
-          isAdmin={true}
           onEdit={handleEditProduct}
           onDelete={handleDeleteProduct}
+          isAdmin={true}
         />
       </section>
 
-      {/* History Section */}
-      <section className="bg-apple-gray-bg/30 border border-apple-gray-border rounded-[2rem] p-8 sm:p-12">
+      {/* Activity Log Section */}
+      <section className="bg-gray-50 border border-gray-200 rounded-2xl p-8 sm:p-12">
         <div className="mb-8">
-          <h2 className="text-xl font-black text-apple-text-primary tracking-tight">Activity Log</h2>
-          <p className="text-apple-text-secondary text-sm font-medium mt-1">Audit trail of all inventory movements.</p>
+          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Activity Log</h2>
+          <p className="text-gray-500 text-sm font-medium mt-1">
+            Audit trail of all inventory movements.
+          </p>
         </div>
-        
+
         {inventoryLogs.length === 0 ? (
-          <p className="text-xs font-bold text-apple-text-secondary uppercase tracking-widest text-center py-10">No recent activity</p>
+          <EmptyState
+            icon="📋"
+            title="No Recent Activity"
+            description="Inventory movements will appear here."
+          />
         ) : (
           <div className="space-y-3">
             {inventoryLogs.map((log) => (
-              <div key={log.id} className="bg-white border border-apple-gray-border rounded-2xl p-4 flex items-center justify-between gap-4 group hover:border-apple-blue/30 transition-colors">
+              <div
+                key={log.id}
+                className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between gap-4 hover:border-blue-200 transition-colors"
+              >
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-apple-text-primary truncate">
-                    Product ID: {log.product_id.split('-')[0]}...
-                    {log.order_id ? <span className="text-apple-text-secondary font-medium"> • Order {log.order_id.split('-')[0]}...</span> : null}
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {log.product?.name || log.product_id.split('-')[0]}
                   </p>
-                  <p className="text-[10px] font-black text-apple-text-secondary uppercase tracking-widest mt-1">
-                    {log.reason.replace(/_/g, ' ')} • {new Date(log.created_at).toLocaleTimeString('id-ID')}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {log.reason.replace(/_/g, ' ')} &middot; {formatRelative(log.created_at)}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className={`text-sm font-black ${log.change >= 0 ? 'text-apple-success' : 'text-apple-danger'}`}>
-                    {log.change >= 0 ? '+' : ''}{log.change}
+                  <p
+                    className={`text-sm font-bold ${
+                      log.change >= 0 ? 'text-emerald-600' : 'text-red-600'
+                    }`}
+                  >
+                    {log.change >= 0 ? '+' : ''}
+                    {log.change}
                   </p>
-                  <p className="text-[10px] font-bold text-apple-text-secondary truncate max-w-[80px]">{log.by_user || 'SYSTEM'}</p>
+                  <p className="text-xs text-gray-400 truncate max-w-[80px]">
+                    {log.created_by || 'SYSTEM'}
+                  </p>
                 </div>
               </div>
             ))}

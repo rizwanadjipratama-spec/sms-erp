@@ -1,139 +1,239 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { supabase } from '@/lib/supabase';
-import type { Notification } from '@/types/types';
+import { notificationService } from '@/lib/services';
+import { DashboardSkeleton, EmptyState, ErrorState, StatCard } from '@/components/ui';
+import { formatRelative } from '@/lib/format-utils';
+import type { Notification, NotificationType } from '@/types/types';
+
+const TYPE_STYLES: Record<NotificationType, { icon: string; accent: string }> = {
+  info: { icon: 'i', accent: 'bg-blue-500' },
+  success: { icon: '\u2713', accent: 'bg-emerald-500' },
+  warning: { icon: '!', accent: 'bg-amber-500' },
+  error: { icon: '\u2717', accent: 'bg-red-500' },
+};
+
+const PAGE_SIZE = 25;
 
 export default function NotificationsPage() {
-  const { profile } = useAuth();
+  const { profile, loading } = useAuth();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [fetching, setFetching] = useState(true);
-  const [limit, setLimit] = useState(25);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const refresh = useCallback(async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!profile?.id) return;
-    setFetching(true);
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    setNotifications((data || []) as Notification[]);
-    setFetching(false);
-  }, [limit, profile]);
+    try {
+      setError(null);
+      const result = await notificationService.getForUser(profile.id, {
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      setNotifications(result.data);
+      setTotalCount(result.count);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load notifications');
+    } finally {
+      setFetching(false);
+    }
+  }, [profile?.id, page]);
 
   useEffect(() => {
     if (!profile?.id) return;
-    const timer = setTimeout(() => {
-      void refresh();
-    }, 0);
+    setFetching(true);
+    fetchNotifications();
+  }, [fetchNotifications, profile?.id]);
 
-    return () => clearTimeout(timer);
-  }, [profile?.id, refresh]);
+  // Realtime: refresh when new notifications arrive
+  useRealtimeTable(
+    'notifications',
+    profile?.id ? `user_id=eq.${profile.id}` : undefined,
+    fetchNotifications,
+    { enabled: Boolean(profile?.id), debounceMs: 300 }
+  );
 
-  useRealtimeTable('notifications', profile?.id ? `user_id=eq.${profile.id}` : undefined, {
-    enabled: Boolean(profile?.id),
-    onEvent: refresh,
-    debounceMs: 200,
-    channelName: profile?.id ? `notifications-${profile.id}` : undefined,
-  });
+  const unreadCount = useMemo(() => {
+    return notifications.filter((n) => !n.read).length;
+  }, [notifications]);
 
-  useRealtimeTable('issues', undefined, {
-    enabled: Boolean(profile?.id),
-    onEvent: refresh,
-    debounceMs: 250,
-    channelName: profile?.id ? `notifications-issues-${profile.id}` : undefined,
-  });
+  const handleMarkRead = useCallback(
+    async (id: string) => {
+      if (!profile?.id) return;
+      // Optimistic update
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true, read_at: new Date().toISOString() } : n))
+      );
+      try {
+        await notificationService.markRead(id, profile.id);
+      } catch {
+        // Revert on failure
+        await fetchNotifications();
+      }
+    },
+    [profile?.id, fetchNotifications]
+  );
 
-  useRealtimeTable('invoices', undefined, {
-    enabled: Boolean(profile?.id),
-    onEvent: refresh,
-    debounceMs: 250,
-    channelName: profile?.id ? `notifications-invoices-${profile.id}` : undefined,
-  });
-
-  useRealtimeTable('requests', undefined, {
-    enabled: Boolean(profile?.id),
-    onEvent: refresh,
-    debounceMs: 250,
-    channelName: profile?.id ? `notifications-requests-${profile.id}` : undefined,
-  });
-
-  const markAllRead = async () => {
+  const handleMarkAllRead = useCallback(async () => {
     if (!profile?.id) return;
-    await supabase.from('notifications').update({ read: true }).eq('user_id', profile.id).eq('read', false);
-    await refresh();
-  };
-
-  const markRead = async (id: string) => {
-    await supabase.from('notifications').update({ read: true }).eq('id', id);
-    setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, read: true } : item)));
-  };
-
-  const typeIcon: Record<string, string> = {
-    info: 'i',
-    success: 'OK',
-    warning: '!',
-    error: 'X',
-  };
-  const unread = notifications.filter((notification) => !notification.read).length;
-
-  if (fetching) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((n) => ({ ...n, read: true, read_at: n.read_at ?? new Date().toISOString() }))
     );
+    try {
+      await notificationService.markAllRead(profile.id);
+    } catch {
+      await fetchNotifications();
+    }
+  }, [profile?.id, fetchNotifications]);
+
+  const handleLoadMore = useCallback(() => {
+    setPage((prev) => prev + 1);
+  }, []);
+
+  // Accumulate across pages
+  useEffect(() => {
+    if (page === 1) return;
+    let cancelled = false;
+
+    const loadMore = async () => {
+      if (!profile?.id) return;
+      try {
+        const result = await notificationService.getForUser(profile.id, {
+          page,
+          pageSize: PAGE_SIZE,
+        });
+        if (!cancelled) {
+          setNotifications((prev) => {
+            const existingIds = new Set(prev.map((n) => n.id));
+            const newItems = result.data.filter((n) => !existingIds.has(n.id));
+            return [...prev, ...newItems];
+          });
+          setTotalCount(result.count);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load more notifications');
+        }
+      }
+    };
+
+    loadMore();
+    return () => {
+      cancelled = true;
+    };
+  }, [page, profile?.id]);
+
+  const hasMore = useMemo(() => {
+    return notifications.length < totalCount;
+  }, [notifications.length, totalCount]);
+
+  if (loading || (fetching && page === 1)) {
+    return <DashboardSkeleton />;
+  }
+
+  if (error && notifications.length === 0) {
+    return <ErrorState message={error} onRetry={fetchNotifications} />;
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-          {unread > 0 && <p className="text-gray-500 text-sm mt-1">{unread} unread</p>}
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Notifications
+          </h1>
+          {unreadCount > 0 && (
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {unreadCount} unread
+            </p>
+          )}
         </div>
-        {unread > 0 && (
-          <button onClick={markAllRead} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+        {unreadCount > 0 && (
+          <button
+            onClick={handleMarkAllRead}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+          >
             Mark all as read
           </button>
         )}
       </div>
 
+      {/* Stats row */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <StatCard label="Total" value={totalCount} color="blue" />
+        <StatCard label="Unread" value={unreadCount} color={unreadCount > 0 ? 'red' : 'gray'} />
+      </div>
+
+      {/* Notifications list */}
       {notifications.length === 0 ? (
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-12 text-center">
-          <p className="text-gray-500">No notifications yet</p>
-        </div>
+        <EmptyState title="No notifications yet" description="You'll see updates about your orders and system events here." />
       ) : (
         <div className="space-y-2">
-          {notifications.map((notification) => (
-            <div
-              key={notification.id}
-              onClick={() => !notification.read && markRead(notification.id)}
-              className={`bg-white border-gray-200 shadow-sm border rounded-xl px-4 py-3 flex items-start gap-3 cursor-pointer transition-colors ${
-                notification.read ? 'border-gray-200 opacity-60' : 'border-indigo-500/40 hover:border-indigo-500/60'
-              }`}
-            >
-              <span className="text-xs mt-1 text-indigo-300">{typeIcon[notification.type] || 'i'}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-900">{notification.message}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {new Date(notification.created_at).toLocaleString('id-ID')}
-                </p>
+          {notifications.map((notification) => {
+            const style = TYPE_STYLES[notification.type] ?? TYPE_STYLES.info;
+
+            return (
+              <div
+                key={notification.id}
+                onClick={() => !notification.read && handleMarkRead(notification.id)}
+                role={notification.read ? undefined : 'button'}
+                tabIndex={notification.read ? undefined : 0}
+                onKeyDown={(e) => {
+                  if (!notification.read && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleMarkRead(notification.id);
+                  }
+                }}
+                className={`flex items-start gap-3 rounded-xl border bg-white px-4 py-3 shadow-sm transition-all dark:bg-gray-900 ${
+                  notification.read
+                    ? 'border-gray-100 opacity-60 dark:border-gray-800'
+                    : 'cursor-pointer border-blue-200 hover:border-blue-300 dark:border-blue-800 dark:hover:border-blue-700'
+                }`}
+              >
+                {/* Type indicator */}
+                <span
+                  className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${style.accent}`}
+                >
+                  {style.icon}
+                </span>
+
+                {/* Content */}
+                <div className="min-w-0 flex-1">
+                  {notification.title && (
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {notification.title}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    {notification.message}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+                    {formatRelative(notification.created_at)}
+                  </p>
+                </div>
+
+                {/* Unread dot */}
+                {!notification.read && (
+                  <div className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-blue-500" />
+                )}
               </div>
-              {!notification.read && <div className="w-2 h-2 bg-indigo-500 rounded-full mt-1.5 flex-shrink-0" />}
-            </div>
-          ))}
-          {notifications.length >= limit && (
+            );
+          })}
+
+          {/* Load more */}
+          {hasMore && (
             <button
-              onClick={() => setLimit((prev) => prev + 25)}
-              className="w-full mt-3 px-4 py-2 rounded-lg bg-gray-100 hover:bg-slate-700 text-gray-700 text-sm transition-colors"
+              onClick={handleLoadMore}
+              disabled={fetching}
+              className="mt-3 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              Load More
+              {fetching ? 'Loading...' : 'Load More'}
             </button>
           )}
         </div>

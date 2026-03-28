@@ -2,122 +2,88 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { SidebarButton } from './SidebarButton';
 import { useAuth } from '@/hooks/useAuth';
 import { canAccessRoute } from '@/lib/permissions';
 import { NAV_ITEMS } from '@/lib/navigation';
 
 interface SidebarProps {
-
   isOpen: boolean;
   onClose: () => void;
-  unreadCount?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, unreadCount }) => {
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { profile, logout } = useAuth();
+  const { profile, logout, role } = useAuth();
 
   if (!profile) return null;
 
-  const role = profile.role || 'user';
-  const visibleNav = NAV_ITEMS.filter((item) => canAccessRoute(role, item.href));
+  const visibleNav = NAV_ITEMS.filter(item => canAccessRoute(role, item.href));
 
   return (
     <aside
       className={`
-        fixed top-0 left-0 h-screen w-64 bg-apple-gray-bg border-r border-apple-gray-border z-40 
-        flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0
+        fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r
+        border-[var(--apple-gray-border)] bg-[var(--apple-gray-bg)] transition-transform
+        duration-300 ease-in-out lg:static lg:translate-x-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}
     >
-      <div className="p-6 border-b border-apple-gray-border flex-shrink-0">
+      {/* Logo */}
+      <div className="flex-shrink-0 border-b border-[var(--apple-gray-border)] p-6">
         <Link href="/" className="flex items-center gap-3" onClick={onClose}>
-          <div className="w-8 h-8 bg-apple-blue rounded-apple flex items-center justify-center text-white font-bold text-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
             S
           </div>
-          <span className="text-lg font-bold text-apple-text-primary">SMS ERP</span>
+          <span className="text-lg font-bold">SMS ERP</span>
         </Link>
       </div>
 
-      <div className="p-4 border-b border-apple-gray-border flex-shrink-0 bg-white/50 backdrop-blur-sm">
+      {/* User info */}
+      <div className="flex-shrink-0 border-b border-[var(--apple-gray-border)] bg-white/50 p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-apple-blue/10 text-apple-blue rounded-full flex items-center justify-center text-sm font-bold uppercase shrink-0">
-            {(profile.name || profile.email || 'U')[0]}
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold uppercase text-blue-600">
+            {(profile.name ?? profile.email ?? 'U')[0]}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-apple-text-primary truncate">{profile.name || profile.email}</p>
-            <span className="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full bg-apple-blue-light text-apple-blue font-bold uppercase tracking-wider">
+            <p className="truncate text-sm font-semibold">{profile.name ?? profile.email}</p>
+            <span className="mt-0.5 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600">
               {role}
             </span>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
-        {visibleNav.map((item) => {
-          const isWarehouseItem = item.href === '/dashboard/warehouse';
-          const onWarehousePage = pathname === '/dashboard/warehouse';
-          
-          return (
-            <React.Fragment key={item.href}>
-              <SidebarButton
-                label={item.label}
-                href={item.href}
-                icon={item.icon}
-                isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))}
-                onClick={onClose}
-                showBadge={item.href === '/dashboard/notifications'}
-                badgeCount={unreadCount}
-              />
-              
-              {/* Warehouse Sub-menu */}
-              {isWarehouseItem && onWarehousePage && role === 'warehouse' && (
-                <div className="ml-9 mt-1 space-y-1 animate-in slide-in-from-top-2 duration-300">
-                  <Link
-                    href="/dashboard/warehouse"
-                    onClick={onClose}
-                    className={`block px-4 py-2 rounded-apple text-xs font-bold uppercase tracking-widest transition-all ${
-                      !searchParams.get('view') 
-                        ? 'bg-apple-blue/10 text-apple-blue' 
-                        : 'text-apple-text-secondary hover:text-apple-blue hover:bg-apple-blue/5'
-                    }`}
-                  >
-                    • Console
-                  </Link>
-                  <Link
-                    href="/dashboard/warehouse?view=add-product"
-                    onClick={onClose}
-                    className={`block px-4 py-2 rounded-apple text-xs font-bold uppercase tracking-widest transition-all ${
-                      searchParams.get('view') === 'add-product'
-                        ? 'bg-apple-blue/10 text-apple-blue' 
-                        : 'text-apple-text-secondary hover:text-apple-blue hover:bg-apple-blue/5'
-                    }`}
-                  >
-                    • Add Product
-                  </Link>
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
+      {/* Navigation */}
+      <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto p-3">
+        {visibleNav.map(item => (
+          <SidebarButton
+            key={item.href}
+            label={item.label}
+            href={item.href}
+            icon={item.icon}
+            isActive={
+              pathname === item.href
+              || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
+            }
+            onClick={onClose}
+          />
+        ))}
       </nav>
 
-      <div className="p-3 border-t border-apple-gray-border space-y-1 bg-white/30 backdrop-blur-sm">
+      {/* Sign out */}
+      <div className="border-t border-[var(--apple-gray-border)] bg-white/30 p-3">
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-apple text-sm font-medium text-apple-danger hover:bg-apple-danger/10 transition-all duration-200"
+          className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
         >
-          <span className="flex items-center justify-center w-5 h-5 shrink-0">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </span>
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
           Sign Out
         </button>
       </div>
     </aside>
   );
-};
+}
