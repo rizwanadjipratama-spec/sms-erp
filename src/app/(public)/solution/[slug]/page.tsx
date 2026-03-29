@@ -4,7 +4,7 @@ import { solutions } from '@/lib/data';
 import Link from 'next/link';
 
 interface SolutionPageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateStaticParams() {
@@ -13,8 +13,9 @@ export async function generateStaticParams() {
   }));
 }
 
-export default function SolutionPage({ params }: SolutionPageProps) {
-  const solution = solutions.find((s) => s.slug === params.slug);
+export default async function SolutionPage({ params }: SolutionPageProps) {
+  const { slug } = await params;
+  const solution = solutions.find((s) => s.slug === slug);
 
   if (!solution) {
     notFound();
@@ -53,11 +54,11 @@ export default function SolutionPage({ params }: SolutionPageProps) {
                 <p className="text-2xl text-gray-600 mb-8 leading-relaxed">
                   {solution.description}
                 </p>
-                
+
                 <div className="mb-12">
                   <h3 className="text-2xl font-bold mb-6 text-gray-900">Key Specifications</h3>
                   <ul className="space-y-3 text-lg">
-                    {solution.specs.map((spec, index) => (
+                    {solution.specs.map((spec: string, index: number) => (
                       <li key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-2xl">
                         <div className="w-2 h-2 bg-blue-600 rounded-full mt-3 flex-shrink-0" />
                         <span>{spec}</span>
@@ -71,7 +72,7 @@ export default function SolutionPage({ params }: SolutionPageProps) {
                     <h4 className="text-xl font-semibold mb-2 text-gray-900">Ideal Use Case</h4>
                     <p className="text-lg text-gray-600">{solution.useCase}</p>
                   </div>
-                  
+
                   <Link
                     href="#contact"
                     className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl text-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 w-full text-center"
@@ -100,4 +101,3 @@ export default function SolutionPage({ params }: SolutionPageProps) {
     </div>
   );
 }
-

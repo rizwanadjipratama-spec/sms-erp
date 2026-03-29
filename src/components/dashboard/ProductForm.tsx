@@ -13,9 +13,9 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
-    price: product?.price || 0,
     image_url: product?.image_url || '',
   });
+  const [price, setPrice] = useState<number>(product?.price?.price_regular || 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | undefined>();
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(product?.image_url);
@@ -100,8 +100,8 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
                 <input
                   type="number"
                   required
-                  value={formData.price}
-                  onChange={e => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
+                  value={price}
+                  onChange={e => setPrice(Number(e.target.value))}
                   className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-bold text-apple-blue"
                 />
               </div>

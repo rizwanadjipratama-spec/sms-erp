@@ -5,9 +5,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
+import { authService } from '@/lib/services';
 import { backupService } from '@/lib/backup-service';
-import { getCurrentAuthUser } from '@/lib/workflow';
+import { requireAuthUser } from '@/lib/db';
 import { canAccessRoute } from '@/lib/permissions';
 import type { BackupLog, UserRole } from '@/types/types';
 
@@ -22,7 +22,7 @@ export default function AdminBackupsPage() {
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/admin')) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
 
@@ -43,16 +43,14 @@ export default function AdminBackupsPage() {
     void refresh();
   }, [profile, refresh]);
 
-  useRealtimeTable('backup_logs', undefined, {
+  useRealtimeTable('backup_logs', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 350,
-    channelName: 'admin-backup-logs',
   });
 
   const withActor = async <T,>(action: (actor: { id: string; email?: string; role: UserRole }) => Promise<T>) => {
     if (!profile) throw new Error('Profile not available');
-    const actor = await getCurrentAuthUser();
+    const actor = await requireAuthUser();
     return action({
       id: actor.id,
       email: actor.email || profile.email,

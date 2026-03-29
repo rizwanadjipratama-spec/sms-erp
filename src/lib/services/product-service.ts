@@ -22,6 +22,11 @@ export const productService = {
     return productsDb.getAll(options);
   },
 
+  async getActive(): Promise<Product[]> {
+    const { data } = await productsDb.getAll({ onlyActive: true });
+    return data;
+  },
+
   async getById(id: string) {
     return productsDb.getById(id);
   },

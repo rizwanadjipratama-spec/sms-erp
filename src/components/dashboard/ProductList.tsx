@@ -43,7 +43,7 @@ export function ProductList({ products, onEdit, onDelete, onAddToCart, isAdmin }
           <div className="p-5 flex-1 flex flex-col">
             <div className="flex justify-between items-start gap-3 mb-2">
               <h3 className="font-bold text-apple-text-primary text-sm leading-tight line-clamp-2">{product.name}</h3>
-              <p className="text-sm font-black text-apple-blue whitespace-nowrap">{formatCurrency(product.price)}</p>
+              <p className="text-sm font-black text-apple-blue whitespace-nowrap">{formatCurrency(product.price?.price_regular)}</p>
             </div>
             {product.description && (
               <p className="text-xs text-apple-text-secondary line-clamp-2 mb-4 leading-relaxed font-medium">

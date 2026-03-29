@@ -35,9 +35,8 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
     try {
       // price and is_priced will be handled by productService internally 
       // but we pass them as null/false just in case
-      await onSave({ 
-        ...formData, 
-        price: 0, // Placeholder, service will nullify or DB will handle
+      await onSave({
+        ...formData,
       }, imageFile);
     } catch (error) {
       console.error(error);

@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
-import { getRoleRedirect } from '@/lib/auth';
+import { authService } from '@/lib/services';
+import { supabase } from '@/lib/db';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -21,7 +21,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (loading || !profile) return;
-    router.replace(getRoleRedirect(profile.role));
+    router.replace(authService.getRoleRedirect(profile.role));
   }, [profile, loading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {

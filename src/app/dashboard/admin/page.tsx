@@ -5,9 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
 import { canAccessRoute } from '@/lib/permissions';
-import { analyticsService, workflowEngine } from '@/lib/services';
+import { analyticsService, workflowEngine, authService } from '@/lib/services';
 import { profilesDb, issuesDb, activityLogsDb, requestsDb } from '@/lib/db';
 import { formatCurrency, formatRelative } from '@/lib/format-utils';
 import { DashboardSkeleton, EmptyState, ErrorState, StatCard, StatusBadge } from '@/components/ui';
@@ -37,7 +36,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/admin')) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
 
@@ -136,7 +135,7 @@ export default function AdminDashboard() {
         resolved_at: new Date().toISOString(),
       });
 
-      await workflowEngine.transitionOrder({
+      await workflowEngine.transition({
         request,
         actorId: profile.id,
         actorEmail: profile.email,

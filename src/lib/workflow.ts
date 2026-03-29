@@ -4,7 +4,6 @@ import type { CartItem, ClientType, DbRequest, Notification, Profile, RequestSta
 
 export const ROLE_REDIRECTS: Record<UserRole, string> = {
   client: '/dashboard/client',
-  user: '/dashboard/client',
   marketing: '/dashboard/marketing',
   boss: '/dashboard/boss',
   finance: '/dashboard/finance',
@@ -16,7 +15,7 @@ export const ROLE_REDIRECTS: Record<UserRole, string> = {
 };
 
 export const ORDER_STATUS_FLOW: RequestStatus[] = [
-  'pending',
+  'submitted',
   'priced',
   'approved',
   'invoice_ready',
@@ -31,7 +30,7 @@ export const ORDER_STATUS_FLOW: RequestStatus[] = [
 ];
 
 export const ACTIVE_ORDER_STATUSES: RequestStatus[] = [
-  'pending',
+  'submitted',
   'priced',
   'approved',
   'invoice_ready',
@@ -65,7 +64,7 @@ export async function getCurrentAuthUser() {
   return {
     id: user.id,
     email: user.email,
-    role: (profile?.role || 'user') as UserRole,
+    role: (profile?.role || 'client') as UserRole,
   };
 }
 

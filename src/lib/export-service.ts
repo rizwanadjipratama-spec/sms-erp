@@ -60,12 +60,12 @@ export async function exportSalesReportCsv(startDate: string, endDate: string): 
         fileName: makeFileName('sales-report', startDate, endDate),
         mimeType: 'text/csv;charset=utf-8',
         content: buildCsv(
-          ['Invoice Number', 'Order ID', 'Amount', 'Paid', 'Created At'],
+          ['Invoice Number', 'Order ID', 'Total', 'Paid', 'Created At'],
           report.invoices.map((invoice) => [
             invoice.invoice_number,
             invoice.order_id,
-            invoice.amount,
-            invoice.paid ? 'Yes' : 'No',
+            invoice.total,
+            invoice.status === 'paid' ? 'Yes' : 'No',
             invoice.created_at,
           ])
         ),
@@ -111,8 +111,8 @@ export async function exportInventoryReportCsv(startDate: string, endDate: strin
         fileName: makeFileName('inventory-report', startDate, endDate),
         mimeType: 'text/csv;charset=utf-8',
         content: buildCsv(
-          ['Product ID', 'Order ID', 'Change', 'Reason', 'By User', 'Created At'],
-          report.logs.map((log) => [log.product_id, log.order_id || '', log.change, log.reason, log.by_user || '', log.created_at])
+          ['Product ID', 'Order ID', 'Change', 'Reason', 'Created By', 'Created At'],
+          report.logs.map((log) => [log.product_id, log.order_id || '', log.change, log.reason, log.created_by || '', log.created_at])
         ),
       };
       await logServiceExecution({
@@ -208,12 +208,12 @@ export async function exportInvoiceReportCsv(startDate: string, endDate: string)
         fileName: makeFileName('invoice-report', startDate, endDate),
         mimeType: 'text/csv;charset=utf-8',
         content: buildCsv(
-          ['Invoice Number', 'Order ID', 'Amount', 'Paid', 'Created At'],
+          ['Invoice Number', 'Order ID', 'Total', 'Paid', 'Created At'],
           report.invoices.map((invoice) => [
             invoice.invoice_number,
             invoice.order_id,
-            invoice.amount,
-            invoice.paid ? 'Yes' : 'No',
+            invoice.total,
+            invoice.status === 'paid' ? 'Yes' : 'No',
             invoice.created_at,
           ])
         ),

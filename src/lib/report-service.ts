@@ -13,7 +13,7 @@ function toDateRange(startDate: string, endDate: string, endField = 'created_at'
 export async function getSalesReport(startDate: string, endDate: string) {
   try {
     const range = toDateRange(startDate, endDate);
-    let query = supabase.from('invoices').select('id, order_id, invoice_number, amount, paid, created_at');
+    let query = supabase.from('invoices').select('id, order_id, invoice_number, total, status, created_at');
 
     if (range.start) query = query.gte('created_at', range.start);
     if (range.end) query = query.lte('created_at', range.end);
@@ -27,9 +27,9 @@ export async function getSalesReport(startDate: string, endDate: string) {
     const invoices = (data || []) as Invoice[];
     return {
       invoices,
-      totalSales: invoices.reduce((sum, invoice) => sum + invoice.amount, 0),
-      paidSales: invoices.filter((invoice) => invoice.paid).reduce((sum, invoice) => sum + invoice.amount, 0),
-      unpaidSales: invoices.filter((invoice) => !invoice.paid).reduce((sum, invoice) => sum + invoice.amount, 0),
+      totalSales: invoices.reduce((sum, invoice) => sum + invoice.total, 0),
+      paidSales: invoices.filter((invoice) => invoice.status === 'paid').reduce((sum, invoice) => sum + invoice.total, 0),
+      unpaidSales: invoices.filter((invoice) => invoice.status !== 'paid').reduce((sum, invoice) => sum + invoice.total, 0),
       invoicesCount: invoices.length,
     };
   } catch (error) {
@@ -93,15 +93,15 @@ export async function getInvoiceReport(startDate: string, endDate: string) {
   const sales = await getSalesReport(startDate, endDate);
   return {
     ...sales,
-    paidInvoices: sales.invoices.filter((invoice) => invoice.paid).length,
-    unpaidInvoices: sales.invoices.filter((invoice) => !invoice.paid).length,
+    paidInvoices: sales.invoices.filter((invoice) => invoice.status === 'paid').length,
+    unpaidInvoices: sales.invoices.filter((invoice) => invoice.status !== 'paid').length,
   };
 }
 
 export async function getCustomerReport(startDate: string, endDate: string) {
   try {
     const range = toDateRange(startDate, endDate);
-    let invoicesQuery = supabase.from('invoices').select('order_id, amount, paid, created_at');
+    let invoicesQuery = supabase.from('invoices').select('order_id, total, status, created_at');
     let requestsQuery = supabase.from('requests').select('id, user_id, user_email');
 
   if (range.start) {
@@ -144,7 +144,7 @@ export async function getCustomerReport(startDate: string, endDate: string) {
           total: 0,
           invoices: 0,
         };
-        current.total += invoice.amount;
+        current.total += invoice.total;
         current.invoices += 1;
         acc[request.user_id] = current;
         return acc;

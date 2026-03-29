@@ -2,7 +2,14 @@ import { logActivity } from './activity';
 import { handleServiceError, logServiceExecution, withOperationLock } from './service-utils';
 import { supabase } from './supabase';
 import { formatCurrency } from './format-utils';
-import type { DbRequest, DeliveryLog, DocumentFile, Invoice } from '@/types/types';
+import type { DbRequest, DeliveryLog, Invoice } from '@/types/types';
+
+type DocumentFile = {
+  fileName: string;
+  path: string;
+  contentType: string;
+  signedUrl: string | null;
+};
 import { SYSTEM_USER_ID, SYSTEM_USER_EMAIL, MIME_TYPES } from './constants';
 
 const DOCUMENT_BUCKET = 'documents';
@@ -180,10 +187,10 @@ export const pdfService = {
         `Order ID: ${invoice.order_id}`,
         `Customer: ${request?.user_email || request?.user_id || 'Unknown'}`,
         `Status: ${request?.status || 'invoice_ready'}`,
-        `Amount: ${formatCurrency(invoice.amount)}`,
+        `Amount: ${formatCurrency(invoice.total)}`,
         `Tax: ${formatCurrency(invoice.tax_amount)}`,
         `Due Date: ${invoice.due_date || '-'}`,
-        `Paid: ${invoice.paid ? 'Yes' : 'No'}`,
+        `Paid: ${invoice.status === 'paid' ? 'Yes' : 'No'}`,
         `Paid At: ${invoice.paid_at || '-'}`,
         `Notes: ${invoice.notes || '-'}`,
         `Created At: ${invoice.created_at}`,

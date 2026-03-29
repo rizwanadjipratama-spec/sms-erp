@@ -127,7 +127,7 @@ function buildInventoryTimeline(logs: InventoryLog[]): TimelineEntry[] {
     description: `${log.reason.replace(/_/g, ' ')} on product ${log.product_id} (${log.change > 0 ? '+' : ''}${log.change})`,
     timestamp: log.created_at,
     entityId: log.order_id || log.product_id,
-    actor: log.by_user || null,
+    actor: log.created_by || null,
   }));
 }
 
@@ -162,14 +162,14 @@ export async function getSystemHealthSnapshot(): Promise<SystemHealthSnapshot> {
       supabase.from('automation_events').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('automation_events').select('*', { count: 'exact', head: true }).eq('status', 'failed'),
       supabase.from('automation_events').select('*', { count: 'exact', head: true }).eq('status', 'processed'),
-      supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('paid', false),
+      supabase.from('invoices').select('*', { count: 'exact', head: true }).neq('status', 'paid'),
       supabase.from('products').select('*', { count: 'exact', head: true }).lt('stock', 5),
       supabase.from('issues').select('*', { count: 'exact', head: true }).neq('status', 'resolved'),
       supabase.from('monthly_closing').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('requests').select('*', { count: 'exact', head: true }),
       supabase.from('invoices').select('*', { count: 'exact', head: true }),
       supabase.from('delivery_logs').select('*', { count: 'exact', head: true }),
-      supabase.from('invoices').select('amount').eq('paid', true),
+      supabase.from('invoices').select('total').eq('status', 'paid'),
       supabase.from('activity_logs').select('*', { count: 'exact', head: true }).eq('action', 'email_queued'),
       supabase.from('activity_logs').select('*', { count: 'exact', head: true }).eq('action', 'pdf_generated'),
       supabase.from('system_logs').select('*').order('created_at', { ascending: false }).limit(20),
@@ -279,8 +279,8 @@ export async function getSystemHealthSnapshot(): Promise<SystemHealthSnapshot> {
       throw new Error(inventoryTimelineRes.error.message);
     }
 
-    const paidRevenue = ((paidInvoicesRes.data || []) as Array<{ amount: number }>).reduce(
-      (sum, invoice) => sum + (invoice.amount || 0),
+    const paidRevenue = ((paidInvoicesRes.data || []) as Array<{ total: number }>).reduce(
+      (sum, invoice) => sum + (invoice.total || 0),
       0
     );
 

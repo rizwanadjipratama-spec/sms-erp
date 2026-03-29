@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { getRoleRedirect } from '@/lib/auth';
+import { authService } from '@/lib/services';
 
 export default function DashboardPage() {
   const { profile, loading } = useAuth();
@@ -11,7 +11,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (loading || !profile) return;
-    router.replace(getRoleRedirect(profile.role));
+    router.replace(authService.getRoleRedirect(profile.role));
   }, [loading, profile, router]);
 
   return (

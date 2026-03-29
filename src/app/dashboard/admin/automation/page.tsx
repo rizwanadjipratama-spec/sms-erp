@@ -5,11 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
-import { automationService } from '@/lib/automation-service';
 import { canAccessRoute } from '@/lib/permissions';
+import { authService } from '@/lib/services';
+import { automationService } from '@/lib/automation-service';
+import { requireAuthUser } from '@/lib/db';
 import type { AutomationEvent, AutomationLog } from '@/types/types';
-import { getCurrentAuthUser } from '@/lib/workflow';
 
 export default function AutomationDashboardPage() {
   const { profile, loading } = useAuth();
@@ -22,7 +22,7 @@ export default function AutomationDashboardPage() {
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/admin')) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
 
@@ -47,18 +47,14 @@ export default function AutomationDashboardPage() {
     refresh();
   }, [profile, refresh]);
 
-  useRealtimeTable('automation_events', undefined, {
+  useRealtimeTable('automation_events', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 250,
-    channelName: 'admin-automation-events',
   });
 
-  useRealtimeTable('automation_logs', undefined, {
+  useRealtimeTable('automation_logs', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 250,
-    channelName: 'admin-automation-logs',
   });
 
   const runTask = async (taskId: string, task: () => Promise<unknown>) => {
@@ -130,7 +126,7 @@ export default function AutomationDashboardPage() {
         <button
           onClick={() =>
             runTask('stock', async () => {
-              const actor = await getCurrentAuthUser();
+              const actor = await requireAuthUser();
               await automationService.checkLowStock({
                 id: actor.id,
                 email: actor.email || profile?.email,
@@ -146,7 +142,7 @@ export default function AutomationDashboardPage() {
         <button
           onClick={() =>
             runTask('invoice', async () => {
-              const actor = await getCurrentAuthUser();
+              const actor = await requireAuthUser();
               await automationService.checkOverdueInvoices({
                 id: actor.id,
                 email: actor.email || profile?.email,
@@ -162,7 +158,7 @@ export default function AutomationDashboardPage() {
         <button
           onClick={() =>
             runTask('monthly', async () => {
-              const actor = await getCurrentAuthUser();
+              const actor = await requireAuthUser();
               await automationService.runMonthlyAutomation({
                 id: actor.id,
                 email: actor.email || profile?.email,

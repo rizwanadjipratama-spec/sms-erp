@@ -19,7 +19,7 @@ import type {
 // HELPERS
 // ============================================================================
 
-function paginate<T>(query: ReturnType<typeof supabase.from>, params?: PaginationParams) {
+function paginate<T>(query: any, params?: PaginationParams) {
   if (!params) return query;
   const from = (params.page - 1) * params.pageSize;
   const to = from + params.pageSize - 1;

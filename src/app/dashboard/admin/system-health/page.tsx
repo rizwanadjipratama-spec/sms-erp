@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
+import { authService } from '@/lib/services';
 import { canAccessRoute } from '@/lib/permissions';
 import { getSystemHealthSnapshot, type SystemHealthSnapshot } from '@/lib/system-health-service';
 import { formatCurrency } from '@/lib/format-utils';
@@ -20,7 +20,7 @@ export default function SystemHealthPage() {
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/admin')) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
 
@@ -41,74 +41,54 @@ export default function SystemHealthPage() {
     void refresh();
   }, [profile, refresh]);
 
-  useRealtimeTable('automation_events', undefined, {
+  useRealtimeTable('automation_events', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-automation-events',
   });
 
-  useRealtimeTable('invoices', undefined, {
+  useRealtimeTable('invoices', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-invoices',
   });
 
-  useRealtimeTable('products', undefined, {
+  useRealtimeTable('products', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-products',
   });
 
-  useRealtimeTable('issues', undefined, {
+  useRealtimeTable('issues', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-issues',
   });
 
-  useRealtimeTable('monthly_closing', undefined, {
+  useRealtimeTable('monthly_closing', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-monthly-closing',
   });
 
-  useRealtimeTable('system_logs', undefined, {
+  useRealtimeTable('system_logs', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-system-logs',
   });
 
-  useRealtimeTable('activity_logs', undefined, {
+  useRealtimeTable('activity_logs', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-activity-logs',
   });
 
-  useRealtimeTable('delivery_logs', undefined, {
+  useRealtimeTable('delivery_logs', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-delivery-logs',
   });
 
-  useRealtimeTable('inventory_logs', undefined, {
+  useRealtimeTable('inventory_logs', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-inventory-logs',
   });
 
-  useRealtimeTable('requests', undefined, {
+  useRealtimeTable('requests', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 400,
-    channelName: 'admin-health-requests',
   });
 
   if (loading || fetching || !health) {

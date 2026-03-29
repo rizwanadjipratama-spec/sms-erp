@@ -4,7 +4,7 @@ import { logActivity } from './activity';
 import { inventoryService } from './inventory-service';
 import { handleServiceError, logServiceExecution } from './service-utils';
 import type { DbRequest, Notification, RequestStatus, UserRole } from '@/types/types';
-import { canTransition, PERMISSIONS } from './permissions';
+import { PERMISSIONS } from './permissions';
 
 export const WORKFLOW_STATUSES: RequestStatus[] = [
   'submitted',
@@ -51,9 +51,6 @@ export const WORKFLOW_ROLE_TRANSITIONS: Record<UserRole, Partial<Record<RequestS
   },
   owner: {},
   tax: {},
-  user: {
-    delivered: ['completed'],
-  },
 };
 
 export type TransitionOrderInput = {

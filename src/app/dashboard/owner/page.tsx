@@ -5,9 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
 import { canAccessRoute } from '@/lib/permissions';
-import { analyticsService } from '@/lib/services';
+import { analyticsService, authService } from '@/lib/services';
 import { formatCurrency, formatNumber } from '@/lib/format-utils';
 import { DashboardSkeleton, StatCard, EmptyState, ErrorState, StatusBadge } from '@/components/ui';
 import type { RequestStatus } from '@/types/types';
@@ -25,7 +24,7 @@ export default function OwnerDashboard() {
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/owner')) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
 

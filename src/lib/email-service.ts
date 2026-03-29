@@ -4,7 +4,13 @@ import { pdfService } from './pdf-service';
 import { getSalesReport } from './report-service';
 import { handleServiceError, logServiceExecution, withOperationLock } from './service-utils';
 import { supabase } from './supabase';
-import type { DbRequest, DeliveryLog, EmailAttachment, EmailTemplate, Invoice, Profile } from '@/types/types';
+import type { DbRequest, DeliveryLog, EmailTemplate, Invoice, Profile } from '@/types/types';
+
+type EmailAttachment = {
+  filename: string;
+  path: string;
+  contentType?: string;
+};
 
 type EmailPayload = {
   to?: string[];
@@ -122,17 +128,21 @@ async function getDeliveryContext(data: EventData) {
   };
 }
 
+function toAttachment(doc: { fileName: string; path: string; contentType: string }): EmailAttachment {
+  return { filename: doc.fileName, path: doc.path, contentType: doc.contentType };
+}
+
 async function resolveAttachments(templateName: string, data: EventData): Promise<EmailAttachment[]> {
   if (templateName === 'invoice_created' || templateName === 'invoice_paid') {
     const { invoice, request } = await getInvoiceContext(data);
     if (!invoice) return [];
-    return [await pdfService.generateInvoicePdf({ invoice, request })];
+    return [toAttachment(await pdfService.generateInvoicePdf({ invoice, request }))];
   }
 
   if (templateName === 'order_delivered') {
     const { deliveryLog, request } = await getDeliveryContext(data);
     if (!deliveryLog) return [];
-    return [await pdfService.generateDeliveryNotePdf({ deliveryLog, request })];
+    return [toAttachment(await pdfService.generateDeliveryNotePdf({ deliveryLog, request }))];
   }
 
   if (templateName === 'monthly_report') {
@@ -143,10 +153,10 @@ async function resolveAttachments(templateName: string, data: EventData): Promis
     const summary = await getSalesReport(monthStart, monthEnd);
     const monthLabel = valueAsString(data.monthLabel) || `${year}-${String(month).padStart(2, '0')}`;
     return [
-      await pdfService.generateMonthlyReportPdf({
+      toAttachment(await pdfService.generateMonthlyReportPdf({
         monthLabel,
         summary,
-      }),
+      })),
     ];
   }
 

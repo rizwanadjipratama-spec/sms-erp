@@ -1,7 +1,7 @@
 import { deliveryService } from './delivery-service';
 import { inventoryService } from './inventory-service';
 import { supabase } from './supabase';
-import type { ActivityLog, DbRequest, Invoice, MonthlyClosing, Product, Profile } from '@/types/types';
+import type { ActivityLog, DbRequest, Invoice, InvoiceStatus, MonthlyClosing, Product, Profile } from '@/types/types';
 
 type MonthlyMetric = {
   month: string;
@@ -64,7 +64,7 @@ type InvoiceFetchOptions = {
   fields?: string;
   limit?: number;
   since?: string;
-  paid?: boolean;
+  status?: InvoiceStatus | InvoiceStatus[];
 };
 
 const ANALYTICS_MONTH_WINDOW = 12;
@@ -104,10 +104,10 @@ async function fetchRequests(options: RequestFetchOptions = {}) {
 
 async function fetchInvoices(options: InvoiceFetchOptions = {}) {
   const {
-    fields = 'id, order_id, invoice_number, amount, paid, paid_at, created_at',
+    fields = 'id, order_id, invoice_number, total, status, paid_at, created_at',
     limit,
     since,
-    paid,
+    status,
   } = options;
   let query = supabase
     .from('invoices')
@@ -115,7 +115,13 @@ async function fetchInvoices(options: InvoiceFetchOptions = {}) {
     .order('created_at', { ascending: false });
 
   if (since) query = query.gte('created_at', since);
-  if (typeof paid === 'boolean') query = query.eq('paid', paid);
+  if (status) {
+    if (Array.isArray(status)) {
+      query = query.in('status', status);
+    } else {
+      query = query.eq('status', status);
+    }
+  }
   if (limit) query = query.limit(limit);
 
   const { data, error } = await query;
@@ -128,7 +134,7 @@ async function fetchInvoices(options: InvoiceFetchOptions = {}) {
 
 async function fetchProductsAndPrices() {
   const [productsRes, pricesRes] = await Promise.all([
-    supabase.from('products').select('id, name, stock, category, status'),
+    supabase.from('products').select('id, name, stock, min_stock, unit, category, is_active, is_priced'),
     supabase.from('price_list').select('product_id, price_regular'),
   ]);
 
@@ -149,14 +155,14 @@ async function fetchProductsAndPrices() {
 
 export async function getMonthlyRevenue(): Promise<MonthlyMetric[]> {
   const invoices = await fetchInvoices({
-    fields: 'amount, paid, created_at',
+    fields: 'total, status, created_at',
     since: getWindowStart(),
   });
   const grouped = invoices.reduce<Record<string, number>>((acc, invoice) => {
-    if (!invoice.paid) return acc;
+    if (invoice.status !== 'paid') return acc;
     const key = monthKey(invoice.created_at);
     if (!key) return acc;
-    acc[key] = (acc[key] || 0) + invoice.amount;
+    acc[key] = (acc[key] || 0) + invoice.total;
     return acc;
   }, {});
 
@@ -231,24 +237,24 @@ export async function getOpenIssuesCount() {
 
 export async function getUnpaidInvoices() {
   const invoices = await fetchInvoices({
-    fields: 'id, order_id, invoice_number, amount, paid, due_date, created_at',
-    paid: false,
+    fields: 'id, order_id, invoice_number, total, status, due_date, created_at',
+    status: ['draft', 'issued', 'overdue'],
     limit: 50,
   });
   const { count, error } = await supabase
     .from('invoices')
     .select('*', { count: 'exact', head: true })
-    .eq('paid', false);
+    .in('status', ['draft', 'issued', 'overdue']);
 
   if (error) {
     console.error('Supabase error:', error);
     throw new Error(error.message);
   }
 
-  const unpaid = invoices.filter((invoice) => !invoice.paid);
+  const unpaid = invoices.filter((invoice) => invoice.status !== 'paid');
   return {
     count: count || 0,
-    totalAmount: unpaid.reduce((sum, invoice) => sum + invoice.amount, 0),
+    totalAmount: unpaid.reduce((sum, invoice) => sum + invoice.total, 0),
     invoices: unpaid,
   };
 }
@@ -256,7 +262,7 @@ export async function getUnpaidInvoices() {
 export async function getTopCustomers(limit = 5): Promise<TopCustomer[]> {
   const since = getWindowStart(12);
   const [invoices, requests] = await Promise.all([
-    fetchInvoices({ fields: 'order_id, amount, paid', since }),
+    fetchInvoices({ fields: 'order_id, total, status', since }),
     fetchRequests({ fields: 'id, user_id, user_email', since }),
   ]);
 
@@ -274,7 +280,7 @@ export async function getTopCustomers(limit = 5): Promise<TopCustomer[]> {
       totalSpending: 0,
       invoicesCount: 0,
     };
-    current.totalSpending += invoice.amount;
+    current.totalSpending += invoice.total;
     current.invoicesCount += 1;
     acc[request.user_id] = current;
     return acc;
@@ -365,19 +371,19 @@ export async function getRevenueAnalytics() {
   const [monthlyRevenue, invoices] = await Promise.all([
     getMonthlyRevenue(),
     fetchInvoices({
-      fields: 'amount, paid, created_at',
+      fields: 'total, status, created_at',
       since: getWindowStart(),
     }),
   ]);
   const currentMonth = getCurrentMonthKey();
   const paidRevenueThisMonth = invoices
-    .filter((invoice) => invoice.paid && monthKey(invoice.created_at) === currentMonth)
-    .reduce((sum, invoice) => sum + invoice.amount, 0);
+    .filter((invoice) => invoice.status === 'paid' && monthKey(invoice.created_at) === currentMonth)
+    .reduce((sum, invoice) => sum + invoice.total, 0);
 
   return {
     monthlyRevenue,
     paidRevenueThisMonth,
-    totalPaidRevenue: invoices.filter((invoice) => invoice.paid).reduce((sum, invoice) => sum + invoice.amount, 0),
+    totalPaidRevenue: invoices.filter((invoice) => invoice.status === 'paid').reduce((sum, invoice) => sum + invoice.total, 0),
   };
 }
 
@@ -385,7 +391,7 @@ export async function getOrdersAnalytics() {
   const [monthlyOrders, requests] = await Promise.all([
     getMonthlyOrders(),
     fetchRequests({
-      fields: 'id, status, created_at, user_email, total',
+      fields: 'id, status, created_at, user_email, total_price',
       since: getWindowStart(),
     }),
   ]);
@@ -489,12 +495,12 @@ export async function getOwnerDashboardBundle(): Promise<OwnerDashboardBundle> {
   ] =
     await Promise.all([
       fetchRequests({
-        fields: 'id, user_id, user_email, status, created_at, total',
+        fields: 'id, user_id, user_email, status, created_at, total_price, updated_at',
         since: windowStart,
       }),
       getRecentOrders(),
       fetchInvoices({
-        fields: 'id, order_id, invoice_number, amount, paid, due_date, created_at',
+        fields: 'id, order_id, invoice_number, total, status, due_date, created_at',
         since: windowStart,
       }),
       deliveryService.getDeliveryAnalytics(),
@@ -515,17 +521,17 @@ export async function getOwnerDashboardBundle(): Promise<OwnerDashboardBundle> {
       supabase
         .from('invoices')
         .select('*', { count: 'exact', head: true })
-        .eq('paid', false),
+        .in('status', ['draft', 'issued', 'overdue']),
     ]);
 
   if (profilesRes.error) throw new Error(profilesRes.error.message);
 
   const currentMonth = getCurrentMonthKey();
   const monthlyRevenueMap = invoices.reduce<Record<string, number>>((acc, invoice) => {
-    if (!invoice.paid) return acc;
+    if (invoice.status !== 'paid') return acc;
     const key = monthKey(invoice.created_at);
     if (!key) return acc;
-    acc[key] = (acc[key] || 0) + invoice.amount;
+    acc[key] = (acc[key] || 0) + invoice.total;
     return acc;
   }, {});
 
@@ -566,8 +572,8 @@ export async function getOwnerDashboardBundle(): Promise<OwnerDashboardBundle> {
   const ordersInProgress = ordersInProgressRes.count || 0;
   const unpaidInvoices = unpaidInvoicesRes.count || 0;
   const paidRevenueThisMonth = invoices
-    .filter((invoice) => invoice.paid && monthKey(invoice.created_at) === currentMonth)
-    .reduce((sum, invoice) => sum + invoice.amount, 0);
+    .filter((invoice) => invoice.status === 'paid' && monthKey(invoice.created_at) === currentMonth)
+    .reduce((sum, invoice) => sum + invoice.total, 0);
 
   return {
     stats: {
@@ -583,7 +589,7 @@ export async function getOwnerDashboardBundle(): Promise<OwnerDashboardBundle> {
     revenue: {
       monthlyRevenue,
       paidRevenueThisMonth,
-      totalPaidRevenue: invoices.filter((invoice) => invoice.paid).reduce((sum, invoice) => sum + invoice.amount, 0),
+      totalPaidRevenue: invoices.filter((invoice) => invoice.status === 'paid').reduce((sum, invoice) => sum + invoice.total, 0),
     },
     orders: {
       monthlyOrders,
@@ -622,7 +628,7 @@ export async function getRecentActivityLogs(limit = 12): Promise<ActivityLog[]> 
 export async function getRecentOrders(limit = 10): Promise<DbRequest[]> {
   const { data, error } = await supabase
     .from('requests')
-    .select('id, user_id, user_email, items, total, price_total, status, priority, created_at, rejection_reason')
+    .select('id, user_id, user_email, total_price, status, priority, created_at, updated_at, rejection_reason')
     .order('created_at', { ascending: false })
     .limit(limit);
 

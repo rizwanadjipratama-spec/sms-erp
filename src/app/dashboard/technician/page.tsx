@@ -4,9 +4,8 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
 import { canAccessRoute } from '@/lib/permissions';
-import { deliveryService } from '@/lib/services';
+import { deliveryService, authService } from '@/lib/services';
 import { requireAuthUser } from '@/lib/db';
 import { formatDateTime, formatRelative, formatOrderId } from '@/lib/format-utils';
 import { StatCard } from '@/components/ui/StatCard';
@@ -33,7 +32,7 @@ export default function TechnicianDashboard() {
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/technician')) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
 

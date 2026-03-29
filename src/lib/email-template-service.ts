@@ -10,6 +10,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Request Received</h1><p>Your request <strong>{{requestId}}</strong> has been submitted.</p><p>Status: {{status}}</p>',
     variables: ['requestId', 'status', 'customerEmail'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
   {
     name: 'request_approved',
@@ -17,6 +19,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Request Approved</h1><p>Your request <strong>{{requestId}}</strong> has been approved.</p><p>{{message}}</p>',
     variables: ['requestId', 'message', 'customerEmail'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
   {
     name: 'request_rejected',
@@ -24,6 +28,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Request Rejected</h1><p>Your request <strong>{{requestId}}</strong> was rejected.</p><p>Reason: {{rejectionReason}}</p>',
     variables: ['requestId', 'rejectionReason', 'customerEmail'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
   {
     name: 'invoice_created',
@@ -31,6 +37,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Invoice Created</h1><p>Invoice <strong>{{invoiceNumber}}</strong> is ready.</p><p>Amount: {{amount}}</p><p>Due date: {{dueDate}}</p>',
     variables: ['invoiceNumber', 'amount', 'dueDate', 'customerEmail'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
   {
     name: 'invoice_paid',
@@ -38,6 +46,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Invoice Paid</h1><p>Invoice <strong>{{invoiceNumber}}</strong> has been marked paid.</p><p>Amount: {{amount}}</p>',
     variables: ['invoiceNumber', 'amount', 'customerEmail'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
   {
     name: 'order_ready',
@@ -45,6 +55,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Order Ready</h1><p>Your order <strong>{{requestId}}</strong> is ready for delivery.</p>',
     variables: ['requestId', 'customerEmail'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
   {
     name: 'order_delivered',
@@ -52,6 +64,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Order Delivered</h1><p>Your order <strong>{{requestId}}</strong> has been delivered.</p><p>{{message}}</p>',
     variables: ['requestId', 'message', 'customerEmail'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
   {
     name: 'issue_created',
@@ -59,6 +73,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Issue Created</h1><p>An issue was reported for request <strong>{{requestId}}</strong>.</p><p>{{message}}</p>',
     variables: ['requestId', 'message', 'customerEmail'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
   {
     name: 'issue_resolved',
@@ -66,6 +82,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Issue Resolved</h1><p>The issue for request <strong>{{requestId}}</strong> has been resolved.</p><p>{{message}}</p>',
     variables: ['requestId', 'message', 'customerEmail'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
   {
     name: 'monthly_report',
@@ -73,6 +91,8 @@ const DEFAULT_EMAIL_TEMPLATES: TemplateSeed[] = [
     body_html:
       '<h1>Monthly Report</h1><p>Attached is the monthly report for <strong>{{monthLabel}}</strong>.</p><p>Total sales: {{totalSales}}</p>',
     variables: ['monthLabel', 'totalSales', 'paidSales', 'unpaidSales'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   },
 ];
 
@@ -93,6 +113,8 @@ function getFallbackTemplate(name: string): EmailTemplate {
     subject: `ERP Notification - ${name}`,
     body_html: '<p>{{message}}</p>',
     variables: ['message'],
+    is_active: true,
+    updated_at: new Date().toISOString(),
   };
 
   return {

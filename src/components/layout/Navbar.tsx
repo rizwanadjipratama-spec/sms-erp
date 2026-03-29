@@ -14,11 +14,11 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState<MenuType>(null);
-  const { total } = useRequest();
+  const { itemCount } = useRequest();
   const { profile, logout, loading } = useAuth();
   const router = useRouter();
 
-  const requestCount = total;
+  const requestCount = itemCount;
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 

@@ -2,8 +2,14 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { useCmsSection } from '@/hooks/useCms';
 
-const Contact = () => {
+export default function Contact() {
+  const { section } = useCmsSection('cta');
+
+  const title = section?.title || 'Ready to discuss\nyour laboratory needs?';
+  const subtitle = section?.subtitle || 'Our team is ready to help you find the best solution.';
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -12,7 +18,6 @@ const Contact = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
     alert('Thank you! We\'ll get back to you soon.');
   };
 
@@ -24,11 +29,12 @@ const Contact = () => {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
-            Ready to discuss
-            <br />
-            your laboratory needs?
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900 whitespace-pre-line">
+            {title}
           </h2>
+          {subtitle && (
+            <p className="text-xl text-gray-600 mb-8">{subtitle}</p>
+          )}
           <div className="space-y-6 mb-8">
             <div className="flex items-start space-x-4">
               <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -104,7 +110,4 @@ const Contact = () => {
       </div>
     </section>
   );
-};
-
-export default Contact;
-
+}

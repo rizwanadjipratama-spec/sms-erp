@@ -4,10 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
 import { canAccessRoute } from '@/lib/permissions';
 import { requestsDb, profilesDb } from '@/lib/db';
-import { workflowEngine } from '@/lib/services/workflow-engine';
+import { workflowEngine, authService } from '@/lib/services';
 import { formatCurrency, formatDateTime, formatOrderId } from '@/lib/format-utils';
 import { DashboardSkeleton, EmptyState, ErrorState, StatCard, StatusBadge } from '@/components/ui';
 import type { DbRequest, Profile } from '@/types/types';
@@ -27,7 +26,7 @@ export default function BossDashboard() {
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/boss')) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
 

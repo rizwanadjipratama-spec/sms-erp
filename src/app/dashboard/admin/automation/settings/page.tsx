@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
+import { authService } from '@/lib/services';
 import { automationService } from '@/lib/automation-service';
 import { SYSTEM_EVENTS, type SystemEventType } from '@/lib/events';
 import { canAccessRoute } from '@/lib/permissions';
@@ -24,7 +24,7 @@ export default function AutomationSettingsPage() {
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/admin')) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
 
@@ -49,18 +49,14 @@ export default function AutomationSettingsPage() {
     refresh();
   }, [profile, refresh]);
 
-  useRealtimeTable('automation_webhooks', undefined, {
+  useRealtimeTable('automation_webhooks', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 250,
-    channelName: 'admin-automation-webhooks',
   });
 
-  useRealtimeTable('automation_logs', undefined, {
+  useRealtimeTable('automation_logs', undefined, refresh, {
     enabled: Boolean(profile),
-    onEvent: refresh,
     debounceMs: 250,
-    channelName: 'admin-automation-settings-logs',
   });
 
   const saveWebhook = async () => {

@@ -1,9 +1,23 @@
-import { Solution, Product, Partner, Location } from '@/types/types';
+import { CmsSolution, Product, CmsPartner } from '@/types/types';
 import { supabase } from './supabase';
+
+interface Location {
+  name: string;
+}
 
 /* ================= SOLUTIONS ================= */
 
-export const solutions: Solution[] = [
+interface StaticSolution {
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+  image: string;
+  specs: string[];
+  useCase: string;
+}
+
+export const solutions: StaticSolution[] = [
   {
     slug: 'hematology-analyzer',
     title: 'Hematology Analyzer',
@@ -58,33 +72,53 @@ export const products: Product[] = [
     id: 'hema-1',
     name: 'Hematology Analyzer',
     category: 'Equipment',
-    image: '/products/hema.png',
+    image_url: '/products/hema.png',
     stock: 5,
-    status: 'in_stock',
+    min_stock: 1,
+    unit: 'unit',
+    is_active: true,
+    is_priced: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
   {
     id: 'chem-1',
     name: 'Chemistry Analyzer',
     category: 'Equipment',
-    image: '/products/chem.png',
+    image_url: '/products/chem.png',
     stock: 3,
-    status: 'in_stock',
+    min_stock: 1,
+    unit: 'unit',
+    is_active: true,
+    is_priced: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
   {
     id: 'poct-1',
     name: 'POCT Device',
     category: 'Equipment',
-    image: '/products/poct.png',
+    image_url: '/products/poct.png',
     stock: 2,
-    status: 'in_stock',
+    min_stock: 1,
+    unit: 'unit',
+    is_active: true,
+    is_priced: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
   {
     id: 'reag-1',
     name: 'Lab Reagents Kit',
     category: 'Reagents',
-    image: '/products/reagents.png',
+    image_url: '/products/reagents.png',
     stock: 10,
-    status: 'in_stock',
+    min_stock: 2,
+    unit: 'kit',
+    is_active: true,
+    is_priced: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   },
 ];
 
@@ -110,7 +144,7 @@ export const getProducts = async (): Promise<Product[]> => {
 	const { data, error } = await supabase
 		.from('products')
 		.select('*')
-		.eq('status', 'in_stock')
+		.eq('is_active', true)
 		.order('category')
 		.order('name');
 		
@@ -138,29 +172,29 @@ export const getProductsByIds = async (ids: string[]): Promise<Map<string, strin
 	return nameMap;
 };
 
-export const getSolutions = async (): Promise<Solution[]> => {
-  const { data, error } = await supabase.from('solutions').select('*');
+export const getSolutions = async (): Promise<CmsSolution[]> => {
+  const { data, error } = await supabase.from('cms_solutions').select('*').eq('is_active', true).order('sort_order');
   if (error) {
     console.error('Error fetching solutions:', error);
     return [];
   }
-  return data as Solution[];
+  return data as CmsSolution[];
 };
 
-export const getPartners = async (): Promise<Partner[]> => {
-  const { data, error } = await supabase.from('partners').select('*');
+export const getPartners = async (): Promise<CmsPartner[]> => {
+  const { data, error } = await supabase.from('cms_partners').select('*').eq('is_active', true).order('sort_order');
   if (error) {
     console.error('Error fetching partners:', error);
     return [];
   }
-  return data as Partner[];
+  return data as CmsPartner[];
 };
 
-export const getLocations = async (): Promise<Location[]> => {
+export const getLocations = async (): Promise<string[]> => {
   const { data, error } = await supabase.from('locations').select('name');
   if (error) {
     console.error('Error fetching locations:', error);
     return [];
   }
-  return data.map(item => item.name) as Location[];
+  return data.map((item: Location) => item.name);
 };

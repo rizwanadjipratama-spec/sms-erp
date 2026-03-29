@@ -67,6 +67,7 @@ async function insertInventoryLog(log: Omit<InventoryLog, 'id' | 'created_at'>) 
   const { error } = await supabase.from('inventory_logs').insert({
     product_id: log.product_id,
     change: log.change,
+    balance: log.balance,
     reason: log.reason,
     created_by: log.created_by || null,
   });
@@ -214,6 +215,7 @@ export const inventoryService = {
           await insertInventoryLog({
             product_id: item.product_id,
             change: -item.quantity,
+            balance: 0,
             reason: 'request_preparing',
             created_by: actor.id,
           });
@@ -323,6 +325,7 @@ export const inventoryService = {
         await insertInventoryLog({
           product_id: product.id,
           change,
+          balance: 0,
           reason,
           created_by: actor.id,
         });

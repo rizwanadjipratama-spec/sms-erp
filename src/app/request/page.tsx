@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRequest } from '@/lib/request-context';
 import Link from 'next/link';
-import { productService } from '@/lib/product-service';
+import { productService } from '@/lib/services';
 import { Product } from '@/types/types';
 import { formatCurrency } from '@/lib/format-utils';
 
@@ -25,7 +25,7 @@ export default function RequestPage() {
   const router = useRouter();
 
   useEffect(() => {
-    productService.fetchProducts()
+    productService.getActive()
       .then((data) => {
         setProducts(data);
         setProductsLoading(false);
@@ -85,7 +85,7 @@ export default function RequestPage() {
     try {
       await submit({
         priority,
-        reason,
+        note: reason || undefined,
         promise_date: hasDebtIssue ? promiseDate : undefined,
         payment_note: hasDebtIssue ? paymentNote : undefined,
       });

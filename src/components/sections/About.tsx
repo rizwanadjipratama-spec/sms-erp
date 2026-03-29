@@ -1,6 +1,14 @@
-import { motion } from 'framer-motion';
+'use client';
 
-const About = () => {
+import { motion } from 'framer-motion';
+import { useCmsSection } from '@/hooks/useCms';
+
+export default function About() {
+  const { section } = useCmsSection('about');
+
+  const title = section?.title || 'Real Experience.\nReal Reliability.';
+  const body = section?.body || 'We understand laboratory workflows — not just from theory, but from real operational experience.\n\nOur team brings hands-on knowledge of equipment installation, daily operations, maintenance challenges, and troubleshooting under pressure.';
+
   return (
     <section id="about" className="py-32 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -11,16 +19,11 @@ const About = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
-              Real Experience.
-              <br />
-              Real Reliability.
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900 whitespace-pre-line">
+              {title}
             </h2>
-            <p className="text-xl text-gray-600 leading-relaxed max-w-lg">
-              We understand laboratory workflows — not just from theory, but from real operational experience.
-              <br />
-              <br />
-              Our team brings hands-on knowledge of equipment installation, daily operations, maintenance challenges, and troubleshooting under pressure.
+            <p className="text-xl text-gray-600 leading-relaxed max-w-lg whitespace-pre-line">
+              {body}
             </p>
           </motion.div>
           <motion.div
@@ -50,7 +53,4 @@ const About = () => {
       </div>
     </section>
   );
-};
-
-export default About;
-
+}

@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
-import { getRoleRedirect } from '@/lib/auth';
 import { canAccessRoute } from '@/lib/permissions';
 import { requestsDb } from '@/lib/db';
-import { workflowEngine, ACTIVE_STATUSES, STATUS_LABELS } from '@/lib/services/workflow-engine';
+import { workflowEngine, ACTIVE_STATUSES, authService } from '@/lib/services';
 import { formatCurrency, formatDateTime, formatDate, formatOrderId } from '@/lib/format-utils';
 import {
   DashboardSkeleton,
@@ -58,7 +57,7 @@ export default function ClientDashboard() {
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
     if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/client')) {
-      router.replace(getRoleRedirect(profile.role));
+      router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
 
