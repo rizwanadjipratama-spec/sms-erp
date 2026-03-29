@@ -19,6 +19,7 @@ interface WarehouseConsoleProps {
   updateStock: (product: Product) => Promise<void>;
   handleEditProduct: (product: Product) => void;
   handleDeleteProduct: (id: string) => Promise<void>;
+  onAddProduct: () => void;
 }
 
 export function WarehouseConsole({
@@ -32,6 +33,7 @@ export function WarehouseConsole({
   updateStock,
   handleEditProduct,
   handleDeleteProduct,
+  onAddProduct,
 }: WarehouseConsoleProps) {
   const byStatus = useMemo(
     () => ({
@@ -111,10 +113,10 @@ export function WarehouseConsole({
         ].map((section) => (
           <section key={section.title} className="space-y-4">
             <div className="flex items-baseline justify-between px-1">
-              <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+              <h2 className="text-xl font-bold text-apple-text-primary tracking-tight">
                 {section.title}
               </h2>
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+              <span className="text-xs font-bold text-apple-text-secondary uppercase tracking-widest">
                 {section.items.length} orders
               </span>
             </div>
@@ -130,45 +132,45 @@ export function WarehouseConsole({
                 {section.items.map((request) => (
                   <div
                     key={request.id}
-                    className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                    className="bg-white border border-apple-gray-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="font-bold text-gray-900 text-sm">
+                        <p className="font-bold text-apple-text-primary text-sm">
                           {request.user_email || 'Client'}
                         </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-xs text-apple-text-secondary mt-0.5">
                           {formatRelative(request.created_at)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <StatusBadge status={request.status} />
                         {request.priority === 'cito' && (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 uppercase">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-apple-danger/10 text-apple-danger uppercase">
                             {request.priority}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="space-y-2 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <div className="space-y-2 mb-6 bg-apple-gray-bg p-4 rounded-xl border border-apple-gray-border">
                       {(request.request_items || []).map((item, idx) => (
                         <div key={idx} className="flex justify-between text-xs font-medium">
-                          <span className="text-gray-600">
+                          <span className="text-apple-text-secondary">
                             {item.products?.name || item.product_id}
                           </span>
-                          <span className="text-gray-900 font-bold">x{item.quantity}</span>
+                          <span className="text-apple-text-primary font-bold">x{item.quantity}</span>
                         </div>
                       ))}
                       {(!request.request_items || request.request_items.length === 0) && (
-                        <p className="text-xs text-gray-400 text-center italic">No items found</p>
+                        <p className="text-xs text-apple-text-secondary text-center italic">No items found</p>
                       )}
                     </div>
 
                     <button
                       onClick={() => updateOrder(request, section.nextStatus)}
                       disabled={processingId === request.id}
-                      className="w-full py-3 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm active:scale-95 transition-all disabled:opacity-50 tracking-wider uppercase"
+                      className="w-full py-3 bg-apple-text-primary hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm active:scale-[0.98] transition-all disabled:opacity-50 tracking-wider uppercase"
                     >
                       {processingId === request.id ? 'UPDATING...' : section.nextLabel}
                     </button>
@@ -181,15 +183,15 @@ export function WarehouseConsole({
       </div>
 
       {/* Inventory Management Section */}
-      <section className="bg-white border border-gray-200 rounded-2xl p-8 sm:p-12 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+      <section className="bg-white border border-apple-gray-border rounded-2xl p-8 sm:p-12 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-apple-blue/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 relative z-10">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+            <h2 className="text-2xl font-bold text-apple-text-primary tracking-tight">
               Real-time Inventory
             </h2>
-            <p className="text-gray-500 text-sm font-medium mt-1">
+            <p className="text-apple-text-secondary text-sm font-medium mt-1">
               Adjust stock levels and monitor availability.
             </p>
           </div>
@@ -206,22 +208,22 @@ export function WarehouseConsole({
             {products.map((product) => (
               <div
                 key={product.id}
-                className="rounded-2xl border border-gray-200 bg-gray-50/50 p-5 hover:bg-white hover:shadow-lg transition-all duration-300"
+                className="rounded-2xl border border-apple-gray-border bg-apple-gray-bg/50 p-5 hover:bg-white hover:shadow-lg transition-all duration-300"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{product.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {product.category || 'General'}
+                    <p className="text-sm font-bold text-apple-text-primary truncate">{product.name}</p>
+                    <p className="text-xs text-apple-text-secondary mt-0.5">
+                      {product.category || 'General'} &middot; {product.unit}
                     </p>
                   </div>
                   <span
-                    className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                       product.stock > (product.min_stock ?? 5)
-                        ? 'bg-emerald-50 text-emerald-600'
+                        ? 'bg-apple-success/10 text-apple-success'
                         : product.stock > 0
-                          ? 'bg-amber-50 text-amber-600'
-                          : 'bg-red-50 text-red-600'
+                          ? 'bg-apple-warning/10 text-apple-warning'
+                          : 'bg-apple-danger/10 text-apple-danger'
                     }`}
                   >
                     {product.stock > 0 ? `${product.stock} ${product.unit}` : 'OUT'}
@@ -240,16 +242,16 @@ export function WarehouseConsole({
                           [product.id]: Number(e.target.value),
                         }))
                       }
-                      className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                      className="w-full bg-white border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm font-bold text-apple-text-primary focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue outline-none transition-all"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-apple-text-secondary">
                       QTY
                     </span>
                   </div>
                   <button
                     onClick={() => updateStock(product)}
                     disabled={processingId === product.id || stockInputs[product.id] === product.stock}
-                    className="px-6 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-sm"
+                    className="px-6 bg-apple-blue hover:bg-apple-blue-hover text-white text-xs font-bold rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 shadow-sm"
                   >
                     {processingId === product.id ? '...' : 'SAVE'}
                   </button>
@@ -260,13 +262,24 @@ export function WarehouseConsole({
         )}
       </section>
 
-      {/* Product Management Section */}
-      <section className="pt-12 border-t border-gray-200">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Catalog Items</h2>
-          <p className="text-gray-500 text-sm font-medium mt-1">
-            Edit or remove existing items from the public catalog.
-          </p>
+      {/* Product Catalog Section */}
+      <section className="pt-12 border-t border-apple-gray-border">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-apple-text-primary tracking-tight">Catalog Items</h2>
+            <p className="text-apple-text-secondary text-sm font-medium mt-1">
+              Manage products in the warehouse catalog.
+            </p>
+          </div>
+          <button
+            onClick={onAddProduct}
+            className="flex items-center gap-2 bg-apple-blue hover:bg-apple-blue-hover text-white text-xs font-bold px-5 py-3 rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-apple-blue/20"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            ADD PRODUCT
+          </button>
         </div>
 
         <ProductList
@@ -278,10 +291,10 @@ export function WarehouseConsole({
       </section>
 
       {/* Activity Log Section */}
-      <section className="bg-gray-50 border border-gray-200 rounded-2xl p-8 sm:p-12">
+      <section className="bg-apple-gray-bg border border-apple-gray-border rounded-2xl p-8 sm:p-12">
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 tracking-tight">Activity Log</h2>
-          <p className="text-gray-500 text-sm font-medium mt-1">
+          <h2 className="text-xl font-bold text-apple-text-primary tracking-tight">Activity Log</h2>
+          <p className="text-apple-text-secondary text-sm font-medium mt-1">
             Audit trail of all inventory movements.
           </p>
         </div>
@@ -297,27 +310,27 @@ export function WarehouseConsole({
             {inventoryLogs.map((log) => (
               <div
                 key={log.id}
-                className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between gap-4 hover:border-blue-200 transition-colors"
+                className="bg-white border border-apple-gray-border rounded-xl p-4 flex items-center justify-between gap-4 hover:border-apple-blue/30 transition-colors"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
+                  <p className="text-sm font-semibold text-apple-text-primary truncate">
                     {log.product?.name || log.product_id.split('-')[0]}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-apple-text-secondary mt-1">
                     {log.reason.replace(/_/g, ' ')} &middot; {formatRelative(log.created_at)}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
                   <p
                     className={`text-sm font-bold ${
-                      log.change >= 0 ? 'text-emerald-600' : 'text-red-600'
+                      log.change >= 0 ? 'text-apple-success' : 'text-apple-danger'
                     }`}
                   >
                     {log.change >= 0 ? '+' : ''}
                     {log.change}
                   </p>
-                  <p className="text-xs text-gray-400 truncate max-w-[80px]">
-                    {log.created_by || 'SYSTEM'}
+                  <p className="text-[10px] text-apple-text-secondary truncate max-w-[80px]">
+                    bal: {log.balance}
                   </p>
                 </div>
               </div>

@@ -18,7 +18,7 @@ export type UserRole =
   | 'owner'
   | 'tax';
 
-export type ClientType = 'regular' | 'kso';
+export type ClientType = 'regular' | 'kso' | 'cost_per_test';
 
 export type RequestStatus =
   | 'submitted'
@@ -52,7 +52,8 @@ export type ChatChannelType =
   | 'warehouse'
   | 'technician'
   | 'admin'
-  | 'owner';
+  | 'owner'
+  | 'tax';
 
 export type ProductCategory =
   | 'Equipment'
@@ -80,6 +81,7 @@ export interface Profile {
   pic_name?: string;
   company?: string;
   avatar_url?: string;
+  handled_by?: string;
   debt_amount: number;
   debt_limit: number;
   two_factor_secret?: string | null;
@@ -90,6 +92,8 @@ export interface Profile {
   updated_at: string;
   created_by?: string;
   updated_by?: string;
+  // Joined fields (not in DB)
+  handler?: { name?: string; email: string };
 }
 
 export interface Product {

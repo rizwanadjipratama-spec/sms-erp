@@ -236,10 +236,10 @@ export default function WarehouseDashboard() {
       {warehouseView === 'console' ? (
         <div className="space-y-12 animate-in fade-in duration-500">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+            <h1 className="text-3xl font-black text-apple-text-primary tracking-tight">
               Warehouse Console
             </h1>
-            <p className="text-gray-500 text-sm mt-1 font-medium">
+            <p className="text-apple-text-secondary text-sm mt-1 font-medium">
               Global inventory and fulfillment tracking.
             </p>
           </div>
@@ -254,6 +254,10 @@ export default function WarehouseDashboard() {
             updateStock={updateStock}
             handleEditProduct={handleEditProduct}
             handleDeleteProduct={handleDeleteProduct}
+            onAddProduct={() => {
+              setWarehouseView('add-product');
+              router.push('/dashboard/warehouse?view=add-product');
+            }}
           />
         </div>
       ) : (

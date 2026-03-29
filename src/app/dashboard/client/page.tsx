@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
-import { requestsDb } from '@/lib/db';
+import { requestsDb, profilesDb } from '@/lib/db';
 import { workflowEngine, ACTIVE_STATUSES, authService } from '@/lib/services';
 import { formatCurrency, formatDateTime, formatDate, formatOrderId } from '@/lib/format-utils';
 import {
@@ -44,6 +44,7 @@ export default function ClientDashboard() {
   const router = useRouter();
 
   const [requests, setRequests] = useState<DbRequest[]>([]);
+  const [handlerName, setHandlerName] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -71,6 +72,12 @@ export default function ClientDashboard() {
     try {
       const { data } = await requestsDb.getByUser(profile.id);
       setRequests(data);
+
+      // Fetch handler (marketing person) name
+      if (profile.handled_by) {
+        const handler = await profilesDb.getById(profile.handled_by);
+        setHandlerName(handler?.name || handler?.email || null);
+      }
     } catch (err) {
       console.error('Client fetch failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to load orders');
@@ -257,6 +264,19 @@ export default function ClientDashboard() {
         <StatCard label="Completed" value={doneOrders.length} color="green" />
         <StatCard label="Total Spent" value={formatCurrency(totalSpent)} color="purple" />
       </div>
+
+      {/* Handled by */}
+      {handlerName && (
+        <div className="flex items-center gap-3 bg-apple-blue/5 border border-apple-blue/10 rounded-xl px-4 py-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-apple-blue/10 text-xs font-bold text-apple-blue shrink-0">
+            {handlerName[0]?.toUpperCase()}
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-apple-text-secondary">Handled by</p>
+            <p className="text-sm font-bold text-apple-text-primary">{handlerName}</p>
+          </div>
+        </div>
+      )}
 
       {/* ============== Active Orders ============== */}
       <section className="space-y-4">

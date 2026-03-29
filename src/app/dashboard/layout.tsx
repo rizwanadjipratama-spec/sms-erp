@@ -20,6 +20,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [isChatAnimating, setIsChatAnimating] = useState(false);
+
+  const toggleChat = useCallback(() => {
+    if (isChatAnimating) return;
+    setIsChatAnimating(true);
+    setChatOpen(prev => !prev);
+    setTimeout(() => setIsChatAnimating(false), 350); // Matches the maximum CSS transition duration
+  }, [isChatAnimating]);
 
   // Auth redirect
   useEffect(() => {
@@ -28,10 +36,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [loading, profile, router]);
 
+  // Profile completion guard — clients must complete setup first
+  useEffect(() => {
+    if (loading || !profile) return;
+    if (profile.role === 'client' && !authService.isProfileComplete(profile)) {
+      if (pathname !== '/dashboard/client/setup') {
+        router.replace('/dashboard/client/setup');
+      }
+    }
+  }, [loading, profile, pathname, router]);
+
   // Route guard
   useEffect(() => {
     if (loading || !profile) return;
     if (pathname === '/dashboard') return;
+    // Don't redirect away from setup page
+    if (pathname === '/dashboard/client/setup') return;
 
     const hasDirectAccess = canAccessRoute(profile.role, pathname);
     const hasNestedAccess = NAV_ITEMS.some(
@@ -94,8 +114,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {canChat && (
               <button
-                onClick={() => setChatOpen(prev => !prev)}
-                className="relative rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800"
+                onClick={toggleChat}
+                disabled={isChatAnimating}
+                className={`relative rounded-lg p-2 transition-colors ${isChatAnimating ? 'text-gray-400 cursor-default' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800'}`}
                 aria-label="Toggle chat"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

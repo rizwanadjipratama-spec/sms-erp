@@ -20,18 +20,24 @@ export default function ClientProductsPage() {
   const [search, setSearch] = useState('');
   const [addedId, setAddedId] = useState<string | null>(null);
 
+  const clientType = profile?.client_type ?? 'regular';
+  const isCostPerTest = clientType === 'cost_per_test';
+
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data } = await productsDb.getAll({ onlyPriced: true });
+      // Cost Per Test clients can see all active products (no price needed)
+      // Regular/KSO only see priced products
+      const onlyPriced = !isCostPerTest;
+      const { data } = await productsDb.getAll({ onlyPriced });
       setProducts(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product catalog');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isCostPerTest]);
 
   useEffect(() => {
     fetchProducts();
@@ -43,12 +49,11 @@ export default function ClientProductsPage() {
     setTimeout(() => setAddedId(null), 1200);
   }, [add]);
 
-  const clientType = profile?.client_type ?? 'regular';
-
   const getPrice = useCallback((product: Product): number | null => {
+    if (isCostPerTest) return null; // Cost Per Test clients don't see prices
     if (!product.price) return null;
     return clientType === 'kso' ? product.price.price_kso : product.price.price_regular;
-  }, [clientType]);
+  }, [clientType, isCostPerTest]);
 
   const filteredProducts = useMemo(() => {
     if (!search.trim()) return products;
@@ -79,6 +84,11 @@ export default function ClientProductsPage() {
             {clientType === 'kso' && (
               <span className="ml-2 inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                 KSO Pricing
+              </span>
+            )}
+            {isCostPerTest && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
+                Cost Per Test
               </span>
             )}
           </p>
@@ -189,16 +199,24 @@ export default function ClientProductsPage() {
                     <div className="mt-auto pt-3">
                       <div className="flex items-end justify-between gap-2">
                         <div>
-                          <p className="text-lg font-bold text-gray-900">
-                            {price !== null ? formatCurrency(price) : '-'}
-                          </p>
-                          <p className="text-[10px] text-gray-400">
-                            per {product.unit}
-                          </p>
+                          {isCostPerTest ? (
+                            <p className="text-xs font-medium text-purple-600">
+                              Cost Per Test
+                            </p>
+                          ) : (
+                            <>
+                              <p className="text-lg font-bold text-gray-900">
+                                {price !== null ? formatCurrency(price) : '-'}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                per {product.unit}
+                              </p>
+                            </>
+                          )}
                         </div>
                         <button
                           onClick={() => handleAddToCart(product)}
-                          disabled={price === null}
+                          disabled={!isCostPerTest && price === null}
                           className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
                             isAdded
                               ? 'bg-green-600 text-white'

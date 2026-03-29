@@ -117,6 +117,22 @@ export const authService = {
     return ROLE_REDIRECTS[role] ?? '/dashboard/client';
   },
 
+  /**
+   * Check if a client profile has all mandatory fields filled.
+   * Only applies to 'client' role — staff profiles are always considered complete.
+   */
+  isProfileComplete(profile: Profile): boolean {
+    if (profile.role !== 'client') return true;
+    return Boolean(
+      profile.name?.trim()
+      && profile.company?.trim()
+      && profile.address?.trim()
+      && profile.phone?.trim()
+      && profile.client_type
+      && profile.pic_name?.trim()
+    );
+  },
+
   getRoleFromEmail,
 
   ROLE_EMAILS,

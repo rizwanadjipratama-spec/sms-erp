@@ -23,7 +23,7 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  CREATE TYPE client_type AS ENUM ('regular','kso');
+  CREATE TYPE client_type AS ENUM ('regular','kso','cost_per_test');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 

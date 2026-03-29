@@ -9,6 +9,7 @@ import type {
   Invoice, PaymentPromise, DeliveryLog, InventoryLog,
   Issue, MonthlyClosing, Notification, ChatChannel,
   ChatChannelMember, ChatMessage, CmsSection, CmsMedia,
+  ChatChannelType,
   CmsPartner, CmsSolution, EmployeeOfMonth, ActivityLog,
   SystemLog, BackupLog, AutomationEvent,
   PaginationParams, PaginatedResult, UserRole, RequestStatus,
@@ -640,6 +641,74 @@ export const chatDb = {
     const { data, error } = await supabase.rpc('unread_chat_count', { p_user_id: userId });
     if (error) return 0;
     return (data as number) ?? 0;
+  },
+
+  async createChannel(name: string, type: ChatChannelType, description?: string): Promise<ChatChannel> {
+    return throwOnError(
+      await supabase.from('chat_channels').insert({ name, channel_type: type, description }).select('*').single()
+    );
+  },
+
+  async deleteChannel(channelId: string): Promise<void> {
+    const { error } = await supabase.from('chat_channels').delete().eq('id', channelId);
+    if (error) throw new Error(error.message);
+  },
+
+  async addMember(channelId: string, userId: string): Promise<void> {
+    const { error } = await supabase.from('chat_channel_members').insert({ channel_id: channelId, user_id: userId });
+    if (error) throw new Error(error.message);
+  },
+
+  async removeMember(channelId: string, userId: string): Promise<void> {
+    const { error } = await supabase.from('chat_channel_members').delete().eq('channel_id', channelId).eq('user_id', userId);
+    if (error) throw new Error(error.message);
+  },
+
+  async searchMessages(channelId: string, query?: string, startDate?: Date, endDate?: Date, pagination?: PaginationParams): Promise<{ data: ChatMessage[]; count: number }> {
+    const limit = pagination?.pageSize ?? 50;
+    const offset = ((pagination?.page ?? 1) - 1) * limit;
+    
+    const { data, error } = await supabase.rpc('search_chat_messages', {
+      p_channel_id: channelId,
+      p_search_query: query || null,
+      p_start_date: startDate ? startDate.toISOString() : null,
+      p_end_date: endDate ? endDate.toISOString() : null,
+      p_limit: limit,
+      p_offset: offset
+    });
+
+    if (error) throw new Error(error.message);
+
+    // Map RPC result back to ChatMessage structure matching the regular select
+    const mapped = (data as any[]).map(row => ({
+      id: row.id,
+      channel_id: row.channel_id,
+      sender_id: row.sender_id,
+      content: row.content,
+      file_url: row.file_url,
+      file_name: row.file_name,
+      file_type: row.file_type,
+      is_edited: row.is_edited,
+      is_deleted: row.is_deleted,
+      reply_to: row.reply_to,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      sender: {
+        name: row.sender_name,
+        email: row.sender_email,
+        avatar_url: row.sender_avatar,
+        role: row.sender_role
+      }
+    }));
+
+    // The RPC doesn't return count directly, so we just return the available data and a pseudo count
+    return { data: mapped.reverse(), count: mapped.length };
+  },
+
+  async getChannelMembers(channelId: string): Promise<string[]> {
+    const { data, error } = await supabase.from('chat_channel_members').select('user_id').eq('channel_id', channelId);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map(m => m.user_id);
   },
 };
 

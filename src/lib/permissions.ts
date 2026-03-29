@@ -9,8 +9,10 @@ export type AppRoute =
   | '/dashboard/client'
   | '/dashboard/client/issues'
   | '/dashboard/client/products'
+  | '/dashboard/client/setup'
   | '/dashboard/marketing'
   | '/dashboard/marketing/prices'
+  | '/dashboard/marketing/clients'
   | '/dashboard/boss'
   | '/dashboard/finance'
   | '/dashboard/warehouse'
@@ -48,12 +50,12 @@ export type RolePermission = {
 
 export const PERMISSIONS: Record<UserRole, RolePermission> = {
   client: {
-    routes: ['/dashboard', '/dashboard/client', '/dashboard/client/issues', '/dashboard/client/products', '/dashboard/notifications', '/request'],
+    routes: ['/dashboard', '/dashboard/client', '/dashboard/client/setup', '/dashboard/client/issues', '/dashboard/client/products', '/dashboard/notifications', '/request'],
     readableEntities: ['profiles:self', 'products:catalog', 'price_list:catalog', 'requests:own', 'issues:own', 'notifications:own', 'payment_promises:own'],
     writableEntities: ['requests:own', 'issues:own', 'payment_promises:own', 'notifications:own'],
   },
   marketing: {
-    routes: ['/dashboard', '/dashboard/marketing', '/dashboard/marketing/prices', '/dashboard/notifications'],
+    routes: ['/dashboard', '/dashboard/marketing', '/dashboard/marketing/clients', '/dashboard/marketing/prices', '/dashboard/notifications'],
     readableEntities: ['profiles:self', 'products:catalog', 'products:all', 'price_list:all', 'requests:pending', 'notifications:own', 'chat:staff'],
     writableEntities: ['price_list:all', 'requests:pending', 'products:all', 'notifications:own'],
   },

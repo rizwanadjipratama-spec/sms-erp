@@ -29,7 +29,9 @@ async function calculateTotal(
   items: CartItem[],
   clientType: ClientType
 ): Promise<number> {
-  const productIds = items.map(i => i.id);
+  // Cost Per Test clients have no upfront product pricing
+  if (clientType === 'cost_per_test') return 0;
+
   const prices = await priceListDb.getAll();
   const priceMap = new Map(prices.map(p => [p.product_id, p]));
 

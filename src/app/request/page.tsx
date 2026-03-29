@@ -118,7 +118,15 @@ export default function RequestPage() {
         >
           <div className="p-8 sm:p-12 border-b border-apple-gray-border">
             <h1 className="text-3xl font-black text-apple-text-primary tracking-tight">New Request</h1>
-            <p className="text-apple-text-secondary mt-2 font-medium">Review your items and system requirements.</p>
+            <p className="text-apple-text-secondary mt-2 font-medium">
+              Review your items and system requirements.
+              {profile?.client_type === 'kso' && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-apple-blue/10 px-2 py-0.5 text-[10px] font-bold text-apple-blue">KSO</span>
+              )}
+              {profile?.client_type === 'cost_per_test' && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700">Cost Per Test</span>
+              )}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 sm:p-12">

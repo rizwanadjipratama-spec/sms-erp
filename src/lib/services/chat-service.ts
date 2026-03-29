@@ -4,7 +4,7 @@
 
 import { chatDb, storageDb } from '@/lib/db';
 import { supabase } from '@/lib/db';
-import type { ChatChannel, ChatMessage, PaginationParams, UserRole } from '@/types/types';
+import type { ChatChannel, ChatChannelType, ChatMessage, PaginationParams, UserRole } from '@/types/types';
 
 const CHAT_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf', 'text/plain'];
 const MAX_CHAT_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -91,4 +91,31 @@ export const chatService = {
       supabase.removeChannel(channel);
     };
   },
+
+  // ==========================================
+  // ADVANCED CHAT FEATURES
+  // ==========================================
+  async searchMessages(channelId: string, query?: string, startDate?: Date, endDate?: Date) {
+    return chatDb.searchMessages(channelId, query, startDate, endDate, { page: 1, pageSize: 100 });
+  },
+
+  async createChannel(name: string, type: ChatChannelType, description?: string) {
+    return chatDb.createChannel(name, type, description);
+  },
+
+  async deleteChannel(channelId: string) {
+    return chatDb.deleteChannel(channelId);
+  },
+
+  async addMember(channelId: string, userId: string) {
+    return chatDb.addMember(channelId, userId);
+  },
+
+  async removeMember(channelId: string, userId: string) {
+    return chatDb.removeMember(channelId, userId);
+  },
+
+  async getChannelMembers(channelId: string) {
+    return chatDb.getChannelMembers(channelId);
+  }
 };
