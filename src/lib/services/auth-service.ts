@@ -38,14 +38,15 @@ export const authService = {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
 
+    // Fire-and-forget: non-critical side effects should never block login
     if (data.user) {
-      await profilesDb.update(data.user.id, { last_login: new Date().toISOString() }).catch(() => {});
-      await activityLogsDb.create({
+      profilesDb.update(data.user.id, { last_login: new Date().toISOString() }).catch(() => {});
+      activityLogsDb.create({
         user_id: data.user.id,
         user_email: email,
         action: 'sign_in',
         entity_type: 'auth',
-      });
+      }).catch(() => {});
     }
 
     return data;

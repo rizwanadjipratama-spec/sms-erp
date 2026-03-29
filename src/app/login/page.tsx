@@ -19,6 +19,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { profile, loading } = useAuth();
 
+  // Auto-redirect if already logged in
   useEffect(() => {
     if (loading || !profile) return;
     router.replace(authService.getRoleRedirect(profile.role));
@@ -36,6 +37,7 @@ export default function LoginPage() {
           password,
         });
         if (loginError) throw loginError;
+        // onAuthStateChange in useAuth will handle loadProfile → redirect
       }
 
       if (mode === 'register') {
@@ -199,7 +201,10 @@ export default function LoginPage() {
           </button>
 
           <input
+            id="email"
+            name="email"
             type="email"
+            autoComplete="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -209,7 +214,10 @@ export default function LoginPage() {
 
           {mode !== 'forgot' && (
             <input
+              id="password"
+              name="password"
               type="password"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               required={mode === 'login'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
