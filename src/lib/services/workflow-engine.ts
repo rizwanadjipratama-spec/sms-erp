@@ -74,6 +74,7 @@ const TRANSITION_MAP: Record<UserRole, Partial<Record<RequestStatus, RequestStat
     delivered: ['resolved', 'completed'],
   },
   owner: {},
+  director: {},
   tax: {},
   faktur: {},
 };

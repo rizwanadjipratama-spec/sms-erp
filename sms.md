@@ -355,18 +355,18 @@ you must complete these step by step:
 - [x] Client profile mandatory setup page
 - [x] Client type pricing system (Regular / KSO / Cost per test)
 - [x] Marketing client handling system
-- [x] Discount system per client / order
-- [ ] Courier dashboard & delivery workflow ← Claude Code WIP (continue where you left off)
+- [x] Promotions & discount system
+- [x] Courier dashboard & delivery workflow ← COMPLETED BY CLAUDE CODE
 - [x] Technician area & issue system ← COMPLETED BY ANTIGRAVITY
 - [x] Preventive maintenance system ← COMPLETED BY ANTIGRAVITY
 - [x] Faktur role system ← COMPLETED BY ANTIGRAVITY
 - [x] CMS full control system ← COMPLETED BY ANTIGRAVITY
-- [ ] General company dashboard
-- [ ] Employee performance analytics
-- [ ] Active users tracking
-- [ ] Notifications & chat improvements
-- [ ] Director dashboard
-- [ ] Final system cleanup & optimization
+- [x] General company dashboard ← COMPLETED BY CLAUDE CODE
+- [x] Employee performance analytics ← COMPLETED BY CLAUDE CODE
+- [x] Active users tracking ← COMPLETED BY CLAUDE CODE
+- [x] Notifications & chat improvements ← COMPLETED BY CLAUDE CODE
+- [x] Director dashboard ← COMPLETED BY ANTIGRAVITY
+- [ ] Final system cleanup & optimization jangan dikerjain dulu 
 
 you must always check this file and continue unfinished tasks.
 
@@ -430,3 +430,62 @@ AGENT WORK LOG:
 - Permissions: Updated src/lib/permissions.ts
 - NOTE: Did NOT touch existing Issue type — created separate ServiceIssue
 - NOTE: Did NOT touch any courier-related code
+
+[2026-03-30] Claude Code — Courier Dashboard & Delivery Workflow:
+- STATUS: COMPLETED
+- Migration: supabase/migrations/00011_courier_delivery_workflow.sql
+- Added 'courier' to user_role enum, delivery_sub_status enum (otw/arrived/delivering/completed)
+- Schema: courier_id + accompanying_staff on delivery_logs, assigned_courier_id on requests, RLS policies
+- Types: Updated src/types/types.ts (UserRole, DeliverySubStatus, DeliveryLog, DbRequest)
+- Permissions: Updated src/lib/permissions.ts (courier routes + entity scopes)
+- Auth: Updated src/lib/services/auth-service.ts (courier@sms.com + redirect)
+- Workflow: Updated src/lib/services/workflow-engine.ts (courier transitions + notifications)
+- Service: Rewrote src/lib/services/delivery-service.ts (courier dashboard, sub-status, tracking)
+- DB: Updated src/lib/db/queries.ts (getByCourier, getById, update methods on deliveryLogsDb)
+- UI: Created src/app/dashboard/courier/page.tsx (full courier dashboard with 4-stage progress stepper)
+- UI: Updated src/app/dashboard/client/page.tsx (delivery tracking card with courier name + progress)
+- Build: 39 pages, 0 errors
+
+[2026-03-30] Claude Code — General Company Dashboard:
+- STATUS: COMPLETED
+- Permissions: Added /dashboard/company to ALL roles in src/lib/permissions.ts
+- Navigation: Added Company nav item in src/lib/navigation.ts (also added Courier nav)
+- Service: Added getCompanyDashboard() to src/lib/services/analytics-service.ts
+- UI: Created src/app/dashboard/company/page.tsx
+- Features: Revenue stats (monthly + total), order pipeline, mini revenue chart, employee of the month, announcements, latest news, upcoming events, staff/client counts, invoice stats
+- All data sourced from analytics + CMS services
+- Build: 40 pages, 0 errors
+
+[2026-03-30] Claude Code — Employee Performance Analytics:
+- STATUS: COMPLETED
+- Service: Added getEmployeePerformance() to src/lib/services/analytics-service.ts
+- DB: Added getByUser() and getAll() to activityLogsDb in src/lib/db/queries.ts
+- UI: Created src/app/dashboard/company/performance/page.tsx
+- Features: Per-employee action counts, login counts, delivery metrics, department summary cards, delivery performance table, filterable/sortable employee table, role badges
+- Nav: Added "Employee Performance" button to company dashboard
+- Build: 41 pages, 0 errors
+
+[2026-03-30] Claude Code — Active Users Tracking:
+- STATUS: COMPLETED
+- Migration: supabase/migrations/00016_active_users_tracking.sql (last_active_at on profiles)
+- Types: Added last_active_at to Profile in src/types/types.ts
+- DB: Added heartbeat() and getActiveUsers() to profilesDb in src/lib/db/queries.ts
+- Hook: Created src/hooks/useHeartbeat.ts (2-min interval heartbeat)
+- Layout: Integrated useHeartbeat in src/app/dashboard/layout.tsx (all logged-in users send heartbeats)
+- UI: Added "Active Now" section with green online indicators to company dashboard
+- Build: 41 pages, 0 errors
+
+[2026-03-30] Claude Code — Notifications & Chat Improvements:
+- STATUS: COMPLETED
+- UI: Rewrote src/components/ui/NotificationBell.tsx — uses useRealtimeTable for accurate unread counter sync
+- UI: Rewrote src/app/dashboard/notifications/page.tsx — Apple design tokens, All/Unread/Read filter tabs, optimistic mark-read
+- Chat: Updated src/lib/services/chat-service.ts — added courier + faktur to CHAT_ROLES so both roles can use internal chat
+- Build: 41 pages, 0 errors
+
+[2026-03-30] Antigravity — Director Dashboard:
+- STATUS: COMPLETED
+- Migration: supabase/migrations/00017_add_director_role.sql (added director role to enum)
+- Schema: Updated src/types/types.ts, src/lib/permissions.ts, src/lib/navigation.ts to support director role.
+- UI: Created src/app/dashboard/director/page.tsx (combining high-level owner dashboard data with employee analytic performance tracking).
+- Services: Updated auth-service.ts, workflow-engine.ts.
+- Build: 0 typescript errors.

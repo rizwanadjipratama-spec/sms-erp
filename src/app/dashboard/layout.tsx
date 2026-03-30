@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useHeartbeat } from '@/hooks/useHeartbeat';
 import { authService } from '@/lib/services/auth-service';
 import { canAccessRoute } from '@/lib/permissions';
 import { chatService } from '@/lib/services/chat-service';
@@ -16,6 +17,7 @@ import { PageSpinner } from '@/components/ui/LoadingSkeleton';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { profile, loading, role } = useAuth();
+  useHeartbeat(profile?.id);
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);

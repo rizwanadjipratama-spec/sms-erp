@@ -6,6 +6,7 @@ export const ROLE_REDIRECTS: Record<UserRole, string> = {
   client: '/dashboard/client',
   marketing: '/dashboard/marketing',
   boss: '/dashboard/boss',
+  director: '/dashboard/director',
   finance: '/dashboard/finance',
   warehouse: '/dashboard/warehouse',
   technician: '/dashboard/technician',

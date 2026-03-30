@@ -54,6 +54,7 @@ export const WORKFLOW_ROLE_TRANSITIONS: Record<UserRole, Partial<Record<RequestS
     delivered: ['resolved', 'completed'],
   },
   owner: {},
+  director: {},
   tax: {},
   faktur: {},
 };

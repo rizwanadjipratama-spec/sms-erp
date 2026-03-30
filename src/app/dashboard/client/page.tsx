@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
 import { requestsDb, profilesDb } from '@/lib/db';
-import { workflowEngine, ACTIVE_STATUSES, authService } from '@/lib/services';
+import { workflowEngine, ACTIVE_STATUSES, authService, deliveryService } from '@/lib/services';
 import { formatCurrency, formatDateTime, formatDate, formatOrderId } from '@/lib/format-utils';
 import {
   DashboardSkeleton,
@@ -17,7 +17,7 @@ import {
   StatusBadge,
   Modal,
 } from '@/components/ui';
-import type { DbRequest, RequestStatus } from '@/types/types';
+import type { DbRequest, DeliveryLog, DeliverySubStatus, RequestStatus } from '@/types/types';
 
 // ---------- Timeline configuration ----------
 const TIMELINE_STEPS: Array<{ key: RequestStatus; label: string }> = [
@@ -50,6 +50,7 @@ export default function ClientDashboard() {
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   // Cancel modal state
+  const [deliveryTracking, setDeliveryTracking] = useState<Record<string, DeliveryLog | null>>({});
   const [cancellingRequest, setCancellingRequest] = useState<DbRequest | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelOtherReason, setCancelOtherReason] = useState('');
@@ -77,6 +78,18 @@ export default function ClientDashboard() {
       if (profile.handled_by) {
         const handler = await profilesDb.getById(profile.handled_by);
         setHandlerName(handler?.name || handler?.email || null);
+      }
+
+      // Fetch delivery tracking for on_delivery orders
+      const onDeliveryOrders = data.filter(r => r.status === 'on_delivery');
+      if (onDeliveryOrders.length > 0) {
+        const trackingResults = await Promise.all(
+          onDeliveryOrders.map(async r => {
+            const log = await deliveryService.getDeliveryTracking(r.id);
+            return [r.id, log] as const;
+          })
+        );
+        setDeliveryTracking(Object.fromEntries(trackingResults));
       }
     } catch (err) {
       console.error('Client fetch failed:', err);
@@ -360,6 +373,48 @@ export default function ClientDashboard() {
                     })}
                   </div>
                 </div>
+
+                {/* Delivery Tracking Card (visible when on_delivery) */}
+                {request.status === 'on_delivery' && (() => {
+                  const tracking = deliveryTracking[request.id];
+                  if (!tracking) return null;
+                  const subStatuses: { key: DeliverySubStatus; label: string }[] = [
+                    { key: 'otw', label: 'OTW' },
+                    { key: 'arrived', label: 'Arrived' },
+                    { key: 'delivering', label: 'Delivering' },
+                    { key: 'completed', label: 'Completed' },
+                  ];
+                  const currentIdx = subStatuses.findIndex(s => s.key === tracking.status);
+                  return (
+                    <div className="rounded-xl bg-apple-blue/5 border border-apple-blue/15 p-4 space-y-3">
+                      <p className="text-xs uppercase tracking-wider text-apple-blue font-bold">Delivery Tracking</p>
+                      {/* Progress bar */}
+                      <div className="flex items-center gap-1 w-full">
+                        {subStatuses.map((step, idx) => (
+                          <div key={step.key} className="flex-1 flex flex-col items-center gap-1.5">
+                            <div className={`w-full h-2 rounded-full transition-all duration-300 ${idx <= currentIdx ? (idx === currentIdx ? 'bg-apple-blue animate-pulse' : 'bg-apple-blue') : 'bg-gray-200'}`} />
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${idx <= currentIdx ? 'text-apple-blue' : 'text-apple-text-tertiary'}`}>{step.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Courier/technician info */}
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        {(tracking.courier?.name || tracking.technician?.name) && (
+                          <div>
+                            <span className="text-apple-text-secondary text-xs">Courier: </span>
+                            <span className="font-semibold text-apple-text-primary">{tracking.courier?.name || tracking.technician?.name}</span>
+                          </div>
+                        )}
+                        {tracking.accompanying_staff && (
+                          <div>
+                            <span className="text-apple-text-secondary text-xs">Staff: </span>
+                            <span className="font-semibold text-apple-text-primary">{tracking.accompanying_staff}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Items */}
                 <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">

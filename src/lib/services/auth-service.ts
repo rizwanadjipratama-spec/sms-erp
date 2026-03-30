@@ -10,6 +10,7 @@ const ROLE_EMAILS: Record<string, UserRole> = {
   'owner@sms.com': 'owner',
   'admin@sms.com': 'admin',
   'boss@sms.com': 'boss',
+  'director@sms.com': 'director',
   'marketing@sms.com': 'marketing',
   'finance@sms.com': 'finance',
   'warehouse@sms.com': 'warehouse',
@@ -22,6 +23,7 @@ const ROLE_REDIRECTS: Record<UserRole, string> = {
   client: '/dashboard/client',
   marketing: '/dashboard/marketing',
   boss: '/dashboard/boss',
+  director: '/dashboard/director',
   finance: '/dashboard/finance',
   warehouse: '/dashboard/warehouse',
   technician: '/dashboard/technician',
@@ -121,19 +123,29 @@ export const authService = {
   },
 
   /**
-   * Check if a client profile has all mandatory fields filled.
-   * Only applies to 'client' role — staff profiles are always considered complete.
+   * Check if a profile has all mandatory fields filled.
+   * Client profiles require full company info. Staff profiles need name + branch.
    */
   isProfileComplete(profile: Profile): boolean {
-    if (profile.role !== 'client') return true;
-    return Boolean(
+    const baseComplete = Boolean(
       profile.name?.trim()
-      && profile.company?.trim()
-      && profile.address?.trim()
       && profile.phone?.trim()
-      && profile.client_type
-      && profile.pic_name?.trim()
+      && profile.branch_id
     );
+
+    if (profile.role === 'client') {
+      return baseComplete && Boolean(
+        profile.company?.trim()
+        && profile.address?.trim()
+        && profile.city?.trim()
+        && profile.province?.trim()
+        && profile.client_type
+        && profile.pic_name?.trim()
+      );
+    }
+
+    // Staff profiles: name + phone + branch is enough
+    return baseComplete;
   },
 
   getRoleFromEmail,

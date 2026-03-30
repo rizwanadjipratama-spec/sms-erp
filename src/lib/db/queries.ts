@@ -106,6 +106,23 @@ export const profilesDb = {
         .single()
     );
   },
+
+  async heartbeat(id: string): Promise<void> {
+    await supabase
+      .from('profiles')
+      .update({ last_active_at: new Date().toISOString() })
+      .eq('id', id);
+  },
+
+  async getActiveUsers(minutesAgo: number = 5): Promise<Profile[]> {
+    const cutoff = new Date(Date.now() - minutesAgo * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .gte('last_active_at', cutoff)
+      .order('last_active_at', { ascending: false });
+    return data ?? [];
+  },
 };
 
 // ============================================================================
@@ -829,6 +846,25 @@ export const activityLogsDb = {
   },
 
   async getRecent(limit: number = 50): Promise<ActivityLog[]> {
+    const { data } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return data ?? [];
+  },
+
+  async getByUser(userId: string, limit: number = 100): Promise<ActivityLog[]> {
+    const { data } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return data ?? [];
+  },
+
+  async getAll(limit: number = 500): Promise<ActivityLog[]> {
     const { data } = await supabase
       .from('activity_logs')
       .select('*')

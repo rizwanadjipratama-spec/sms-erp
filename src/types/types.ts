@@ -18,6 +18,7 @@ export type UserRole =
   | 'faktur'
   | 'admin'
   | 'owner'
+  | 'director'
   | 'tax';
 
 export type ClientType = 'regular' | 'kso' | 'cost_per_test';
@@ -76,6 +77,55 @@ export type AutomationStatus = 'pending' | 'processed' | 'failed';
 export type ServiceIssueStatus = 'open' | 'otw' | 'arrived' | 'working' | 'completed';
 export type AreaTransferStatus = 'pending' | 'accepted' | 'rejected';
 
+// ORION Business System Enums
+export type StockTransferStatus = 'requested' | 'approved' | 'in_transit' | 'received' | 'cancelled';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type ApprovalType = 'expense_claim' | 'purchase_request' | 'cash_advance' | 'discount' | 'stock_transfer' | 'branch_override' | 'maintenance_cost' | 'large_purchase';
+export type PurchaseRequestStatus = 'draft' | 'submitted' | 'approved' | 'ordered' | 'partial_received' | 'received' | 'cancelled';
+export type PurchaseOrderStatus = 'draft' | 'sent' | 'confirmed' | 'partial_received' | 'received' | 'cancelled';
+export type ExpenseClaimStatus = 'draft' | 'submitted' | 'approved' | 'paid' | 'partial_paid' | 'rejected' | 'cancelled';
+export type ExpenseCategory = 'fuel' | 'toll' | 'parking' | 'small_tools' | 'sparepart' | 'hotel' | 'meals' | 'vehicle_service' | 'operational' | 'other';
+export type CashAdvanceStatus = 'requested' | 'approved' | 'disbursed' | 'settled' | 'rejected' | 'cancelled';
+export type FinancialTransactionType = 'invoice_payment' | 'supplier_payment' | 'expense_claim_payment' | 'cash_advance_disbursement' | 'cash_advance_settlement' | 'refund' | 'adjustment' | 'other';
+export type FinancialDirection = 'inflow' | 'outflow';
+
+// ORION Delivery & Issue Enums
+export type DeliveryStatus = 'created' | 'assigned' | 'picking' | 'picked' | 'on_delivery' | 'delivered' | 'confirmed' | 'cancelled';
+export type DeliveryTeamRole = 'driver' | 'courier' | 'technician' | 'marketing' | 'finance' | 'faktur' | 'warehouse' | 'purchasing' | 'claim_officer' | 'other';
+export type DeliveryProofType = 'photo' | 'signature' | 'document' | 'other';
+export type IssueTechRole = 'primary' | 'supporting';
+export type EnhancedIssueStatus = 'reported' | 'assigned' | 'open' | 'otw' | 'arrived' | 'working' | 'waiting_parts' | 'testing' | 'completed' | 'cancelled';
+export type IssuePriority = 'normal' | 'high' | 'critical';
+
+// ============================================================================
+// REGION & BRANCH
+// ============================================================================
+
+export interface Region {
+  id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Branch {
+  id: string;
+  region_id: string;
+  name: string;
+  code: string;
+  address?: string;
+  phone?: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  region?: Region;
+}
+
 // ============================================================================
 // CORE ENTITIES
 // ============================================================================
@@ -87,23 +137,29 @@ export interface Profile {
   name?: string;
   phone?: string;
   address?: string;
+  city?: string;
+  province?: string;
   client_type?: ClientType;
   pic_name?: string;
   company?: string;
   avatar_url?: string;
   handled_by?: string;
+  branch_id?: string;
+  profile_completed: boolean;
   debt_amount: number;
   debt_limit: number;
   two_factor_secret?: string | null;
   two_factor_enabled: boolean;
   is_active: boolean;
   last_login?: string;
+  last_active_at?: string;
   created_at: string;
   updated_at: string;
   created_by?: string;
   updated_by?: string;
   // Joined fields (not in DB)
   handler?: { name?: string; email: string };
+  branch?: Branch;
 }
 
 export interface Product {
@@ -116,6 +172,7 @@ export interface Product {
   stock: number;
   min_stock: number;
   unit: string;
+  branch_id?: string;
   is_active: boolean;
   is_priced: boolean;
   created_at: string;
@@ -124,6 +181,7 @@ export interface Product {
   updated_by?: string;
   // Joined fields
   price?: PriceList;
+  branch?: Branch;
 }
 
 export interface PriceList {
@@ -131,6 +189,7 @@ export interface PriceList {
   product_id: string;
   price_regular: number;
   price_kso: number;
+  price_cost_per_test: number;
   effective_from: string;
   effective_to?: string;
   is_active: boolean;
@@ -168,6 +227,7 @@ export interface DbRequest {
   discount_amount?: number;
   discount_reason?: string;
   discounted_by?: string;
+  branch_id?: string;
   created_at: string;
   updated_at: string;
   created_by?: string;
@@ -760,4 +820,341 @@ export interface TechnicianPerformance {
   total_deliveries: number;
   successful_deliveries: number;
   avg_delivery_hours: number;
+}
+
+// ============================================================================
+// ORION BUSINESS ENTITIES
+// ============================================================================
+
+export interface ProductBranchStock {
+  id: string;
+  product_id: string;
+  branch_id: string;
+  stock: number;
+  min_stock: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  product?: Product;
+  branch?: Branch;
+}
+
+export interface StockTransfer {
+  id: string;
+  from_branch_id: string;
+  to_branch_id: string;
+  status: StockTransferStatus;
+  notes?: string;
+  requested_by: string;
+  approved_by?: string;
+  approved_at?: string;
+  received_by?: string;
+  received_at?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  items?: StockTransferItem[];
+  from_branch?: Branch;
+  to_branch?: Branch;
+}
+
+export interface StockTransferItem {
+  id: string;
+  transfer_id: string;
+  product_id: string;
+  quantity: number;
+  received_quantity: number;
+  created_at: string;
+  product?: Product;
+}
+
+export interface BranchPriceOverride {
+  id: string;
+  product_id: string;
+  branch_id: string;
+  price_regular?: number;
+  price_kso?: number;
+  price_cost_per_test?: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Approval {
+  id: string;
+  approval_type: ApprovalType;
+  reference_id: string;
+  reference_table: string;
+  title: string;
+  description?: string;
+  amount?: number;
+  branch_id?: string;
+  requested_by: string;
+  status: ApprovalStatus;
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  requester?: Pick<Profile, 'name' | 'email' | 'role'>;
+  approver?: Pick<Profile, 'name' | 'email'>;
+  branch?: Branch;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contact?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  notes?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+export interface PurchaseRequest {
+  id: string;
+  branch_id: string;
+  requested_by: string;
+  status: PurchaseRequestStatus;
+  title: string;
+  notes?: string;
+  total_estimated: number;
+  approval_id?: string;
+  approved_by?: string;
+  approved_at?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  items?: PurchaseRequestItem[];
+  branch?: Branch;
+  requester?: Pick<Profile, 'name' | 'email'>;
+}
+
+export interface PurchaseRequestItem {
+  id: string;
+  purchase_request_id: string;
+  product_id?: string;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  estimated_price: number;
+  notes?: string;
+  created_at: string;
+  product?: Product;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  purchase_request_id?: string;
+  branch_id: string;
+  supplier_id: string;
+  po_number: string;
+  status: PurchaseOrderStatus;
+  total: number;
+  tax_amount: number;
+  notes?: string;
+  ordered_at?: string;
+  received_at?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  items?: PurchaseOrderItem[];
+  supplier?: Supplier;
+  branch?: Branch;
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchase_order_id: string;
+  product_id?: string;
+  item_name: string;
+  quantity: number;
+  received_quantity: number;
+  unit_price: number;
+  total_price: number;
+  created_at: string;
+  product?: Product;
+}
+
+export interface ExpenseClaim {
+  id: string;
+  branch_id: string;
+  claimant_id: string;
+  status: ExpenseClaimStatus;
+  category: ExpenseCategory;
+  title: string;
+  description?: string;
+  amount: number;
+  receipt_url?: string;
+  approval_id?: string;
+  approved_by?: string;
+  approved_at?: string;
+  paid_amount: number;
+  paid_at?: string;
+  paid_by?: string;
+  rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  claimant?: Pick<Profile, 'name' | 'email' | 'role'>;
+  branch?: Branch;
+}
+
+export interface ClaimLedger {
+  id: string;
+  user_id: string;
+  branch_id: string;
+  month: number;
+  year: number;
+  total_claimed: number;
+  total_paid: number;
+  remaining: number;
+  is_closed: boolean;
+  closed_at?: string;
+  closed_by?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  user?: Pick<Profile, 'name' | 'email'>;
+}
+
+export interface CashAdvance {
+  id: string;
+  branch_id: string;
+  user_id: string;
+  status: CashAdvanceStatus;
+  amount: number;
+  purpose: string;
+  approval_id?: string;
+  approved_by?: string;
+  approved_at?: string;
+  disbursed_at?: string;
+  settled_at?: string;
+  settled_amount?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  user?: Pick<Profile, 'name' | 'email' | 'role'>;
+  branch?: Branch;
+}
+
+export interface FinancialTransaction {
+  id: string;
+  branch_id: string;
+  transaction_type: FinancialTransactionType;
+  direction: FinancialDirection;
+  amount: number;
+  reference_id?: string;
+  reference_table?: string;
+  description: string;
+  payment_method?: string;
+  payment_ref?: string;
+  recorded_by: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  recorder?: Pick<Profile, 'name' | 'email'>;
+  branch?: Branch;
+}
+
+// ============================================================================
+// ORION DELIVERY & ISSUE ENTITIES
+// ============================================================================
+
+export interface Delivery {
+  id: string;
+  request_id: string;
+  invoice_id?: string;
+  branch_id: string;
+  status: DeliveryStatus;
+  notes?: string;
+  scheduled_date?: string;
+  delivered_at?: string;
+  confirmed_at?: string;
+  confirmed_by?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  request?: DbRequest;
+  branch?: Branch;
+  items?: DeliveryItem[];
+  team?: DeliveryTeamMember[];
+  proofs?: DeliveryProof[];
+}
+
+export interface DeliveryItem {
+  id: string;
+  delivery_id: string;
+  product_id: string;
+  quantity: number;
+  notes?: string;
+  created_at: string;
+  product?: Product;
+}
+
+export interface DeliveryTeamMember {
+  id: string;
+  delivery_id: string;
+  user_id: string;
+  team_role: DeliveryTeamRole;
+  notes?: string;
+  created_at: string;
+  user?: Pick<Profile, 'name' | 'email' | 'role'>;
+}
+
+export interface DeliveryProof {
+  id: string;
+  delivery_id: string;
+  proof_type: DeliveryProofType;
+  file_url: string;
+  caption?: string;
+  uploaded_by: string;
+  created_at: string;
+}
+
+export interface DeliveryStatusLog {
+  id: string;
+  delivery_id: string;
+  from_status?: DeliveryStatus;
+  to_status: DeliveryStatus;
+  changed_by: string;
+  note?: string;
+  latitude?: number;
+  longitude?: number;
+  created_at: string;
+}
+
+export interface IssueTechnician {
+  id: string;
+  issue_id: string;
+  technician_id: string;
+  tech_role: IssueTechRole;
+  joined_at: string;
+  notes?: string;
+  technician?: Pick<Profile, 'name' | 'email'>;
+}
+
+export interface IssueKnowledgeBase {
+  id: string;
+  issue_id?: string;
+  title: string;
+  device_name?: string;
+  problem: string;
+  solution: string;
+  tags: string[];
+  is_published: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }

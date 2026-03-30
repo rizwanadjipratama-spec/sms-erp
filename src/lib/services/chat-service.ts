@@ -10,7 +10,7 @@ const CHAT_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'applicatio
 const MAX_CHAT_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Roles that can use chat (everyone except clients)
-const CHAT_ROLES: UserRole[] = ['marketing', 'boss', 'finance', 'warehouse', 'technician', 'admin', 'owner', 'tax'];
+const CHAT_ROLES: UserRole[] = ['marketing', 'boss', 'finance', 'warehouse', 'technician', 'courier', 'faktur', 'admin', 'owner', 'tax'];
 
 export const chatService = {
   canUseChat(role: UserRole): boolean {
