@@ -68,14 +68,17 @@ CREATE TABLE IF NOT EXISTS public.cms_events (
 -- ============================================================================
 -- TRIGGERS FOR UPDATED_AT
 -- ============================================================================
+DROP TRIGGER IF EXISTS set_updated_at_cms_settings ON public.cms_settings;
 CREATE TRIGGER set_updated_at_cms_settings
     BEFORE UPDATE ON public.cms_settings
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
+DROP TRIGGER IF EXISTS set_updated_at_cms_news ON public.cms_news;
 CREATE TRIGGER set_updated_at_cms_news
     BEFORE UPDATE ON public.cms_news
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
+DROP TRIGGER IF EXISTS set_updated_at_cms_events ON public.cms_events;
 CREATE TRIGGER set_updated_at_cms_events
     BEFORE UPDATE ON public.cms_events
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
@@ -90,11 +93,13 @@ ALTER TABLE public.cms_news ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cms_events ENABLE ROW LEVEL SECURITY;
 
 -- CMS Settings Policies
+DROP POLICY IF EXISTS "Public Read Access on cms_settings" ON public.cms_settings;
 CREATE POLICY "Public Read Access on cms_settings"
     ON public.cms_settings FOR SELECT
     TO public
     USING (true);
 
+DROP POLICY IF EXISTS "Admin/Owner Full Access on cms_settings" ON public.cms_settings;
 CREATE POLICY "Admin/Owner Full Access on cms_settings"
     ON public.cms_settings FOR ALL
     TO authenticated
@@ -106,11 +111,13 @@ CREATE POLICY "Admin/Owner Full Access on cms_settings"
     );
 
 -- CMS News Policies
+DROP POLICY IF EXISTS "Public Read Access on cms_news" ON public.cms_news;
 CREATE POLICY "Public Read Access on cms_news"
     ON public.cms_news FOR SELECT
     TO public
     USING (true); -- Front-end may want to filter WHERE is_published = true, but DB allows reading all.
 
+DROP POLICY IF EXISTS "Admin/Owner Full Access on cms_news" ON public.cms_news;
 CREATE POLICY "Admin/Owner Full Access on cms_news"
     ON public.cms_news FOR ALL
     TO authenticated
@@ -122,11 +129,13 @@ CREATE POLICY "Admin/Owner Full Access on cms_news"
     );
 
 -- CMS Events Policies
+DROP POLICY IF EXISTS "Public Read Access on cms_events" ON public.cms_events;
 CREATE POLICY "Public Read Access on cms_events"
     ON public.cms_events FOR SELECT
     TO public
     USING (true);
 
+DROP POLICY IF EXISTS "Admin/Owner Full Access on cms_events" ON public.cms_events;
 CREATE POLICY "Admin/Owner Full Access on cms_events"
     ON public.cms_events FOR ALL
     TO authenticated
@@ -136,6 +145,17 @@ CREATE POLICY "Admin/Owner Full Access on cms_events"
             WHERE profiles.id = auth.uid() AND role IN ('admin', 'owner')
         )
     );
+
+-- ============================================================================
+-- GRANTS
+-- ============================================================================
+GRANT SELECT ON public.cms_settings TO anon, authenticated;
+GRANT SELECT ON public.cms_news TO anon, authenticated;
+GRANT SELECT ON public.cms_events TO anon, authenticated;
+
+GRANT INSERT, UPDATE, DELETE ON public.cms_settings TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.cms_news TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.cms_events TO authenticated;
 
 -- ============================================================================
 -- INITIAL SEED (Ensure row with id=1 exists)
