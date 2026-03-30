@@ -2,16 +2,22 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useCmsSection } from '@/hooks/useCms';
+import { useState, useEffect } from 'react';
+import { cmsService } from '@/lib/services';
+import type { CmsSettings } from '@/types/types';
 
 export default function Hero() {
-  const { section } = useCmsSection('hero');
+  const [settings, setSettings] = useState<CmsSettings | null>(null);
 
-  const title = section?.title || 'Precision Laboratory Systems\nBuilt for Real Operations';
-  const subtitle = section?.subtitle || 'Equipment, reagents, and technical support for laboratories across Indonesia.';
-  const videoUrl = section?.video_url || '/videos/hero.mp4';
-  const ctaText = section?.cta_text || 'Explore Products';
-  const ctaLink = section?.cta_link || '/products';
+  useEffect(() => {
+    cmsService.getSettings().then(setSettings).catch(() => null);
+  }, []);
+
+  const title = settings?.hero_title || 'Precision Laboratory Systems\nBuilt for Real Operations';
+  const subtitle = settings?.hero_subtitle || 'Equipment, reagents, and technical support for laboratories across Indonesia.';
+  const videoUrl = settings?.hero_video_url || '/videos/hero.mp4';
+  const ctaText = 'Explore Products';
+  const ctaLink = '/products';
 
   return (
     <section className="relative w-full h-screen overflow-hidden">

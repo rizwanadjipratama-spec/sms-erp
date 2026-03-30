@@ -14,6 +14,8 @@ export type UserRole =
   | 'finance'
   | 'warehouse'
   | 'technician'
+  | 'courier'
+  | 'faktur'
   | 'admin'
   | 'owner'
   | 'tax';
@@ -51,6 +53,7 @@ export type ChatChannelType =
   | 'finance'
   | 'warehouse'
   | 'technician'
+  | 'courier'
   | 'admin'
   | 'owner'
   | 'tax';
@@ -62,9 +65,16 @@ export type ProductCategory =
   | 'Reagents'
   | 'Service';
 
+export type DiscountType = 'percent' | 'fixed';
+
+export type DeliverySubStatus = 'otw' | 'arrived' | 'delivering' | 'completed';
+
 export type BackupType = 'database' | 'storage' | 'full';
 export type BackupStatus = 'pending' | 'completed' | 'failed' | 'verified' | 'restored' | 'partial';
 export type AutomationStatus = 'pending' | 'processed' | 'failed';
+
+export type ServiceIssueStatus = 'open' | 'otw' | 'arrived' | 'working' | 'completed';
+export type AreaTransferStatus = 'pending' | 'accepted' | 'rejected';
 
 // ============================================================================
 // CORE ENTITIES
@@ -140,6 +150,7 @@ export interface DbRequest {
   note?: string;
   invoice_id?: string;
   assigned_technician_id?: string;
+  assigned_courier_id?: string;
   rejection_reason?: string;
   priced_at?: string;
   approved_at?: string;
@@ -151,6 +162,12 @@ export interface DbRequest {
   delivered_at?: string;
   completed_at?: string;
   cancelled_at?: string;
+  // Discount fields
+  discount_type?: DiscountType;
+  discount_value?: number;
+  discount_amount?: number;
+  discount_reason?: string;
+  discounted_by?: string;
   created_at: string;
   updated_at: string;
   created_by?: string;
@@ -179,6 +196,7 @@ export interface Invoice {
   order_id: string;
   invoice_number: string;
   subtotal: number;
+  discount_amount?: number;
   tax_rate: number;
   tax_amount: number;
   total: number;
@@ -213,8 +231,10 @@ export interface PaymentPromise {
 export interface DeliveryLog {
   id: string;
   order_id: string;
-  technician_id: string;
+  technician_id?: string;
+  courier_id?: string;
   status: string;
+  accompanying_staff?: string;
   note?: string;
   proof_url?: string;
   signature_url?: string;
@@ -225,6 +245,7 @@ export interface DeliveryLog {
   updated_at: string;
   // Joined
   technician?: Pick<Profile, 'name' | 'email'>;
+  courier?: Pick<Profile, 'name' | 'email'>;
 }
 
 export interface InventoryLog {
@@ -254,6 +275,140 @@ export interface Issue {
   updated_at: string;
 }
 
+// ── Technician Area & Issue System (added by Antigravity) ───────────────
+
+export interface TechnicianArea {
+  id: string;
+  technician_id: string;
+  area_name: string;
+  hospital_name: string;
+  address?: string;
+  phone?: string;
+  notes?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  technician?: Pick<Profile, 'name' | 'email'>;
+}
+
+export interface AreaTransferRequest {
+  id: string;
+  area_id: string;
+  from_technician_id: string;
+  to_technician_id: string;
+  status: AreaTransferStatus;
+  note?: string;
+  response_note?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  area?: Pick<TechnicianArea, 'area_name' | 'hospital_name'>;
+  from_technician?: Pick<Profile, 'name' | 'email'>;
+  to_technician?: Pick<Profile, 'name' | 'email'>;
+}
+
+export interface ServiceIssue {
+  id: string;
+  reported_by: string;
+  area_id?: string;
+  assigned_to?: string;
+  location: string;
+  device_name?: string;
+  product_id?: string;
+  description: string;
+  notes?: string;
+  photo_urls: string[];
+  status: ServiceIssueStatus;
+  resolution_note?: string;
+  resolved_at?: string;
+  taken_at?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  reporter?: Pick<Profile, 'name' | 'email' | 'company'>;
+  assignee?: Pick<Profile, 'name' | 'email'>;
+  area?: Pick<TechnicianArea, 'area_name' | 'hospital_name'>;
+  product?: Pick<Product, 'name'>;
+}
+
+export interface ServiceIssueLog {
+  id: string;
+  issue_id: string;
+  from_status?: string;
+  to_status: string;
+  changed_by: string;
+  note?: string;
+  created_at: string;
+  // Joined
+  changer?: Pick<Profile, 'name' | 'email'>;
+}
+
+// ── Preventive Maintenance System (added by Antigravity) ────────────────
+
+export type PmStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'missed';
+
+export interface EquipmentAsset {
+  id: string;
+  client_id: string;
+  area_id?: string;
+  product_id: string;
+  serial_number: string;
+  installation_date?: string;
+  pm_frequency_months: number;
+  status: 'active' | 'inactive' | 'maintenance' | 'retired';
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  client?: Pick<Profile, 'name' | 'email' | 'company'>;
+  area?: Pick<TechnicianArea, 'area_name' | 'hospital_name'>;
+  product?: Pick<Product, 'name' | 'category' | 'image_url'>;
+}
+
+export interface PmSchedule {
+  id: string;
+  asset_id: string;
+  technician_id?: string;
+  due_date: string;
+  status: PmStatus;
+  completed_at?: string;
+  notes?: string;
+  photo_urls: string[];
+  created_at: string;
+  updated_at: string;
+  // Joined
+  asset?: Pick<EquipmentAsset, 'serial_number' | 'product_id' | 'client_id' | 'area_id'> & {
+    product?: Pick<Product, 'name' | 'category'>;
+    client?: Pick<Profile, 'name' | 'company'>;
+    area?: Pick<TechnicianArea, 'area_name' | 'hospital_name'>;
+  };
+  technician?: Pick<Profile, 'name' | 'email'>;
+}
+
+// ── Faktur Role System (added by Antigravity) ───────────────────────────
+
+export type FakturTaskType = 'ttd_faktur' | 'tukar_faktur' | 'others';
+export type FakturTaskStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface FakturTask {
+  id: string;
+  client_id: string;
+  assigned_to?: string;
+  created_by: string;
+  task_type: FakturTaskType;
+  status: FakturTaskStatus;
+  scheduled_date?: string;
+  notes?: string;
+  completion_note?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  client?: Pick<Profile, 'name' | 'email' | 'company' | 'address' | 'phone' | 'pic_name'>;
+  assignee?: Pick<Profile, 'name' | 'email'>;
+  creator?: Pick<Profile, 'name' | 'email'>;
+}
+
 export interface MonthlyClosing {
   id: string;
   month: number;
@@ -267,6 +422,62 @@ export interface MonthlyClosing {
   notes?: string;
   created_at: string;
   updated_at: string;
+}
+
+// ============================================================================
+// CMS SYSTEM
+// ============================================================================
+
+export interface CmsSettings {
+  id: number;
+  hero_title?: string;
+  hero_subtitle?: string;
+  hero_image_url?: string;
+  hero_video_url?: string;
+  about_heading?: string;
+  about_text?: string;
+  about_image_url?: string;
+  announcement_text?: string;
+  announcement_link?: string;
+  announcement_is_active: boolean;
+  company_name?: string;
+  company_address?: string;
+  company_phone?: string;
+  company_email?: string;
+  employee_of_month_id?: string;
+  updated_at: string;
+  // Joined
+  employee_of_month?: Pick<Profile, 'name' | 'email' | 'role'>;
+}
+
+export interface CmsNews {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  image_url?: string;
+  is_published: boolean;
+  published_at?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  creator?: Pick<Profile, 'name' | 'email'>;
+}
+
+export interface CmsEvent {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  image_url?: string;
+  event_date: string;
+  location?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  creator?: Pick<Profile, 'name' | 'email'>;
 }
 
 // ============================================================================

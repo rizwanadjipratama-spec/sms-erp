@@ -318,9 +318,16 @@ export default function ClientDashboard() {
                     </p>
                   </div>
                   {request.total_price !== undefined && request.total_price > 0 && (
-                    <p className="text-sm font-semibold text-gray-900">
-                      {formatCurrency(request.total_price)}
-                    </p>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {formatCurrency(request.total_price)}
+                      </p>
+                      {(request.discount_amount ?? 0) > 0 && (
+                        <p className="text-xs text-green-600 font-medium">
+                          Discount: -{formatCurrency(request.discount_amount ?? 0)}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -499,9 +506,16 @@ export default function ClientDashboard() {
                   )}
                 </div>
                 {request.total_price !== undefined && request.total_price > 0 && (
-                  <p className="text-sm font-medium text-gray-900">
-                    {formatCurrency(request.total_price)}
-                  </p>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatCurrency(request.total_price)}
+                    </p>
+                    {(request.discount_amount ?? 0) > 0 && (
+                      <p className="text-xs text-green-600 font-medium">
+                        Disc: -{formatCurrency(request.discount_amount ?? 0)}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             ))}

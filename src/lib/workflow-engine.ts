@@ -45,12 +45,17 @@ export const WORKFLOW_ROLE_TRANSITIONS: Record<UserRole, Partial<Record<RequestS
     ready: ['on_delivery'],
     on_delivery: ['delivered'],
   },
+  courier: {
+    ready: ['on_delivery'],
+    on_delivery: ['delivered'],
+  },
   admin: {
     issue: ['resolved'],
     delivered: ['resolved', 'completed'],
   },
   owner: {},
   tax: {},
+  faktur: {},
 };
 
 export type TransitionOrderInput = {

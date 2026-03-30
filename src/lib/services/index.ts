@@ -13,3 +13,6 @@ export { notificationService } from './notification-service';
 export { chatService } from './chat-service';
 export { cmsService } from './cms-service';
 export { analyticsService } from './analytics-service';
+export { technicianService } from './technician-service';
+export { pmService } from './preventive-maintenance-service';
+export { fakturService } from './faktur-service';

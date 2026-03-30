@@ -9,7 +9,7 @@ import { requestsDb, profilesDb } from '@/lib/db';
 import { workflowEngine, authService } from '@/lib/services';
 import { formatCurrency, formatDateTime, formatOrderId } from '@/lib/format-utils';
 import { DashboardSkeleton, EmptyState, ErrorState, StatCard, StatusBadge } from '@/components/ui';
-import type { DbRequest, Profile } from '@/types/types';
+import type { DbRequest, DiscountType, Profile } from '@/types/types';
 
 export default function BossDashboard() {
   const { profile, loading } = useAuth();
@@ -18,6 +18,7 @@ export default function BossDashboard() {
   const [requests, setRequests] = useState<DbRequest[]>([]);
   const [clientProfiles, setClientProfiles] = useState<Record<string, Profile>>({});
   const [rejectionReason, setRejectionReason] = useState<Record<string, string>>({});
+  const [discountOverrides, setDiscountOverrides] = useState<Record<string, { type: DiscountType; value: number; reason: string }>>({});
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,12 +90,40 @@ export default function BossDashboard() {
     return { id: profile.id, email: profile.email, role: profile.role };
   }, [profile]);
 
+  // ---------- Discount calculator ----------
+  const calcBossDiscount = useCallback(
+    (request: DbRequest): number => {
+      const override = discountOverrides[request.id];
+      if (!override || override.value <= 0) return 0;
+      const base = request.total_price || 0;
+      if (override.type === 'percent') {
+        return Math.round(base * Math.min(override.value, 100) / 100);
+      }
+      return Math.min(override.value, base);
+    },
+    [discountOverrides]
+  );
+
   // ---------- Approve ----------
   const approve = useCallback(
     async (request: DbRequest) => {
       const actor = getActor();
       setProcessingId(request.id);
       try {
+        // Boss can override/add discount
+        const override = discountOverrides[request.id];
+        const bossDiscountAmt = calcBossDiscount(request);
+        const hasOverride = bossDiscountAmt > 0 && override;
+
+        const extraUpdates: Partial<DbRequest> = {};
+        if (hasOverride) {
+          extraUpdates.discount_type = override.type;
+          extraUpdates.discount_value = override.value;
+          extraUpdates.discount_amount = bossDiscountAmt;
+          extraUpdates.discount_reason = override.reason || request.discount_reason || undefined;
+          extraUpdates.discounted_by = actor.id;
+        }
+
         await workflowEngine.transition({
           request,
           actorId: actor.id,
@@ -102,12 +131,14 @@ export default function BossDashboard() {
           actorRole: actor.role,
           nextStatus: 'approved',
           action: 'approve',
-          message: `Request ${formatOrderId(request.id)} approved by boss`,
+          message: `Request ${formatOrderId(request.id)} approved by boss${bossDiscountAmt > 0 ? ` (discount ${formatCurrency(bossDiscountAmt)})` : ''}`,
           type: 'success',
           notifyRoles: ['finance', 'admin', 'owner'],
+          extraUpdates,
           metadata: {
             previous_status: request.status,
             total_price: request.total_price || 0,
+            ...(bossDiscountAmt > 0 ? { boss_discount: bossDiscountAmt } : {}),
           },
         });
         setRequests((prev) => prev.filter((r) => r.id !== request.id));
@@ -117,7 +148,7 @@ export default function BossDashboard() {
         setProcessingId(null);
       }
     },
-    [getActor]
+    [getActor, discountOverrides, calcBossDiscount]
   );
 
   // ---------- Reject ----------
@@ -293,6 +324,82 @@ export default function BossDashboard() {
                           ? formatCurrency(request.total_price)
                           : 'Price not set'}
                       </p>
+                      {(request.discount_amount ?? 0) > 0 && (
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <p className="text-xs text-green-600 font-medium">
+                            Marketing Discount: -{formatCurrency(request.discount_amount ?? 0)}
+                            {request.discount_type === 'percent' && ` (${request.discount_value}%)`}
+                          </p>
+                          {request.discount_reason && (
+                            <p className="text-xs text-gray-500 mt-0.5">Reason: {request.discount_reason}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Boss discount override */}
+                    <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
+                      <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">
+                        Boss Discount (Optional)
+                      </p>
+                      <div className="flex gap-2">
+                        <select
+                          value={discountOverrides[request.id]?.type || 'percent'}
+                          onChange={(e) =>
+                            setDiscountOverrides((prev) => ({
+                              ...prev,
+                              [request.id]: {
+                                ...(prev[request.id] || { value: 0, reason: '' }),
+                                type: e.target.value as DiscountType,
+                              },
+                            }))
+                          }
+                          className="w-28 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                        >
+                          <option value="percent">Percent %</option>
+                          <option value="fixed">Fixed (Rp)</option>
+                        </select>
+                        <input
+                          type="number"
+                          min={0}
+                          max={discountOverrides[request.id]?.type === 'percent' ? 100 : undefined}
+                          value={discountOverrides[request.id]?.value || ''}
+                          onChange={(e) =>
+                            setDiscountOverrides((prev) => ({
+                              ...prev,
+                              [request.id]: {
+                                ...(prev[request.id] || { type: 'percent' as DiscountType, reason: '' }),
+                                value: Number(e.target.value) || 0,
+                              },
+                            }))
+                          }
+                          placeholder="0"
+                          className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                        />
+                      </div>
+                      {(discountOverrides[request.id]?.value ?? 0) > 0 && (
+                        <>
+                          <input
+                            type="text"
+                            value={discountOverrides[request.id]?.reason || ''}
+                            onChange={(e) =>
+                              setDiscountOverrides((prev) => ({
+                                ...prev,
+                                [request.id]: {
+                                  ...prev[request.id],
+                                  reason: e.target.value,
+                                },
+                              }))
+                            }
+                            placeholder="Reason for discount..."
+                            className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-apple-blue focus:ring-2 focus:ring-apple-blue/20"
+                          />
+                          <p className="mt-1 text-xs text-green-600 font-medium">
+                            Discount: -{formatCurrency(calcBossDiscount(request))}
+                            {' → '}Final: {formatCurrency((request.total_price || 0) - calcBossDiscount(request))}
+                          </p>
+                        </>
+                      )}
                     </div>
 
                     {clientProfile && (

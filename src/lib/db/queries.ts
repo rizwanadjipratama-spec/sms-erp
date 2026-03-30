@@ -14,6 +14,9 @@ import type {
   SystemLog, BackupLog, AutomationEvent,
   PaginationParams, PaginatedResult, UserRole, RequestStatus,
   InvoiceStatus, IssueStatus, NotificationType,
+  TechnicianArea, AreaTransferRequest, ServiceIssue, ServiceIssueLog,
+  EquipmentAsset, PmSchedule, PmStatus,
+  FakturTask, FakturTaskStatus, FakturTaskType,
 } from '@/types/types';
 
 // ============================================================================
@@ -399,16 +402,31 @@ export const paymentPromisesDb = {
 // ============================================================================
 
 export const deliveryLogsDb = {
-  async create(log: Omit<DeliveryLog, 'id' | 'created_at' | 'updated_at' | 'technician'>): Promise<DeliveryLog> {
+  async create(log: Omit<DeliveryLog, 'id' | 'created_at' | 'updated_at' | 'technician' | 'courier'>): Promise<DeliveryLog> {
     return throwOnError(
       await supabase.from('delivery_logs').insert(log).select('*').single()
     );
   },
 
+  async update(id: string, updates: Partial<Pick<DeliveryLog, 'status' | 'note' | 'proof_url' | 'delivered_at' | 'accompanying_staff'>>): Promise<DeliveryLog> {
+    return throwOnError(
+      await supabase.from('delivery_logs').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select('*').single()
+    );
+  },
+
+  async getById(id: string): Promise<DeliveryLog | null> {
+    const { data } = await supabase
+      .from('delivery_logs')
+      .select('*, technician:profiles!delivery_logs_technician_id_fkey(name, email), courier:profiles!delivery_logs_courier_id_fkey(name, email)')
+      .eq('id', id)
+      .single();
+    return data ?? null;
+  },
+
   async getByOrder(orderId: string): Promise<DeliveryLog[]> {
     const { data } = await supabase
       .from('delivery_logs')
-      .select('*, technician:profiles!technician_id(name, email)')
+      .select('*, technician:profiles!delivery_logs_technician_id_fkey(name, email), courier:profiles!delivery_logs_courier_id_fkey(name, email)')
       .eq('order_id', orderId)
       .order('created_at', { ascending: false });
     return data ?? [];
@@ -423,10 +441,19 @@ export const deliveryLogsDb = {
     return data ?? [];
   },
 
+  async getByCourier(courierId: string): Promise<DeliveryLog[]> {
+    const { data } = await supabase
+      .from('delivery_logs')
+      .select('*, courier:profiles!delivery_logs_courier_id_fkey(name, email)')
+      .eq('courier_id', courierId)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
   async getAll(pagination?: PaginationParams): Promise<{ data: DeliveryLog[]; count: number }> {
     let query = supabase
       .from('delivery_logs')
-      .select('*, technician:profiles!technician_id(name, email)', { count: 'exact' })
+      .select('*, technician:profiles!delivery_logs_technician_id_fkey(name, email), courier:profiles!delivery_logs_courier_id_fkey(name, email)', { count: 'exact' })
       .order('created_at', { ascending: false });
     if (pagination) query = paginate(query, pagination) as typeof query;
     const result = await query;
@@ -901,5 +928,388 @@ export const analyticsDb = {
       .from('v_technician_performance')
       .select('*');
     return data ?? [];
+  },
+};
+
+// ============================================================================
+// TECHNICIAN AREAS (added by Antigravity)
+// ============================================================================
+
+export const technicianAreasDb = {
+  async getByTechnician(technicianId: string): Promise<TechnicianArea[]> {
+    const { data } = await supabase
+      .from('technician_areas')
+      .select('*, technician:profiles!technician_id(name, email)')
+      .eq('technician_id', technicianId)
+      .eq('is_active', true)
+      .order('hospital_name');
+    return data ?? [];
+  },
+
+  async getAll(): Promise<TechnicianArea[]> {
+    const { data } = await supabase
+      .from('technician_areas')
+      .select('*, technician:profiles!technician_id(name, email)')
+      .eq('is_active', true)
+      .order('hospital_name');
+    return data ?? [];
+  },
+
+  async getById(id: string): Promise<TechnicianArea | null> {
+    const { data } = await supabase
+      .from('technician_areas')
+      .select('*, technician:profiles!technician_id(name, email)')
+      .eq('id', id)
+      .single();
+    return data;
+  },
+
+  async create(area: Omit<TechnicianArea, 'id' | 'created_at' | 'updated_at' | 'technician'>): Promise<TechnicianArea> {
+    return throwOnError(
+      await supabase.from('technician_areas').insert(area).select('*').single()
+    );
+  },
+
+  async update(id: string, updates: Partial<TechnicianArea>): Promise<TechnicianArea> {
+    const { technician, ...dbUpdates } = updates as TechnicianArea;
+    return throwOnError(
+      await supabase
+        .from('technician_areas')
+        .update({ ...dbUpdates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('*')
+        .single()
+    );
+  },
+};
+
+// ============================================================================
+// AREA TRANSFER REQUESTS (added by Antigravity)
+// ============================================================================
+
+export const areaTransfersDb = {
+  async create(transfer: Omit<AreaTransferRequest, 'id' | 'created_at' | 'updated_at' | 'area' | 'from_technician' | 'to_technician'>): Promise<AreaTransferRequest> {
+    return throwOnError(
+      await supabase.from('area_transfer_requests').insert(transfer).select('*').single()
+    );
+  },
+
+  async getByTechnician(technicianId: string): Promise<AreaTransferRequest[]> {
+    const { data } = await supabase
+      .from('area_transfer_requests')
+      .select('*, area:technician_areas!area_id(area_name, hospital_name), from_technician:profiles!from_technician_id(name, email), to_technician:profiles!to_technician_id(name, email)')
+      .or(`from_technician_id.eq.${technicianId},to_technician_id.eq.${technicianId}`)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async getPending(technicianId: string): Promise<AreaTransferRequest[]> {
+    const { data } = await supabase
+      .from('area_transfer_requests')
+      .select('*, area:technician_areas!area_id(area_name, hospital_name), from_technician:profiles!from_technician_id(name, email)')
+      .eq('to_technician_id', technicianId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async respond(id: string, status: 'accepted' | 'rejected', responseNote?: string): Promise<AreaTransferRequest> {
+    return throwOnError(
+      await supabase
+        .from('area_transfer_requests')
+        .update({ status, response_note: responseNote, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('*')
+        .single()
+    );
+  },
+};
+
+// ============================================================================
+// SERVICE ISSUES (added by Antigravity)
+// ============================================================================
+
+export const serviceIssuesDb = {
+  async create(issue: Omit<ServiceIssue, 'id' | 'created_at' | 'updated_at' | 'reporter' | 'assignee' | 'area' | 'product'>): Promise<ServiceIssue> {
+    return throwOnError(
+      await supabase.from('service_issues').insert(issue).select('*').single()
+    );
+  },
+
+  async getById(id: string): Promise<ServiceIssue | null> {
+    const { data } = await supabase
+      .from('service_issues')
+      .select('*, reporter:profiles!reported_by(name, email, company), assignee:profiles!assigned_to(name, email), area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name)')
+      .eq('id', id)
+      .single();
+    return data;
+  },
+
+  async getByReporter(reporterId: string): Promise<ServiceIssue[]> {
+    const { data } = await supabase
+      .from('service_issues')
+      .select('*, assignee:profiles!assigned_to(name, email), area:technician_areas!area_id(area_name, hospital_name)')
+      .eq('reported_by', reporterId)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async getByAssignee(technicianId: string): Promise<ServiceIssue[]> {
+    const { data } = await supabase
+      .from('service_issues')
+      .select('*, reporter:profiles!reported_by(name, email, company), area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name)')
+      .eq('assigned_to', technicianId)
+      .neq('status', 'completed')
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async getByAreas(areaIds: string[]): Promise<ServiceIssue[]> {
+    if (!areaIds.length) return [];
+    const { data } = await supabase
+      .from('service_issues')
+      .select('*, reporter:profiles!reported_by(name, email, company), assignee:profiles!assigned_to(name, email), area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name)')
+      .in('area_id', areaIds)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async getAllOpen(): Promise<ServiceIssue[]> {
+    const { data } = await supabase
+      .from('service_issues')
+      .select('*, reporter:profiles!reported_by(name, email, company), area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name)')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async getCompleted(search?: string, limit: number = 50): Promise<ServiceIssue[]> {
+    let query = supabase
+      .from('service_issues')
+      .select('*, reporter:profiles!reported_by(name, email, company), assignee:profiles!assigned_to(name, email), area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name)')
+      .eq('status', 'completed')
+      .order('resolved_at', { ascending: false })
+      .limit(limit);
+    if (search) {
+      query = query.or(`description.ilike.%${search}%,resolution_note.ilike.%${search}%,location.ilike.%${search}%,device_name.ilike.%${search}%`);
+    }
+    const { data } = await query;
+    return data ?? [];
+  },
+
+  async update(id: string, updates: Partial<ServiceIssue>): Promise<ServiceIssue> {
+    const { reporter, assignee, area, product, ...dbUpdates } = updates as ServiceIssue;
+    return throwOnError(
+      await supabase
+        .from('service_issues')
+        .update({ ...dbUpdates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('*')
+        .single()
+    );
+  },
+};
+
+// ============================================================================
+// SERVICE ISSUE LOGS (added by Antigravity)
+// ============================================================================
+
+export const serviceIssueLogsDb = {
+  async create(log: Omit<ServiceIssueLog, 'id' | 'created_at' | 'changer'>): Promise<ServiceIssueLog> {
+    return throwOnError(
+      await supabase.from('service_issue_logs').insert(log).select('*').single()
+    );
+  },
+
+  async getByIssue(issueId: string): Promise<ServiceIssueLog[]> {
+    const { data } = await supabase
+      .from('service_issue_logs')
+      .select('*, changer:profiles!changed_by(name, email)')
+      .eq('issue_id', issueId)
+      .order('created_at', { ascending: true });
+    return data ?? [];
+  },
+};
+
+// ============================================================================
+// PREVENTIVE MAINTENANCE (added by Antigravity)
+// ============================================================================
+
+export const equipmentAssetsDb = {
+  async create(asset: Omit<EquipmentAsset, 'id' | 'created_at' | 'updated_at' | 'client' | 'area' | 'product'>): Promise<EquipmentAsset> {
+    return throwOnError(
+      await supabase.from('equipment_assets').insert(asset).select('*').single()
+    );
+  },
+
+  async getById(id: string): Promise<EquipmentAsset | null> {
+    const { data } = await supabase
+      .from('equipment_assets')
+      .select('*, client:profiles!client_id(name, email, company), area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name, category, image_url)')
+      .eq('id', id)
+      .single();
+    return data;
+  },
+
+  async getByClient(clientId: string): Promise<EquipmentAsset[]> {
+    const { data } = await supabase
+      .from('equipment_assets')
+      .select('*, area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name, category, image_url)')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async getAll(): Promise<EquipmentAsset[]> {
+    const { data } = await supabase
+      .from('equipment_assets')
+      .select('*, client:profiles!client_id(name, email, company), area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name, category, image_url)')
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async update(id: string, updates: Partial<EquipmentAsset>): Promise<EquipmentAsset> {
+    const { client, area, product, ...dbUpdates } = updates as EquipmentAsset;
+    return throwOnError(
+      await supabase
+        .from('equipment_assets')
+        .update({ ...dbUpdates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('*')
+        .single()
+    );
+  },
+};
+
+export const pmSchedulesDb = {
+  async create(schedule: Omit<PmSchedule, 'id' | 'created_at' | 'updated_at' | 'asset' | 'technician'>): Promise<PmSchedule> {
+    return throwOnError(
+      await supabase.from('pm_schedules').insert(schedule).select('*').single()
+    );
+  },
+
+  async getById(id: string): Promise<PmSchedule | null> {
+    const { data } = await supabase
+      .from('pm_schedules')
+      .select('*, asset:equipment_assets!asset_id(serial_number, product_id, client_id, area_id, product:products!product_id(name, category), client:profiles!client_id(name, company), area:technician_areas!area_id(area_name, hospital_name)), technician:profiles!technician_id(name, email)')
+      .eq('id', id)
+      .single();
+    return data;
+  },
+
+  async getByAsset(assetId: string): Promise<PmSchedule[]> {
+    const { data } = await supabase
+      .from('pm_schedules')
+      .select('*, technician:profiles!technician_id(name, email)')
+      .eq('asset_id', assetId)
+      .order('due_date', { ascending: false });
+    return data ?? [];
+  },
+
+  async getByClient(clientId: string): Promise<PmSchedule[]> {
+    const { data } = await supabase
+      .from('pm_schedules')
+      .select('*, asset:equipment_assets!inner(client_id, serial_number, product:products(name)), technician:profiles!technician_id(name)')
+      .eq('equipment_assets.client_id', clientId)
+      .order('due_date', { ascending: true });
+    return data ?? [];
+  },
+
+  async getUpcoming(technicianId?: string, areaIds?: string[]): Promise<PmSchedule[]> {
+    let query = supabase
+      .from('pm_schedules')
+      .select('*, asset:equipment_assets!inner(serial_number, area_id, product:products(name), client:profiles(name, company), area:technician_areas(hospital_name)), technician:profiles!technician_id(name)')
+      .neq('status', 'completed')
+      .order('due_date', { ascending: true });
+
+    if (technicianId) {
+      // Get assigned to tech, or in areas tech covers, or unassigned general
+      if (areaIds && areaIds.length > 0) {
+        query = query.or(`technician_id.eq.${technicianId},technician_id.is.null,equipment_assets(area_id.in.(${areaIds.join(',')}))`);
+      } else {
+        query = query.or(`technician_id.eq.${technicianId},technician_id.is.null`);
+      }
+    }
+
+    const { data } = await query;
+    return data ?? [];
+  },
+
+  async update(id: string, updates: Partial<PmSchedule>): Promise<PmSchedule> {
+    const { asset, technician, ...dbUpdates } = updates as PmSchedule;
+    return throwOnError(
+      await supabase
+        .from('pm_schedules')
+        .update({ ...dbUpdates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('*')
+        .single()
+    );
+  },
+};
+
+// ============================================================================
+// FAKTUR ROLE SYSTEM (added by Antigravity)
+// ============================================================================
+
+export const fakturTasksDb = {
+  async create(task: Omit<FakturTask, 'id' | 'created_at' | 'updated_at' | 'client' | 'assignee' | 'creator'>): Promise<FakturTask> {
+    return throwOnError(
+      await supabase.from('faktur_tasks').insert(task).select('*').single()
+    );
+  },
+
+  async getById(id: string): Promise<FakturTask | null> {
+    const { data } = await supabase
+      .from('faktur_tasks')
+      .select('*, client:profiles!client_id(name, email, company, address, phone, pic_name), assignee:profiles!assigned_to(name, email), creator:profiles!created_by(name, email)')
+      .eq('id', id)
+      .single();
+    return data;
+  },
+
+  async getUpcoming(assigneeId?: string): Promise<FakturTask[]> {
+    let query = supabase
+      .from('faktur_tasks')
+      .select('*, client:profiles!client_id(name, email, company, address, phone, pic_name), creator:profiles!created_by(name, email)')
+      .neq('status', 'completed')
+      .neq('status', 'cancelled')
+      .order('scheduled_date', { ascending: true, nullsFirst: true });
+
+    if (assigneeId) {
+      query = query.or(`assigned_to.eq.${assigneeId},assigned_to.is.null`);
+    }
+
+    const { data } = await query;
+    return data ?? [];
+  },
+
+  async getByClient(clientId: string): Promise<FakturTask[]> {
+    const { data } = await supabase
+      .from('faktur_tasks')
+      .select('*, assignee:profiles!assigned_to(name, email), creator:profiles!created_by(name, email)')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async getAll(): Promise<FakturTask[]> {
+    const { data } = await supabase
+      .from('faktur_tasks')
+      .select('*, client:profiles!client_id(name, email, company, address, phone, pic_name), assignee:profiles!assigned_to(name, email), creator:profiles!created_by(name, email)')
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async update(id: string, updates: Partial<FakturTask>): Promise<FakturTask> {
+    const { client, assignee, creator, ...dbUpdates } = updates as FakturTask;
+    return throwOnError(
+      await supabase
+        .from('faktur_tasks')
+        .update({ ...dbUpdates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('*')
+        .single()
+    );
   },
 };

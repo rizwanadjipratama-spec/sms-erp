@@ -14,7 +14,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
-import type { ClientType, DbRequest, PriceList, Profile } from '@/types/types';
+import type { ClientType, DbRequest, DiscountType, PriceList, Profile } from '@/types/types';
 
 export default function MarketingDashboard() {
   const { profile, role, loading } = useAuth();
@@ -25,6 +25,7 @@ export default function MarketingDashboard() {
   const [priceMap, setPriceMap] = useState<Map<string, PriceList>>(new Map());
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [pricingModes, setPricingModes] = useState<Record<string, ClientType>>({});
+  const [discounts, setDiscounts] = useState<Record<string, { type: DiscountType; value: number; reason: string }>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +145,20 @@ export default function MarketingDashboard() {
     [priceMap]
   );
 
+  // ---------- Discount calculator ----------
+  const calculateDiscountAmount = useCallback(
+    (totalPrice: number, requestId: string): number => {
+      const disc = discounts[requestId];
+      if (!disc || disc.value <= 0) return 0;
+      if (disc.type === 'percent') {
+        const pct = Math.min(disc.value, 100);
+        return Math.round(totalPrice * pct / 100);
+      }
+      return Math.min(disc.value, totalPrice);
+    },
+    [discounts]
+  );
+
   // ---------- Handlers ----------
   const handleSaveReview = useCallback(
     async (request: DbRequest) => {
@@ -154,6 +169,8 @@ export default function MarketingDashboard() {
         const selectedType = pricingModes[request.id] || 'regular';
         const note = notes[request.id]?.trim() || undefined;
         const totalPrice = calculateTotalPrice(request, selectedType);
+        const discountAmount = calculateDiscountAmount(totalPrice, request.id);
+        const disc = discounts[request.id];
 
         await workflowEngine.transition({
           request,
@@ -162,16 +179,24 @@ export default function MarketingDashboard() {
           actorRole: role,
           nextStatus: 'priced',
           action: 'price_request',
-          message: `Request ${formatOrderId(request.id)} priced and ready for boss approval`,
+          message: `Request ${formatOrderId(request.id)} priced${discountAmount > 0 ? ` (discount ${formatCurrency(discountAmount)})` : ''} and ready for boss approval`,
           type: 'info',
           notifyRequester: false,
           notifyRoles: ['boss', 'admin', 'owner'],
           extraUpdates: {
             total_price: totalPrice,
             note,
+            ...(discountAmount > 0 && disc ? {
+              discount_type: disc.type,
+              discount_value: disc.value,
+              discount_amount: discountAmount,
+              discount_reason: disc.reason || undefined,
+              discounted_by: profile.id,
+            } : {}),
           },
           metadata: {
             pricing_mode: selectedType,
+            ...(discountAmount > 0 ? { discount_amount: discountAmount } : {}),
           },
         });
 
@@ -183,7 +208,7 @@ export default function MarketingDashboard() {
         setSavingId(null);
       }
     },
-    [profile, role, pricingModes, notes, calculateTotalPrice]
+    [profile, role, pricingModes, notes, discounts, calculateTotalPrice, calculateDiscountAmount]
   );
 
   // ---------- Render: loading ----------
@@ -344,16 +369,93 @@ export default function MarketingDashboard() {
                       />
                     </div>
 
-                    {computedPrice > 0 && (
-                      <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                        <p className="mb-1 text-xs font-medium uppercase tracking-wider text-blue-600">
-                          Calculated Price
-                        </p>
-                        <p className="text-lg font-bold tracking-tight text-gray-900">
-                          {formatCurrency(computedPrice)}
-                        </p>
+                    {/* Discount controls */}
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                      <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-gray-500">
+                        Discount (Optional)
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          value={discounts[request.id]?.type || 'percent'}
+                          onChange={(e) =>
+                            setDiscounts((prev) => ({
+                              ...prev,
+                              [request.id]: {
+                                ...prev[request.id] || { value: 0, reason: '' },
+                                type: e.target.value as DiscountType,
+                              },
+                            }))
+                          }
+                          className="w-28 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        >
+                          <option value="percent">Percent %</option>
+                          <option value="fixed">Fixed (Rp)</option>
+                        </select>
+                        <input
+                          type="number"
+                          min={0}
+                          max={discounts[request.id]?.type === 'percent' ? 100 : undefined}
+                          value={discounts[request.id]?.value || ''}
+                          onChange={(e) =>
+                            setDiscounts((prev) => ({
+                              ...prev,
+                              [request.id]: {
+                                ...prev[request.id] || { type: 'percent' as DiscountType, reason: '' },
+                                value: Number(e.target.value) || 0,
+                              },
+                            }))
+                          }
+                          placeholder="0"
+                          className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        />
                       </div>
-                    )}
+                      {(discounts[request.id]?.value ?? 0) > 0 && (
+                        <input
+                          type="text"
+                          value={discounts[request.id]?.reason || ''}
+                          onChange={(e) =>
+                            setDiscounts((prev) => ({
+                              ...prev,
+                              [request.id]: {
+                                ...prev[request.id],
+                                reason: e.target.value,
+                              },
+                            }))
+                          }
+                          placeholder="Reason for discount..."
+                          className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        />
+                      )}
+                    </div>
+
+                    {/* Price summary */}
+                    {computedPrice > 0 && (() => {
+                      const discAmt = calculateDiscountAmount(computedPrice, request.id);
+                      const finalPrice = computedPrice - discAmt;
+                      return (
+                        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-blue-600">
+                            Price Summary
+                          </p>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm text-gray-600">
+                              <span>Subtotal</span>
+                              <span>{formatCurrency(computedPrice)}</span>
+                            </div>
+                            {discAmt > 0 && (
+                              <div className="flex justify-between text-sm text-green-600">
+                                <span>Discount</span>
+                                <span>-{formatCurrency(discAmt)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between border-t border-blue-200 pt-1 text-lg font-bold text-gray-900">
+                              <span>Total</span>
+                              <span>{formatCurrency(finalPrice)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <button
                       onClick={() => handleSaveReview(request)}

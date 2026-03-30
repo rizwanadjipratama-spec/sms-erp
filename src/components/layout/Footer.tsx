@@ -1,8 +1,20 @@
 'use client'
 
 import Link from "next/link"
+import { useState, useEffect } from 'react';
+import { cmsService } from '@/lib/services';
+import type { CmsSettings } from '@/types/types';
 
 export default function Footer() {
+  const [settings, setSettings] = useState<CmsSettings | null>(null);
+
+  useEffect(() => {
+    cmsService.getSettings().then(setSettings).catch(() => null);
+  }, []);
+
+  const companyName = settings?.company_name || 'Sarana Megamedilab Sejahtera';
+  const companyDesc = settings?.company_address || 'Penyedia alat laboratorium medis, reagent, dan layanan teknisi 24/7\nuntuk rumah sakit dan klinik di Indonesia.';
+
   return (
     <footer className="w-full border-t border-gray-200 bg-white">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
@@ -13,11 +25,10 @@ export default function Footer() {
           {/* LEFT */}
           <div className="lg:col-span-2">
             <h2 className="text-lg font-semibold text-gray-900">
-              Sarana Megamedilab Sejahtera
+              {companyName}
             </h2>
-            <p className="mt-4 text-sm text-gray-600 leading-relaxed max-w-sm">
-              Penyedia alat laboratorium medis, reagent, dan layanan teknisi 24/7
-              untuk rumah sakit dan klinik di Indonesia.
+            <p className="mt-4 text-sm text-gray-600 leading-relaxed max-w-sm whitespace-pre-line">
+              {companyDesc}
             </p>
           </div>
 

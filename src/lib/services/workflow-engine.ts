@@ -65,12 +65,17 @@ const TRANSITION_MAP: Record<UserRole, Partial<Record<RequestStatus, RequestStat
     ready: ['on_delivery'],
     on_delivery: ['delivered'],
   },
+  courier: {
+    ready: ['on_delivery'],
+    on_delivery: ['delivered'],
+  },
   admin: {
     issue: ['resolved'],
     delivered: ['resolved', 'completed'],
   },
   owner: {},
   tax: {},
+  faktur: {},
 };
 
 // Who to notify on each status change
@@ -79,7 +84,7 @@ const STATUS_NOTIFY_ROLES: Partial<Record<RequestStatus, UserRole[]>> = {
   priced: ['boss'],
   approved: ['finance'],
   invoice_ready: ['warehouse'],
-  ready: ['technician'],
+  ready: ['technician', 'courier'],
   completed: ['owner'],
   issue: ['admin'],
 };
@@ -181,14 +186,17 @@ async function runSideEffects(input: TransitionInput, updatedRequest: DbRequest)
     if (existingCount === 0) {
       const invoiceNumber = await invoicesDb.generateNumber();
       const subtotal = updatedRequest.total_price;
+      const discountAmount = updatedRequest.discount_amount ?? 0;
+      const taxableAmount = subtotal - discountAmount;
       const taxRate = 0.11;
-      const taxAmount = Math.round(subtotal * taxRate);
-      const total = subtotal + taxAmount;
+      const taxAmount = Math.round(taxableAmount * taxRate);
+      const total = taxableAmount + taxAmount;
 
       const invoice = await invoicesDb.create({
         order_id: updatedRequest.id,
         invoice_number: invoiceNumber,
         subtotal,
+        discount_amount: discountAmount,
         tax_rate: taxRate,
         tax_amount: taxAmount,
         total,

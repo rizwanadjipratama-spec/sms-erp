@@ -22,5 +22,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/owner', label: 'Analytics', icon: 'A' },
   { href: '/dashboard/owner/reports', label: 'Reports', icon: 'R' },
   { href: '/dashboard/admin', label: 'Admin Panel', icon: 'S' },
+  { href: '/dashboard/cms', label: 'CMS System', icon: 'W' },
   { href: '/dashboard/notifications', label: 'Notifications', icon: 'N' },
 ];

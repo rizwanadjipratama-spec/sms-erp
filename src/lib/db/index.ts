@@ -21,4 +21,11 @@ export {
   systemLogsDb,
   storageDb,
   analyticsDb,
+  technicianAreasDb,
+  areaTransfersDb,
+  serviceIssuesDb,
+  serviceIssueLogsDb,
+  equipmentAssetsDb,
+  pmSchedulesDb,
+  fakturTasksDb,
 } from './queries';

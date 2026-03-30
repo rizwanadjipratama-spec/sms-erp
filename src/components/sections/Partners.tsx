@@ -1,14 +1,21 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useCmsPartners } from '@/hooks/useCms';
+import { useState, useEffect } from 'react';
+import { cmsService } from '@/lib/services';
+import type { CmsPartner } from '@/types/types';
 import { partners as fallbackPartners } from '@/lib/data';
 
 export default function Partners() {
-  const { partners: cmsPartners, loading } = useCmsPartners();
+  const [cmsPartners, setCmsPartners] = useState<CmsPartner[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    cmsService.getPartners().then(setCmsPartners).finally(() => setLoading(false));
+  }, []);
 
   const displayPartners = cmsPartners.length > 0
-    ? cmsPartners.map((p) => ({ name: p.name, logo: p.logo_url, website: p.website_url }))
+    ? cmsPartners.sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map((p) => ({ name: p.name, logo: p.logo_url, website: p.website_url }))
     : fallbackPartners.map((p) => ({ name: p.name, logo: p.logo, website: undefined }));
 
   return (

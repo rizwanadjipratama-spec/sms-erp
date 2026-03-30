@@ -1,13 +1,19 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useCmsSection } from '@/hooks/useCms';
+import { useState, useEffect } from 'react';
+import { cmsService } from '@/lib/services';
+import type { CmsSettings } from '@/types/types';
 
 export default function About() {
-  const { section } = useCmsSection('about');
+  const [settings, setSettings] = useState<CmsSettings | null>(null);
 
-  const title = section?.title || 'Real Experience.\nReal Reliability.';
-  const body = section?.body || 'We understand laboratory workflows — not just from theory, but from real operational experience.\n\nOur team brings hands-on knowledge of equipment installation, daily operations, maintenance challenges, and troubleshooting under pressure.';
+  useEffect(() => {
+    cmsService.getSettings().then(setSettings).catch(() => null);
+  }, []);
+
+  const title = settings?.about_heading || 'Real Experience.\nReal Reliability.';
+  const body = settings?.about_text || 'We understand laboratory workflows — not just from theory, but from real operational experience.\n\nOur team brings hands-on knowledge of equipment installation, daily operations, maintenance challenges, and troubleshooting under pressure.';
 
   return (
     <section id="about" className="py-32 px-4 sm:px-6 lg:px-8">

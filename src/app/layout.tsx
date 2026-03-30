@@ -4,6 +4,7 @@ import './globals.css';
 import './layout.css';
 import RequestProvider from '@/lib/request-context';
 import { AuthProvider } from '@/hooks/useAuth';
+import AnnouncementBanner from '@/components/layout/AnnouncementBanner';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -26,6 +27,7 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.variable} antialiased bg-white text-gray-900`}>
       <AuthProvider>
+        <AnnouncementBanner />
         <RequestProvider>
           {children}
         </RequestProvider>

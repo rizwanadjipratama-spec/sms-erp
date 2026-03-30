@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
-import { financeService, workflowEngine, authService } from '@/lib/services';
+import { financeService, workflowEngine, authService, fakturService } from '@/lib/services';
 import { formatCurrency, formatDate, formatDateTime, formatOrderId } from '@/lib/format-utils';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -13,9 +13,11 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Modal } from '@/components/ui/Modal';
-import type { DbRequest, Invoice, MonthlyClosing } from '@/types/types';
+import { supabase } from '@/lib/supabase';
+import type { DbRequest, Invoice, MonthlyClosing, FakturTask, FakturTaskType, Profile } from '@/types/types';
+import FakturDispatchTab from './components/FakturDispatchTab';
 
-type TabKey = 'queue' | 'invoices' | 'closing';
+type TabKey = 'queue' | 'invoices' | 'closing' | 'faktur_dispatch';
 
 export default function FinanceDashboard() {
   const { profile, role, loading } = useAuth();
@@ -24,6 +26,9 @@ export default function FinanceDashboard() {
   const [requests, setRequests] = useState<DbRequest[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [closings, setClosings] = useState<MonthlyClosing[]>([]);
+  const [fakturTasks, setFakturTasks] = useState<FakturTask[]>([]);
+  const [fakturUsers, setFakturUsers] = useState<Profile[]>([]);
+  const [clients, setClients] = useState<Profile[]>([]);
   const [tab, setTab] = useState<TabKey>('queue');
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,10 +52,26 @@ export default function FinanceDashboard() {
     setFetching(true);
     setError(null);
     try {
-      const dashboard = await financeService.getDashboard();
+      const [dashboard, fTasks] = await Promise.all([
+        financeService.getDashboard(),
+        fakturService.getAllTasks()
+      ]);
       setRequests(dashboard.requests);
       setInvoices(dashboard.invoices);
       setClosings(dashboard.closings);
+      setFakturTasks(fTasks);
+
+      // Lazily fetch staff/clients for the dispatch assigner to prevent heavy load if they don't open it
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('role', ['faktur', 'client'])
+        .eq('is_active', true);
+      
+      if (profilesData) {
+        setFakturUsers(profilesData.filter(p => p.role === 'faktur'));
+        setClients(profilesData.filter(p => p.role === 'client'));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load finance data');
     } finally {
@@ -74,6 +95,11 @@ export default function FinanceDashboard() {
   });
 
   useRealtimeTable('monthly_closing', undefined, refreshAll, {
+    enabled: Boolean(profile),
+    debounceMs: 300,
+  });
+
+  useRealtimeTable('faktur_tasks', undefined, refreshAll, {
     enabled: Boolean(profile),
     debounceMs: 300,
   });
@@ -215,10 +241,11 @@ export default function FinanceDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-gray-100 p-1 w-fit">
+      <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1 w-fit">
         {([
           { key: 'queue' as TabKey, label: 'Invoice Queue' },
           { key: 'invoices' as TabKey, label: 'Invoices' },
+          { key: 'faktur_dispatch' as TabKey, label: 'Faktur Dispatch' },
           { key: 'closing' as TabKey, label: 'Monthly Closing' },
         ]).map((item) => (
           <button
@@ -270,9 +297,18 @@ export default function FinanceDashboard() {
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-lg font-semibold text-gray-900">
-                    {request.total_price ? formatCurrency(request.total_price) : 'Price not set'}
-                  </p>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {request.total_price ? formatCurrency(request.total_price) : 'Price not set'}
+                    </p>
+                    {(request.discount_amount ?? 0) > 0 && (
+                      <p className="text-xs text-green-600 font-medium">
+                        Discount: -{formatCurrency(request.discount_amount ?? 0)}
+                        {request.discount_type === 'percent' && ` (${request.discount_value}%)`}
+                        {request.discount_reason && ` — ${request.discount_reason}`}
+                      </p>
+                    )}
+                  </div>
                   <button
                     onClick={() => handleGenerateInvoice(request)}
                     disabled={processingId === request.id}
@@ -307,7 +343,10 @@ export default function FinanceDashboard() {
                   <p className="mt-1 text-sm text-gray-900">
                     {formatCurrency(invoice.total)}
                     <span className="ml-1 text-xs text-gray-500">
-                      (+{formatCurrency(invoice.tax_amount)} tax)
+                      {(invoice.discount_amount ?? 0) > 0 && (
+                        <>disc -{formatCurrency(invoice.discount_amount ?? 0)} &middot; </>
+                      )}
+                      +{formatCurrency(invoice.tax_amount)} tax
                     </span>
                   </p>
                 </div>
@@ -331,6 +370,16 @@ export default function FinanceDashboard() {
             ))
           )}
         </section>
+      )}
+
+      {tab === 'faktur_dispatch' && (
+        <FakturDispatchTab 
+          tasks={fakturTasks} 
+          fakturUsers={fakturUsers} 
+          clients={clients} 
+          profile={profile!} 
+          onRefresh={refreshAll} 
+        />
       )}
 
       {/* Tab: Monthly Closing */}

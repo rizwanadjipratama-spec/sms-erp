@@ -9,9 +9,11 @@ export const ROLE_REDIRECTS: Record<UserRole, string> = {
   finance: '/dashboard/finance',
   warehouse: '/dashboard/warehouse',
   technician: '/dashboard/technician',
+  courier: '/dashboard/courier',
   admin: '/dashboard/admin',
   owner: '/dashboard/owner',
   tax: '/dashboard/tax',
+  faktur: '/dashboard/faktur',
 };
 
 export const ORDER_STATUS_FLOW: RequestStatus[] = [

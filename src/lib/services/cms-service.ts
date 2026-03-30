@@ -1,74 +1,148 @@
-// ============================================================================
-// CMS SERVICE — Content management for website sections
-// ============================================================================
+import { supabase } from '../supabase';
+import type { CmsSettings, CmsNews, CmsEvent, CmsPartner } from '@/types/types';
 
-import { cmsDb, storageDb, activityLogsDb } from '@/lib/db';
-import type { CmsSection, CmsMedia, CmsPartner, CmsSolution, EmployeeOfMonth, Actor } from '@/types/types';
+function throwOnError<T>(result: { data: T | null; error: any }): T {
+  if (result.error) throw new Error(result.error.message);
+  return result.data as T;
+}
 
 export const cmsService = {
-  // ------- Sections -------
-  async getSections(): Promise<CmsSection[]> {
-    return cmsDb.getSections();
+  // ============================================================================
+  // SETTINGS (SINGLETON)
+  // ============================================================================
+
+  async getSettings(): Promise<CmsSettings | null> {
+    const { data, error } = await supabase
+      .from('cms_settings')
+      .select('*, employee_of_month:profiles!employee_of_month_id(name, email, role)')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return data;
   },
 
-  async getSection(key: string): Promise<CmsSection | null> {
-    return cmsDb.getSection(key);
+  async updateSettings(updates: Partial<CmsSettings>): Promise<CmsSettings> {
+    const { employee_of_month, updated_at, ...cleanUpdates } = updates as any;
+    return throwOnError(
+      await supabase
+        .from('cms_settings')
+        .upsert({ id: 1, ...cleanUpdates })
+        .select('*')
+        .single()
+    );
   },
 
-  async updateSection(id: string, updates: Partial<CmsSection>, actor?: Actor): Promise<CmsSection> {
-    const section = await cmsDb.updateSection(id, {
-      ...updates,
-      updated_by: actor?.id,
-    });
+  // ============================================================================
+  // NEWS
+  // ============================================================================
 
-    if (actor) {
-      await activityLogsDb.create({
-        user_id: actor.id,
-        user_email: actor.email,
-        action: 'update_cms_section',
-        entity_type: 'cms_section',
-        entity_id: id,
-      });
+  async getNews(publishedOnly = false): Promise<CmsNews[]> {
+    let query = supabase
+      .from('cms_news')
+      .select('*, creator:profiles!created_by(name, email)')
+      .order('created_at', { ascending: false });
+
+    if (publishedOnly) {
+      query = query.eq('is_published', true);
     }
 
-    return section;
+    return throwOnError(await query) as CmsNews[];
   },
 
-  async updateSectionImage(id: string, file: File, actor?: Actor): Promise<CmsSection> {
-    const ext = file.name.split('.').pop() ?? 'jpg';
-    const path = `sections/${id}/${crypto.randomUUID()}.${ext}`;
-    const imageUrl = await storageDb.upload('cms-media', path, file);
-    return this.updateSection(id, { image_url: imageUrl }, actor);
+  async createNews(news: Partial<CmsNews>): Promise<CmsNews> {
+    return throwOnError(
+      await supabase.from('cms_news').insert(news).select('*').single()
+    );
   },
 
-  async updateSectionVideo(id: string, file: File, actor?: Actor): Promise<CmsSection> {
-    const ext = file.name.split('.').pop() ?? 'mp4';
-    const path = `sections/${id}/${crypto.randomUUID()}.${ext}`;
-    const videoUrl = await storageDb.upload('cms-media', path, file);
-    return this.updateSection(id, { video_url: videoUrl }, actor);
+  async updateNews(id: string, updates: Partial<CmsNews>): Promise<CmsNews> {
+    const { creator, ...cleanUpdates } = updates as any;
+    return throwOnError(
+      await supabase.from('cms_news').update(cleanUpdates).eq('id', id).select('*').single()
+    );
   },
 
-  // ------- Media -------
-  async getMedia(sectionId?: string): Promise<CmsMedia[]> {
-    return cmsDb.getMedia(sectionId);
+  async deleteNews(id: string): Promise<void> {
+    const { error } = await supabase.from('cms_news').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
 
-  // ------- Partners -------
+  // ============================================================================
+  // EVENTS
+  // ============================================================================
+
+  async getEvents(): Promise<CmsEvent[]> {
+    const query = supabase
+      .from('cms_events')
+      .select('*, creator:profiles!created_by(name, email)')
+      .order('event_date', { ascending: true });
+    return throwOnError(await query) as CmsEvent[];
+  },
+
+  async createEvent(event: Partial<CmsEvent>): Promise<CmsEvent> {
+    return throwOnError(
+      await supabase.from('cms_events').insert(event).select('*').single()
+    );
+  },
+
+  async updateEvent(id: string, updates: Partial<CmsEvent>): Promise<CmsEvent> {
+    const { creator, ...cleanUpdates } = updates as any;
+    return throwOnError(
+      await supabase.from('cms_events').update(cleanUpdates).eq('id', id).select('*').single()
+    );
+  },
+
+  async deleteEvent(id: string): Promise<void> {
+    const { error } = await supabase.from('cms_events').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ============================================================================
+  // PARTNERS (Existing schema)
+  // ============================================================================
+
   async getPartners(): Promise<CmsPartner[]> {
-    return cmsDb.getPartners();
+    const query = supabase
+      .from('cms_partners')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+    return throwOnError(await query) as CmsPartner[];
   },
 
-  // ------- Solutions -------
-  async getSolutions(): Promise<CmsSolution[]> {
-    return cmsDb.getSolutions();
+  async createPartner(partner: Partial<CmsPartner>): Promise<CmsPartner> {
+    return throwOnError(
+      await supabase.from('cms_partners').insert({ ...partner, is_active: true }).select('*').single()
+    );
   },
 
-  async getSolution(slug: string): Promise<CmsSolution | null> {
-    return cmsDb.getSolution(slug);
+  async updatePartner(id: string, updates: Partial<CmsPartner>): Promise<CmsPartner> {
+    return throwOnError(
+      await supabase.from('cms_partners').update(updates).eq('id', id).select('*').single()
+    );
   },
 
-  // ------- Employee of the Month -------
-  async getEmployeeOfMonth(): Promise<EmployeeOfMonth | null> {
-    return cmsDb.getEmployeeOfMonth();
+  async deletePartner(id: string): Promise<void> {
+    const { error } = await supabase.from('cms_partners').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
+
+  // ============================================================================
+  // ASSETS
+  // ============================================================================
+
+  async uploadCmsAsset(file: File, folder = 'general'): Promise<string> {
+    const ext = file.name.split('.').pop();
+    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('cms-assets')
+      .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data } = supabase.storage.from('cms-assets').getPublicUrl(fileName);
+    return data.publicUrl;
+  }
 };

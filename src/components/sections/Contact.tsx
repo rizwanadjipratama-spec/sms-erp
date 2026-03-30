@@ -2,13 +2,10 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { useCmsSection } from '@/hooks/useCms';
 
 export default function Contact() {
-  const { section } = useCmsSection('cta');
-
-  const title = section?.title || 'Ready to discuss\nyour laboratory needs?';
-  const subtitle = section?.subtitle || 'Our team is ready to help you find the best solution.';
+  const title = 'Ready to discuss\nyour laboratory needs?';
+  const subtitle = 'Our team is ready to help you find the best solution.';
 
   const [formData, setFormData] = useState({
     name: '',

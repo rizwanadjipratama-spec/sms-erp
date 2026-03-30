@@ -14,6 +14,7 @@ const ROLE_EMAILS: Record<string, UserRole> = {
   'finance@sms.com': 'finance',
   'warehouse@sms.com': 'warehouse',
   'technician@sms.com': 'technician',
+  'courier@sms.com': 'courier',
   'tax@sms.com': 'tax',
 };
 
@@ -24,9 +25,11 @@ const ROLE_REDIRECTS: Record<UserRole, string> = {
   finance: '/dashboard/finance',
   warehouse: '/dashboard/warehouse',
   technician: '/dashboard/technician',
+  courier: '/dashboard/courier',
   admin: '/dashboard/admin',
   owner: '/dashboard/owner',
   tax: '/dashboard/tax',
+  faktur: '/dashboard/faktur',
 };
 
 function getRoleFromEmail(email: string): UserRole {

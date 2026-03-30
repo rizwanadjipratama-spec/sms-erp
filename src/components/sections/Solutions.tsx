@@ -3,28 +3,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { useCmsSolutions, useCmsSection } from '@/hooks/useCms';
 import { solutions as fallbackSolutions } from '@/lib/data';
 
 export default function Solutions() {
-  const { solutions: cmsSolutions, loading } = useCmsSolutions();
-  const { section } = useCmsSection('services');
+  const loading = false;
+  const title = 'Complete Laboratory Solutions';
+  const subtitle = 'From equipment to consumables to full-service support — everything your lab needs to operate reliably.';
 
-  const title = section?.title || 'Complete Laboratory Solutions';
-  const subtitle = section?.subtitle || 'From equipment to consumables to full-service support — everything your lab needs to operate reliably.';
-
-  // Use CMS data if available, otherwise fall back to static data
-  const displaySolutions = cmsSolutions.length > 0
-    ? cmsSolutions.map((s) => ({
-        slug: s.slug,
-        title: s.title,
-        description: s.description || '',
-        category: s.category || '',
-        image: s.image_url || '/products/default.png',
-        specs: s.specs,
-        useCase: s.use_case || '',
-      }))
-    : fallbackSolutions;
+  const displaySolutions = fallbackSolutions;
 
   return (
     <section id="solutions" className="py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50">
