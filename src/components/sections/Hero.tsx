@@ -17,7 +17,7 @@ export default function Hero() {
   const subtitle = settings?.hero_subtitle || 'Equipment, reagents, and technical support for laboratories across Indonesia.';
   const videoUrl = settings?.hero_video_url || '';
   const ctaText = 'Explore Products';
-  const ctaLink = '/products';
+  const ctaLink = '/dashboard/client/products';
 
   return (
     <section className="relative w-full h-screen overflow-hidden">

@@ -48,6 +48,14 @@ export default function RequestProvider({ children }: { children: React.ReactNod
   const { profile } = useAuth();
 
   const add = useCallback((id: string, name?: string) => {
+    // Block clients from adding to cart if profile is incomplete
+    if (profile?.role === 'client' && !profile?.profile_completed) {
+      alert('Please complete your profile before adding items to your request.');
+      if (typeof window !== 'undefined') {
+        window.location.href = '/dashboard/profile';
+      }
+      return;
+    }
     setItems(prev => {
       const existing = prev.find(item => item.id === id);
       if (existing) {
@@ -57,7 +65,7 @@ export default function RequestProvider({ children }: { children: React.ReactNod
       }
       return [...prev, { id, qty: 1, name }];
     });
-  }, []);
+  }, [profile]);
 
   const remove = useCallback((id: string) => {
     setItems(prev => prev.filter(item => item.id !== id));

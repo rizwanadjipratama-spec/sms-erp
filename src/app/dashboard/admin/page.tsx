@@ -17,8 +17,11 @@ const PAGE_SIZE = 25;
 
 type TabKey = 'users' | 'issues' | 'activity';
 
+import { useBranch } from '@/hooks/useBranch';
+
 export default function AdminDashboard() {
   const { profile, loading } = useAuth();
+  const { activeBranchId } = useBranch();
   const router = useRouter();
 
   const [tab, setTab] = useState<TabKey>('users');
@@ -48,9 +51,9 @@ export default function AdminDashboard() {
 
     try {
       const [adminData, activityData, requestData] = await Promise.all([
-        analyticsService.getAdminDashboard(),
+        analyticsService.getAdminDashboard(activeBranchId),
         activityLogsDb.getRecent(50),
-        requestsDb.getByStatus(['issue', 'resolved']),
+        requestsDb.getByStatus(['issue', 'resolved'], undefined, activeBranchId),
       ]);
 
       setUsers(adminData.users);
@@ -67,12 +70,12 @@ export default function AdminDashboard() {
     } finally {
       setFetching(false);
     }
-  }, [profile]);
+  }, [profile, activeBranchId]);
 
   useEffect(() => {
     if (!profile) return;
     void refresh();
-  }, [profile, refresh]);
+  }, [profile, activeBranchId, refresh]);
 
   // ---------- Realtime subscriptions ----------
   useRealtimeTable('profiles', undefined, refresh, {

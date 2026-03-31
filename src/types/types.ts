@@ -154,6 +154,7 @@ export interface Profile {
   name?: string;
   phone?: string;
   address?: string;
+  bio?: string;
   city?: string;
   province?: string;
   client_type?: ClientType;

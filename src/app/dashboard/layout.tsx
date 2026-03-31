@@ -39,22 +39,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [loading, profile, router]);
 
-  // Profile completion guard — clients must complete setup first
-  useEffect(() => {
-    if (loading || !profile) return;
-    if (profile.role === 'client' && !authService.isProfileComplete(profile)) {
-      if (pathname !== '/dashboard/client/setup') {
-        router.replace('/dashboard/client/setup');
-      }
-    }
-  }, [loading, profile, pathname, router]);
+  // Profile completion guard removed — clients can browse freely.
+  // They are blocked from creating requests until profile is complete (enforced on request pages).
 
   // Route guard
   useEffect(() => {
     if (loading || !profile) return;
     if (pathname === '/dashboard') return;
     // Don't redirect away from setup page
-    if (pathname === '/dashboard/client/setup') return;
+    if (pathname === '/dashboard/profile') return;
 
     const hasDirectAccess = canAccessRoute(profile.role, pathname);
     const hasNestedAccess = NAV_ITEMS.some(

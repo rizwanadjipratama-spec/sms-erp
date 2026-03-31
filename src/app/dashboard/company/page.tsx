@@ -11,6 +11,7 @@ import { profilesDb } from '@/lib/db';
 import { formatCurrency, formatNumber, formatRelative } from '@/lib/format-utils';
 import { DashboardSkeleton, StatCard, EmptyState, ErrorState } from '@/components/ui';
 import type { CmsNews, CmsEvent, Profile, LeaveRequest, AttendanceRecord } from '@/types/types';
+import { useBranch } from '@/hooks/useBranch';
 import { leaveService, attendanceService } from '@/lib/services';
 
 type CompanyData = Awaited<ReturnType<typeof analyticsService.getCompanyDashboard>>;
@@ -45,6 +46,7 @@ function RevenueChart({ data }: { data: { month: string; total_revenue: number }
 
 export default function CompanyDashboard() {
   const { profile, loading } = useAuth();
+  const { activeBranchId } = useBranch();
   const router = useRouter();
   const [dashboard, setDashboard] = useState<CompanyData | null>(null);
   const [activeUsers, setActiveUsers] = useState<Profile[]>([]);
@@ -69,7 +71,7 @@ export default function CompanyDashboard() {
     setError(null);
     try {
       const [data, online, leaves, todayAtt, streaks] = await Promise.all([
-        analyticsService.getCompanyDashboard(),
+        analyticsService.getCompanyDashboard(activeBranchId),
         profilesDb.getActiveUsers(5),
         leaveService.getActiveStatusBoard(),
         attendanceService.getAllTodayRecords(),
@@ -85,11 +87,11 @@ export default function CompanyDashboard() {
     } finally {
       setFetching(false);
     }
-  }, [profile]);
+  }, [profile, activeBranchId]);
 
   useEffect(() => {
     if (profile) refresh();
-  }, [profile, refresh]);
+  }, [profile, refresh, activeBranchId]);
 
   // Realtime for key tables
   useRealtimeTable('requests', undefined, refresh, { enabled: Boolean(profile), debounceMs: 500 });

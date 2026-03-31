@@ -139,14 +139,15 @@ export const profilesDb = {
 // ============================================================================
 
 export const productsDb = {
-  async getAll(options?: { onlyPriced?: boolean; onlyActive?: boolean; pagination?: PaginationParams }): Promise<{ data: Product[]; count: number }> {
+  async getAll(options?: { onlyPriced?: boolean; onlyActive?: boolean; pagination?: PaginationParams; branchId?: string }): Promise<{ data: Product[]; count: number }> {
     let query = supabase
       .from('products')
-      .select('*, price:price_list!left(id, product_id, price_regular, price_kso, is_active)', { count: 'exact' })
+      .select('*, price:price_list!left(id, product_id, price_regular, price_kso, price_cost_per_test, is_active)', { count: 'exact' })
       .order('created_at', { ascending: false });
 
     if (options?.onlyActive !== false) query = query.eq('is_active', true);
     if (options?.onlyPriced) query = query.eq('is_priced', true);
+    if (options?.branchId && options.branchId !== 'ALL') query = query.eq('branch_id', options.branchId);
     if (options?.pagination) query = paginate(query, options.pagination) as typeof query;
 
     const result = await query;
@@ -295,23 +296,25 @@ export const requestsDb = {
     return { data: result.data ?? [], count: result.count ?? 0 };
   },
 
-  async getByStatus(status: RequestStatus | RequestStatus[], pagination?: PaginationParams): Promise<{ data: DbRequest[]; count: number }> {
+  async getByStatus(status: RequestStatus | RequestStatus[], pagination?: PaginationParams, branchId?: string): Promise<{ data: DbRequest[]; count: number }> {
     const statuses = Array.isArray(status) ? status : [status];
     let query = supabase
       .from('requests')
       .select('*, request_items(*, products(name, image_url, unit))', { count: 'exact' })
       .in('status', statuses)
       .order('created_at', { ascending: false });
+    if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
     if (pagination) query = paginate(query, pagination) as typeof query;
     const result = await query;
     return { data: result.data ?? [], count: result.count ?? 0 };
   },
 
-  async getAll(pagination?: PaginationParams): Promise<{ data: DbRequest[]; count: number }> {
+  async getAll(pagination?: PaginationParams, branchId?: string): Promise<{ data: DbRequest[]; count: number }> {
     let query = supabase
       .from('requests')
       .select('*, request_items(*, products(name, image_url, unit))', { count: 'exact' })
       .order('created_at', { ascending: false });
+    if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
     if (pagination) query = paginate(query, pagination) as typeof query;
     const result = await query;
     return { data: result.data ?? [], count: result.count ?? 0 };
@@ -357,12 +360,13 @@ export const invoicesDb = {
     return data;
   },
 
-  async getAll(filters?: { status?: InvoiceStatus[] }, pagination?: PaginationParams): Promise<{ data: Invoice[]; count: number }> {
+  async getAll(filters?: { status?: InvoiceStatus[]; branchId?: string }, pagination?: PaginationParams): Promise<{ data: Invoice[]; count: number }> {
     let query = supabase
       .from('invoices')
       .select('*, request:requests!left(id, user_id, user_email, status)', { count: 'exact' })
       .order('created_at', { ascending: false });
     if (filters?.status?.length) query = query.in('status', filters.status);
+    if (filters?.branchId && filters.branchId !== 'ALL') query = query.eq('branch_id', filters.branchId);
     if (pagination) query = paginate(query, pagination) as typeof query;
     const result = await query;
     return { data: result.data ?? [], count: result.count ?? 0 };
@@ -537,13 +541,15 @@ export const issuesDb = {
     return data ?? [];
   },
 
-  async getByStatus(status: IssueStatus | IssueStatus[]): Promise<Issue[]> {
+  async getByStatus(status: IssueStatus | IssueStatus[], branchId?: string): Promise<Issue[]> {
     const statuses = Array.isArray(status) ? status : [status];
-    const { data } = await supabase
+    let query = supabase
       .from('issues')
       .select('*')
       .in('status', statuses)
       .order('created_at', { ascending: false });
+    if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
+    const { data } = await query;
     return data ?? [];
   },
 
@@ -558,11 +564,13 @@ export const issuesDb = {
     );
   },
 
-  async getAll(): Promise<Issue[]> {
-    const { data } = await supabase
+  async getAll(branchId?: string): Promise<Issue[]> {
+    let query = supabase
       .from('issues')
       .select('*')
       .order('created_at', { ascending: false });
+    if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
+    const { data } = await query;
     return data ?? [];
   },
 };
@@ -1119,16 +1127,18 @@ export const serviceIssuesDb = {
     return data ?? [];
   },
 
-  async getAllOpen(): Promise<ServiceIssue[]> {
-    const { data } = await supabase
+  async getAllOpen(branchId?: string): Promise<ServiceIssue[]> {
+    let query = supabase
       .from('service_issues')
       .select('*, reporter:profiles!reported_by(name, email, company), area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name)')
       .eq('status', 'open')
       .order('created_at', { ascending: false });
+    if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
+    const { data } = await query;
     return data ?? [];
   },
 
-  async getCompleted(search?: string, limit: number = 50): Promise<ServiceIssue[]> {
+  async getCompleted(search?: string, limit: number = 50, branchId?: string): Promise<ServiceIssue[]> {
     let query = supabase
       .from('service_issues')
       .select('*, reporter:profiles!reported_by(name, email, company), assignee:profiles!assigned_to(name, email), area:technician_areas!area_id(area_name, hospital_name), product:products!product_id(name)')
@@ -1138,6 +1148,7 @@ export const serviceIssuesDb = {
     if (search) {
       query = query.or(`description.ilike.%${search}%,resolution_note.ilike.%${search}%,location.ilike.%${search}%,device_name.ilike.%${search}%`);
     }
+    if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
     const { data } = await query;
     return data ?? [];
   },

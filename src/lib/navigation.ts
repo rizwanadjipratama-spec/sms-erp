@@ -18,6 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/warehouse', label: 'Warehouse', icon: 'W' },
   { href: '/dashboard/warehouse/inventory', label: 'Inventory', icon: 'I' },
   { href: '/dashboard/warehouse/catalog', label: 'Catalog', icon: 'C' },
+  { href: '/dashboard/warehouse/request-purchase', label: 'Create PR', icon: 'P' },
   { href: '/dashboard/procurement-approvals', label: 'PR Approvals', icon: 'P' },
   { href: '/dashboard/technician', label: 'Delivery', icon: 'D' },
   { href: '/dashboard/courier', label: 'Courier', icon: 'K' },
@@ -29,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/director', label: 'Director Overview', icon: 'V' },
   { href: '/dashboard/admin', label: 'Admin Panel', icon: 'S' },
   { href: '/dashboard/leave', label: 'Time Off', icon: 'L' },
+  { href: '/dashboard/profile', label: 'My Profile', icon: 'U' },
   { href: '/dashboard/attendance', label: 'Attendance', icon: 'T' },
   { href: '/dashboard/cms', label: 'CMS System', icon: 'W' },
 ];

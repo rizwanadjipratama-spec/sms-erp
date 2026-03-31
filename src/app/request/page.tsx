@@ -61,6 +61,27 @@ export default function RequestPage() {
     );
   }
 
+  // Block request submission if client has not completed their profile
+  if (profile.role === 'client' && !profile.profile_completed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-apple-gray-bg px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-apple-gray-border">
+          <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-5 text-2xl">⚠️</div>
+          <h2 className="text-2xl font-black text-apple-text-primary mb-4">Complete Your Profile First</h2>
+          <p className="text-apple-text-secondary mb-8 font-medium">
+            You need to fill in your institution details before you can submit a request.
+          </p>
+          <Link
+            href="/dashboard/profile"
+            className="inline-block bg-apple-text-primary text-white py-3 px-8 rounded-apple font-bold hover:bg-black transition active:scale-95"
+          >
+            Go to My Profile
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-apple-gray-bg px-4">

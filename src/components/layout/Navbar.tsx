@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { NotificationBell } from '@/components/ui/NotificationBell';
+import BranchIndicator from '@/components/layout/BranchIndicator';
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -39,7 +40,7 @@ const Navbar = () => {
             <Link href="/about" className="text-sm font-bold text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)] transition-colors">
               About
             </Link>
-            <Link href="/products" className="text-sm font-bold text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)] transition-colors">
+            <Link href="/dashboard/client/products" className="text-sm font-bold text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)] transition-colors">
               Products
             </Link>
             <Link href="/services" className="text-sm font-bold text-[var(--apple-text-secondary)] hover:text-[var(--apple-text-primary)] transition-colors">
@@ -54,6 +55,9 @@ const Navbar = () => {
           <div className="flex-1 flex items-center justify-end gap-3">
             {profile ? (
               <>
+                {/* 📍 Multi-Branch Context Switcher / Indicator */}
+                <BranchIndicator />
+
                 {/* 🔔 Notification Bell */}
                 <NotificationBell />
 
@@ -136,7 +140,7 @@ const Navbar = () => {
           >
             <div className="px-6 py-6 space-y-4">
               <Link href="/about" onClick={() => setMobileOpen(false)} className="block text-[var(--apple-text-primary)] font-bold text-lg">About</Link>
-              <Link href="/products" onClick={() => setMobileOpen(false)} className="block text-[var(--apple-text-primary)] font-bold text-lg">Products</Link>
+              <Link href="/dashboard/client/products" onClick={() => setMobileOpen(false)} className="block text-[var(--apple-text-primary)] font-bold text-lg">Products</Link>
               <Link href="/services" onClick={() => setMobileOpen(false)} className="block text-[var(--apple-text-primary)] font-bold text-lg">Services</Link>
               <Link href="/contact" onClick={() => setMobileOpen(false)} className="block text-[var(--apple-text-primary)] font-bold text-lg">Contact</Link>
               

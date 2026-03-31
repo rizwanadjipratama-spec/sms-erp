@@ -15,12 +15,14 @@ import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Modal } from '@/components/ui/Modal';
 import { supabase } from '@/lib/supabase';
 import type { DbRequest, Invoice, MonthlyClosing, FakturTask, FakturTaskType, Profile } from '@/types/types';
+import { useBranch } from '@/hooks/useBranch';
 import FakturDispatchTab from './components/FakturDispatchTab';
 
 type TabKey = 'queue' | 'invoices' | 'closing' | 'faktur_dispatch';
 
 export default function FinanceDashboard() {
   const { profile, role, loading } = useAuth();
+  const { activeBranchId } = useBranch();
   const router = useRouter();
 
   const [requests, setRequests] = useState<DbRequest[]>([]);
@@ -53,7 +55,7 @@ export default function FinanceDashboard() {
     setError(null);
     try {
       const [dashboard, fTasks] = await Promise.all([
-        financeService.getDashboard(),
+        financeService.getDashboard(activeBranchId),
         fakturService.getAllTasks()
       ]);
       setRequests(dashboard.requests);
@@ -77,11 +79,11 @@ export default function FinanceDashboard() {
     } finally {
       setFetching(false);
     }
-  }, [profile]);
+  }, [profile, activeBranchId]);
 
   useEffect(() => {
     if (profile) refreshAll();
-  }, [profile, refreshAll]);
+  }, [profile, refreshAll, activeBranchId]);
 
   // ---------- Realtime subscriptions ----------
   useRealtimeTable('requests', undefined, refreshAll, {

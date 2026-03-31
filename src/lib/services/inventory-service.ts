@@ -6,10 +6,10 @@ import { productsDb, requestsDb, inventoryLogsDb, activityLogsDb, systemLogsDb }
 import type { Actor, DbRequest, InventoryLog, Product, PaginationParams } from '@/types/types';
 
 export const inventoryService = {
-  async getWarehouseDashboard() {
+  async getWarehouseDashboard(branchId?: string) {
     const [productsResult, warehouseRequests, recentLogs] = await Promise.all([
-      productsDb.getAll({ onlyActive: true }),
-      requestsDb.getByStatus(['invoice_ready', 'preparing', 'ready']),
+      productsDb.getAll({ onlyActive: true, branchId }),
+      requestsDb.getByStatus(['invoice_ready', 'preparing', 'ready'], undefined, branchId),
       inventoryLogsDb.getRecent(30),
     ]);
 

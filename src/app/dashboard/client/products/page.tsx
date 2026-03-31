@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranch } from '@/hooks/useBranch';
 import { useRequest } from '@/lib/request-context';
 import { productsDb } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
@@ -11,6 +12,7 @@ import type { Product } from '@/types/types';
 
 export default function ClientProductsPage() {
   const { profile, loading: authLoading } = useAuth();
+  const { activeBranchId } = useBranch();
   const { add, itemCount } = useRequest();
   const router = useRouter();
 
@@ -30,24 +32,29 @@ export default function ClientProductsPage() {
       // Cost Per Test clients can see all active products (no price needed)
       // Regular/KSO only see priced products
       const onlyPriced = !isCostPerTest;
-      const { data } = await productsDb.getAll({ onlyPriced });
+      const { data } = await productsDb.getAll({ onlyPriced, branchId: activeBranchId });
       setProducts(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product catalog');
     } finally {
       setIsLoading(false);
     }
-  }, [isCostPerTest]);
+  }, [isCostPerTest, activeBranchId]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
   const handleAddToCart = useCallback((product: Product) => {
+    // Block adding to cart if profile is not completed
+    if (profile && !profile.profile_completed) {
+      router.push('/dashboard/profile');
+      return;
+    }
     add(product.id, product.name);
     setAddedId(product.id);
     setTimeout(() => setAddedId(null), 1200);
-  }, [add]);
+  }, [add, profile, router]);
 
   const getPrice = useCallback((product: Product): number | null => {
     if (isCostPerTest) return null; // Cost Per Test clients don't see prices

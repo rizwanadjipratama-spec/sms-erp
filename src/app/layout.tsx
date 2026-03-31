@@ -18,6 +18,8 @@ export const metadata: Metadata = {
     'Supplying, supporting, and sustaining laboratory equipment across Indonesia. Hematology, Chemistry, POCT systems with 24/7 service.',
 };
 
+import { BranchProvider } from '@/hooks/useBranch';
+
 export default function RootLayout({
   children,
 }: {
@@ -27,10 +29,12 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth" data-scroll-behavior="smooth">
       <body className={`${inter.variable} antialiased bg-white text-gray-900`}>
       <AuthProvider>
-        <AnnouncementBanner />
-        <RequestProvider>
-          {children}
-        </RequestProvider>
+        <BranchProvider>
+          <AnnouncementBanner />
+          <RequestProvider>
+            {children}
+          </RequestProvider>
+        </BranchProvider>
       </AuthProvider>
       </body>
     </html>

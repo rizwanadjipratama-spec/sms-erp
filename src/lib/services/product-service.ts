@@ -18,12 +18,12 @@ function validateImageFile(file: File): void {
 }
 
 export const productService = {
-  async getAll(options?: { onlyPriced?: boolean; pagination?: PaginationParams }) {
+  async getAll(options?: { onlyPriced?: boolean; pagination?: PaginationParams; branchId?: string }) {
     return productsDb.getAll(options);
   },
 
-  async getActive(): Promise<Product[]> {
-    const { data } = await productsDb.getAll({ onlyActive: true });
+  async getActive(branchId?: string): Promise<Product[]> {
+    const { data } = await productsDb.getAll({ onlyActive: true, branchId });
     return data;
   },
 
@@ -43,6 +43,7 @@ export const productService = {
     stock?: number;
     min_stock?: number;
     unit?: string;
+    branch_id?: string;
   }, imageFile?: File, actor?: Actor): Promise<Product> {
     if (imageFile) validateImageFile(imageFile);
 
@@ -62,6 +63,7 @@ export const productService = {
       stock: product.stock ?? 0,
       min_stock: product.min_stock ?? 5,
       unit: product.unit ?? 'pcs',
+      branch_id: product.branch_id,
       is_active: true,
       created_by: actor?.id,
     });

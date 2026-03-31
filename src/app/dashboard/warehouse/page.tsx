@@ -11,10 +11,12 @@ import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import type { DbRequest, InventoryLog, Actor } from '@/types/types';
 
+import { useBranch } from '@/hooks/useBranch';
 import { WarehouseConsole } from '@/components/dashboard/WarehouseConsole';
 
 export default function WarehouseDashboard() {
   const { profile, role, loading } = useAuth();
+  const { activeBranchId } = useBranch();
   const router = useRouter();
 
   // Data state
@@ -47,7 +49,7 @@ export default function WarehouseDashboard() {
     setFetching(true);
     setError(null);
     try {
-      const data = await inventoryService.getWarehouseDashboard();
+      const data = await inventoryService.getWarehouseDashboard(activeBranchId);
       setRequests(data.requests);
       setInventoryLogs(data.recentLogs);
     } catch (err) {
@@ -56,11 +58,11 @@ export default function WarehouseDashboard() {
     } finally {
       setFetching(false);
     }
-  }, []);
+  }, [activeBranchId]);
 
   useEffect(() => {
     if (profile) refresh();
-  }, [profile, refresh]);
+  }, [profile, refresh, activeBranchId]);
 
   // Realtime subscriptions
   useRealtimeTable('requests', undefined, refresh, {

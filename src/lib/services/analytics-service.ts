@@ -50,11 +50,11 @@ export const analyticsService = {
     };
   },
 
-  async getAdminDashboard() {
+  async getAdminDashboard(branchId?: string) {
     const [profiles, issues, allRequests] = await Promise.all([
       profilesDb.getAll(),
-      issuesDb.getByStatus(['open', 'in_progress']),
-      requestsDb.getAll({ page: 1, pageSize: 1 }),
+      issuesDb.getByStatus(['open', 'in_progress'], branchId),
+      requestsDb.getAll({ page: 1, pageSize: 1 }, branchId),
     ]);
 
     return {
@@ -156,7 +156,7 @@ export const analyticsService = {
     };
   },
 
-  async getCompanyDashboard() {
+  async getCompanyDashboard(branchId?: string) {
     const [
       monthlyRevenue,
       orderPipeline,
@@ -170,8 +170,8 @@ export const analyticsService = {
     ] = await Promise.all([
       analyticsDb.getMonthlyRevenue(),
       analyticsDb.getOrderPipeline(),
-      requestsDb.getAll({ page: 1, pageSize: 1 }),
-      invoicesDb.getAll(),
+      requestsDb.getAll({ page: 1, pageSize: 1 }, branchId),
+      invoicesDb.getAll({ branchId }),
       deliveryLogsDb.getAll(),
       profilesDb.getAll(),
       cmsService.getSettings(),

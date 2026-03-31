@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranch } from '@/hooks/useBranch';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
 import { productService, authService } from '@/lib/services';
@@ -18,6 +19,7 @@ import { ProductList } from '@/components/dashboard/ProductList';
 
 export default function CatalogDashboard() {
   const { profile, role, loading } = useAuth();
+  const { activeBranchId } = useBranch();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -55,11 +57,16 @@ export default function CatalogDashboard() {
     setFetching(true);
     setError(null);
     try {
-      const { data, error: dbError } = await supabase
+      let query = supabase
         .from('products')
         .select('*')
         .order('name');
+      
+      if (activeBranchId && activeBranchId !== 'ALL') {
+        query = query.eq('branch_id', activeBranchId);
+      }
         
+      const { data, error: dbError } = await query;
       if (dbError) throw dbError;
       setProducts(data as Product[]);
     } catch (err) {
@@ -67,11 +74,11 @@ export default function CatalogDashboard() {
     } finally {
       setFetching(false);
     }
-  }, []);
+  }, [activeBranchId]);
 
   useEffect(() => {
     if (profile) refresh();
-  }, [profile, refresh]);
+  }, [profile, refresh, activeBranchId]);
 
   useRealtimeTable('products', undefined, refresh, {
     enabled: Boolean(profile),
@@ -105,7 +112,7 @@ export default function CatalogDashboard() {
           await productService.update(editingProduct.id, data, imageFile, actor);
         } else {
           await productService.create(
-            data as { name: string; description?: string; sku?: string; category?: Product['category']; stock?: number; min_stock?: number; unit?: string },
+            { ...data, branch_id: activeBranchId === 'ALL' ? undefined : activeBranchId } as any,
             imageFile,
             actor
           );

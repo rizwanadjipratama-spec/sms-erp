@@ -6,10 +6,10 @@ import { requestsDb, invoicesDb, monthlyClosingDb, activityLogsDb } from '@/lib/
 import type { Actor, Invoice, InvoiceStatus, MonthlyClosing, PaginationParams } from '@/types/types';
 
 export const financeService = {
-  async getDashboard() {
+  async getDashboard(branchId?: string) {
     const [approvedRequests, allInvoices, closings] = await Promise.all([
-      requestsDb.getByStatus(['approved', 'invoice_ready']),
-      invoicesDb.getAll(),
+      requestsDb.getByStatus(['approved', 'invoice_ready'], undefined, branchId),
+      invoicesDb.getAll({ branchId }),
       monthlyClosingDb.getAll(),
     ]);
 
