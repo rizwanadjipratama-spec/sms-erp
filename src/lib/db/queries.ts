@@ -17,6 +17,15 @@ import type {
   TechnicianArea, AreaTransferRequest, ServiceIssue, ServiceIssueLog,
   EquipmentAsset, PmSchedule, PmStatus,
   FakturTask, FakturTaskStatus, FakturTaskType,
+  // ORION types
+  Region, Branch, Delivery, DeliveryItem, DeliveryTeamMember,
+  DeliveryProof, DeliveryStatusLog, DeliveryStatus,
+  Approval, ApprovalStatus, ApprovalType,
+  Supplier, PurchaseRequest, PurchaseOrder, PurchaseRequestStatus, PurchaseOrderStatus,
+  ExpenseClaim, ExpenseClaimStatus, ClaimLedger, CashAdvance,
+  FinancialTransaction, FinancialTransactionType, FinancialDirection,
+  ProductBranchStock, StockTransfer, StockTransferLog,
+  ClaimPayment, SupplierInvoice,
 } from '@/types/types';
 
 // ============================================================================
@@ -1349,3 +1358,380 @@ export const fakturTasksDb = {
     );
   },
 };
+
+// ============================================================================
+// ORION: BRANCHES
+// ============================================================================
+
+export const branchesDb = {
+  async getAll(): Promise<Branch[]> {
+    const { data } = await supabase
+      .from('branches')
+      .select('*, region:regions(*)')
+      .eq('is_active', true)
+      .order('sort_order');
+    return data ?? [];
+  },
+
+  async getById(id: string): Promise<Branch | null> {
+    const { data } = await supabase
+      .from('branches')
+      .select('*, region:regions(*)')
+      .eq('id', id)
+      .single();
+    return data;
+  },
+
+  async getByRegion(regionId: string): Promise<Branch[]> {
+    const { data } = await supabase
+      .from('branches')
+      .select('*')
+      .eq('region_id', regionId)
+      .eq('is_active', true)
+      .order('sort_order');
+    return data ?? [];
+  },
+};
+
+export const regionsDb = {
+  async getAll(): Promise<Region[]> {
+    const { data } = await supabase
+      .from('regions')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order');
+    return data ?? [];
+  },
+};
+
+// ============================================================================
+// ORION: DELIVERIES
+// ============================================================================
+
+export const deliveriesDb = {
+  async getById(id: string): Promise<Delivery | null> {
+    const { data } = await supabase
+      .from('deliveries')
+      .select('*, delivery_items(*, product:products(name, image_url, unit)), delivery_team(*, user:profiles(name, email, role)), delivery_proofs(*)')
+      .eq('id', id)
+      .single();
+    return data;
+  },
+
+  async getByBranch(branchId: string, pagination?: PaginationParams): Promise<{ data: Delivery[]; count: number }> {
+    let query = supabase
+      .from('deliveries')
+      .select('*, delivery_team(user_id)', { count: 'exact' })
+      .eq('branch_id', branchId)
+      .order('created_at', { ascending: false });
+    if (pagination) query = paginate(query, pagination) as typeof query;
+    const result = await query;
+    return { data: result.data ?? [], count: result.count ?? 0 };
+  },
+
+  async getByStatus(status: DeliveryStatus | DeliveryStatus[]): Promise<Delivery[]> {
+    const statuses = Array.isArray(status) ? status : [status];
+    const { data } = await supabase
+      .from('deliveries')
+      .select('*, delivery_team(user_id)')
+      .in('status', statuses)
+      .order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async create(delivery: { request_id: string; branch_id: string; invoice_id?: string; notes?: string; scheduled_date?: string; created_by: string }): Promise<Delivery> {
+    return throwOnError(
+      await supabase.from('deliveries').insert(delivery).select('*').single()
+    );
+  },
+
+  async update(id: string, updates: Partial<Delivery>): Promise<Delivery> {
+    const { items, team, proofs, request, branch, ...dbUpdates } = updates as any;
+    return throwOnError(
+      await supabase.from('deliveries').update({ ...dbUpdates, updated_at: new Date().toISOString() }).eq('id', id).select('*').single()
+    );
+  },
+
+  async addTeamMember(deliveryId: string, userId: string, teamRole: string): Promise<void> {
+    const { error } = await supabase.from('delivery_team').insert({ delivery_id: deliveryId, user_id: userId, team_role: teamRole });
+    if (error) throw new Error(error.message);
+  },
+
+  async addProof(proof: { delivery_id: string; proof_type: string; file_url: string; caption?: string; uploaded_by: string }): Promise<void> {
+    const { error } = await supabase.from('delivery_proofs').insert(proof);
+    if (error) throw new Error(error.message);
+  },
+
+  async addStatusLog(log: { delivery_id: string; from_status?: string; to_status: string; changed_by: string; note?: string; latitude?: number; longitude?: number }): Promise<void> {
+    const { error } = await supabase.from('delivery_status_logs').insert(log);
+    if (error) throw new Error(error.message);
+  },
+};
+
+// ============================================================================
+// ORION: APPROVALS
+// ============================================================================
+
+export const approvalsDb = {
+  async getPending(branchId?: string): Promise<Approval[]> {
+    let query = supabase
+      .from('approvals')
+      .select('*, requester:profiles!requested_by(name, email, role)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (branchId) query = query.eq('branch_id', branchId);
+    const { data } = await query;
+    return data ?? [];
+  },
+
+  async getAll(filters?: { status?: ApprovalStatus; type?: ApprovalType; branchId?: string }, pagination?: PaginationParams): Promise<{ data: Approval[]; count: number }> {
+    let query = supabase
+      .from('approvals')
+      .select('*, requester:profiles!requested_by(name, email, role)', { count: 'exact' })
+      .order('created_at', { ascending: false });
+    if (filters?.status) query = query.eq('status', filters.status);
+    if (filters?.type) query = query.eq('approval_type', filters.type);
+    if (filters?.branchId) query = query.eq('branch_id', filters.branchId);
+    if (pagination) query = paginate(query, pagination) as typeof query;
+    const result = await query;
+    return { data: result.data ?? [], count: result.count ?? 0 };
+  },
+
+  async create(approval: { approval_type: string; reference_id: string; reference_table: string; title: string; description?: string; amount?: number; branch_id?: string; requested_by: string }): Promise<Approval> {
+    return throwOnError(
+      await supabase.from('approvals').insert(approval).select('*').single()
+    );
+  },
+
+  async approve(id: string, approvedBy: string): Promise<Approval> {
+    return throwOnError(
+      await supabase.from('approvals').update({ status: 'approved', approved_by: approvedBy, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', id).select('*').single()
+    );
+  },
+
+  async reject(id: string, approvedBy: string, reason: string): Promise<Approval> {
+    return throwOnError(
+      await supabase.from('approvals').update({ status: 'rejected', approved_by: approvedBy, approved_at: new Date().toISOString(), rejection_reason: reason, updated_at: new Date().toISOString() }).eq('id', id).select('*').single()
+    );
+  },
+};
+
+// ============================================================================
+// ORION: PURCHASING
+// ============================================================================
+
+export const suppliersDb = {
+  async getAll(): Promise<Supplier[]> {
+    const { data } = await supabase.from('suppliers').select('*').eq('is_active', true).order('name');
+    return data ?? [];
+  },
+
+  async create(supplier: { name: string; contact?: string; email?: string; phone?: string; address?: string; notes?: string; created_by?: string }): Promise<Supplier> {
+    return throwOnError(await supabase.from('suppliers').insert(supplier).select('*').single());
+  },
+
+  async update(id: string, updates: Partial<Supplier>): Promise<Supplier> {
+    return throwOnError(await supabase.from('suppliers').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select('*').single());
+  },
+};
+
+export const purchaseRequestsDb = {
+  async getAll(branchId?: string, status?: PurchaseRequestStatus): Promise<PurchaseRequest[]> {
+    let query = supabase.from('purchase_requests').select('*, items:purchase_request_items(*), requester:profiles!requested_by(name, email)').order('created_at', { ascending: false });
+    if (branchId) query = query.eq('branch_id', branchId);
+    if (status) query = query.eq('status', status);
+    const { data } = await query;
+    return data ?? [];
+  },
+
+  async create(pr: { branch_id: string; requested_by: string; title: string; notes?: string; total_estimated: number }): Promise<PurchaseRequest> {
+    return throwOnError(await supabase.from('purchase_requests').insert(pr).select('*').single());
+  },
+
+  async update(id: string, updates: Partial<PurchaseRequest>): Promise<PurchaseRequest> {
+    const { items, branch, requester, ...dbUpdates } = updates as any;
+    return throwOnError(await supabase.from('purchase_requests').update({ ...dbUpdates, updated_at: new Date().toISOString() }).eq('id', id).select('*').single());
+  },
+};
+
+export const purchaseOrdersDb = {
+  async getAll(branchId?: string, status?: PurchaseOrderStatus): Promise<PurchaseOrder[]> {
+    let query = supabase.from('purchase_orders').select('*, items:purchase_order_items(*), supplier:suppliers(*)').order('created_at', { ascending: false });
+    if (branchId) query = query.eq('branch_id', branchId);
+    if (status) query = query.eq('status', status);
+    const { data } = await query;
+    return data ?? [];
+  },
+
+  async create(po: { purchase_request_id?: string; branch_id: string; supplier_id: string; po_number: string; total: number; tax_amount?: number; notes?: string; created_by: string }): Promise<PurchaseOrder> {
+    return throwOnError(await supabase.from('purchase_orders').insert(po).select('*').single());
+  },
+
+  async update(id: string, updates: Partial<PurchaseOrder>): Promise<PurchaseOrder> {
+    const { items, supplier, branch, ...dbUpdates } = updates as any;
+    return throwOnError(await supabase.from('purchase_orders').update({ ...dbUpdates, updated_at: new Date().toISOString() }).eq('id', id).select('*').single());
+  },
+};
+
+// ============================================================================
+// ORION: EXPENSE CLAIMS & CASH ADVANCES
+// ============================================================================
+
+export const expenseClaimsDb = {
+  async getAll(branchId?: string, status?: ExpenseClaimStatus): Promise<ExpenseClaim[]> {
+    let query = supabase.from('expense_claims').select('*, claimant:profiles!claimant_id(name, email, role)').order('created_at', { ascending: false });
+    if (branchId) query = query.eq('branch_id', branchId);
+    if (status) query = query.eq('status', status);
+    const { data } = await query;
+    return data ?? [];
+  },
+
+  async create(claim: { branch_id: string; claimant_id: string; category: string; title: string; description?: string; amount: number; receipt_url?: string }): Promise<ExpenseClaim> {
+    return throwOnError(await supabase.from('expense_claims').insert(claim).select('*').single());
+  },
+
+  async update(id: string, updates: Partial<ExpenseClaim>): Promise<ExpenseClaim> {
+    const { claimant, branch, ...dbUpdates } = updates as any;
+    return throwOnError(await supabase.from('expense_claims').update({ ...dbUpdates, updated_at: new Date().toISOString() }).eq('id', id).select('*').single());
+  },
+};
+
+export const claimLedgerDb = {
+  async getByUser(userId: string): Promise<ClaimLedger[]> {
+    const { data } = await supabase.from('claim_ledger').select('*').eq('user_id', userId).order('year', { ascending: false }).order('month', { ascending: false });
+    return data ?? [];
+  },
+
+  async getCurrent(userId: string): Promise<ClaimLedger | null> {
+    const now = new Date();
+    const { data } = await supabase.from('claim_ledger').select('*').eq('user_id', userId).eq('month', now.getMonth() + 1).eq('year', now.getFullYear()).single();
+    return data;
+  },
+};
+
+export const cashAdvancesDb = {
+  async getByUser(userId: string): Promise<CashAdvance[]> {
+    const { data } = await supabase.from('cash_advances').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async create(ca: { branch_id: string; user_id: string; amount: number; purpose: string }): Promise<CashAdvance> {
+    return throwOnError(await supabase.from('cash_advances').insert(ca).select('*').single());
+  },
+
+  async update(id: string, updates: Partial<CashAdvance>): Promise<CashAdvance> {
+    const { user, branch, ...dbUpdates } = updates as any;
+    return throwOnError(await supabase.from('cash_advances').update({ ...dbUpdates, updated_at: new Date().toISOString() }).eq('id', id).select('*').single());
+  },
+};
+
+// ============================================================================
+// ORION: FINANCIAL TRANSACTIONS
+// ============================================================================
+
+export const financialTransactionsDb = {
+  async getAll(branchId?: string, pagination?: PaginationParams): Promise<{ data: FinancialTransaction[]; count: number }> {
+    let query = supabase.from('financial_transactions').select('*, recorder:profiles!recorded_by(name, email)', { count: 'exact' }).order('created_at', { ascending: false });
+    if (branchId) query = query.eq('branch_id', branchId);
+    if (pagination) query = paginate(query, pagination) as typeof query;
+    const result = await query;
+    return { data: result.data ?? [], count: result.count ?? 0 };
+  },
+
+  async create(tx: { branch_id: string; transaction_type: string; direction: string; amount: number; reference_id?: string; reference_table?: string; description: string; payment_method?: string; payment_ref?: string; recorded_by: string }): Promise<FinancialTransaction> {
+    return throwOnError(await supabase.from('financial_transactions').insert(tx).select('*').single());
+  },
+
+  async getSummary(branchId: string, month: number, year: number): Promise<{ total_inflow: number; total_outflow: number; net: number }> {
+    const startDate = new Date(year, month - 1, 1).toISOString();
+    const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
+    const { data } = await supabase.from('financial_transactions').select('direction, amount').eq('branch_id', branchId).gte('created_at', startDate).lte('created_at', endDate);
+    const rows = data ?? [];
+    const total_inflow = rows.filter(r => r.direction === 'inflow').reduce((s, r) => s + Number(r.amount), 0);
+    const total_outflow = rows.filter(r => r.direction === 'outflow').reduce((s, r) => s + Number(r.amount), 0);
+    return { total_inflow, total_outflow, net: total_inflow - total_outflow };
+  },
+};
+
+// ============================================================================
+// ORION: PRODUCT BRANCH STOCK
+// ============================================================================
+
+export const productBranchStockDb = {
+  async getByBranch(branchId: string): Promise<ProductBranchStock[]> {
+    const { data } = await supabase.from('product_branch_stock').select('*, product:products(name, sku, category, image_url, unit)').eq('branch_id', branchId).eq('is_active', true);
+    return data ?? [];
+  },
+
+  async getLowStock(branchId: string): Promise<ProductBranchStock[]> {
+    const { data } = await supabase.from('product_branch_stock').select('*, product:products(name, sku, category)').eq('branch_id', branchId).eq('is_active', true).filter('stock', 'lte', 'min_stock');
+    return data ?? [];
+  },
+
+  async upsert(stock: { product_id: string; branch_id: string; stock: number; min_stock?: number }): Promise<ProductBranchStock> {
+    return throwOnError(
+      await supabase.from('product_branch_stock').upsert(stock, { onConflict: 'product_id,branch_id' }).select('*').single()
+    );
+  },
+};
+
+// ============================================================================
+// ORION: NEW TABLES FROM GAPS
+// ============================================================================
+
+export const stockTransferLogsDb = {
+  async getByTransfer(transferId: string): Promise<StockTransferLog[]> {
+    const { data } = await supabase.from('stock_transfer_logs').select('*, user:profiles(name, email, role)').eq('transfer_id', transferId).order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async create(log: Omit<StockTransferLog, 'id' | 'created_at' | 'user'>): Promise<StockTransferLog> {
+    const { data } = await supabase.from('stock_transfer_logs').insert(log).select('*').single();
+    if (!data) throw new Error('Failed to create stock transfer log');
+    return data;
+  },
+};
+
+export const claimPaymentsDb = {
+  async getByClaim(claimId: string): Promise<ClaimPayment[]> {
+    const { data } = await supabase.from('claim_payments').select('*, payer:profiles(name)').eq('claim_id', claimId).order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async create(payment: Omit<ClaimPayment, 'id' | 'created_at' | 'payer'>): Promise<ClaimPayment> {
+    const { data } = await supabase.from('claim_payments').insert(payment).select('*').single();
+    if (!data) throw new Error('Failed to create claim payment');
+    return data;
+  },
+};
+
+export const supplierInvoicesDb = {
+  async getBySupplier(supplierId: string): Promise<SupplierInvoice[]> {
+    const { data } = await supabase.from('supplier_invoices').select('*, branch:branches(name), supplier:suppliers(name)').eq('supplier_id', supplierId).order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async getByPo(poId: string): Promise<SupplierInvoice[]> {
+    const { data } = await supabase.from('supplier_invoices').select('*').eq('purchase_order_id', poId).order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async getByBranch(branchId: string): Promise<SupplierInvoice[]> {
+    const { data } = await supabase.from('supplier_invoices').select('*, supplier:suppliers(name)').eq('branch_id', branchId).order('created_at', { ascending: false });
+    return data ?? [];
+  },
+
+  async create(invoice: Omit<SupplierInvoice, 'id' | 'created_at' | 'updated_at' | 'supplier' | 'branch'>): Promise<SupplierInvoice> {
+    const { data } = await supabase.from('supplier_invoices').insert(invoice).select('*').single();
+    if (!data) throw new Error('Failed to create supplier invoice');
+    return data;
+  },
+
+  async update(id: string, updates: Partial<SupplierInvoice>): Promise<SupplierInvoice> {
+    const { data } = await supabase.from('supplier_invoices').update(updates).eq('id', id).select('*').single();
+    if (!data) throw new Error('Failed to update supplier invoice');
+    return data;
+  },
+};
+
+

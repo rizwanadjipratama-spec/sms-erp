@@ -217,4 +217,42 @@ export const analyticsService = {
       events: cmsEvents.slice(0, 5),
     };
   },
+
+  async getBranchPerformance() {
+    const { supabase } = await import('@/lib/db/client');
+    const { data: branches } = await supabase.from('branches').select('*');
+    const { data: invoices } = await supabase.from('invoices').select('branch_id, total, status');
+    const { data: issues } = await supabase.from('issues').select('branch_id, status');
+
+    const result = (branches || []).map(b => {
+      const branchInvoices = (invoices || []).filter(i => i.branch_id === b.id);
+      const branchIssues = (issues || []).filter(i => i.branch_id === b.id);
+      return {
+        id: b.id,
+        name: b.name,
+        code: b.code,
+        totalRevenue: branchInvoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.total), 0),
+        totalInvoices: branchInvoices.length,
+        openIssues: branchIssues.filter(i => i.status !== 'resolved').length,
+      };
+    });
+
+    return result.sort((a, b) => b.totalRevenue - a.totalRevenue);
+  },
+
+  async getDeliveryStats() {
+    const { supabase } = await import('@/lib/db/client');
+    const { data: logs } = await supabase.from('delivery_logs').select('status, created_at, courier_id').order('created_at', { ascending: false });
+    
+    const statusCounts: Record<string, number> = {};
+    (logs || []).forEach(log => {
+      statusCounts[log.status] = (statusCounts[log.status] || 0) + 1;
+    });
+
+    return {
+      totalDeliveries: logs?.length || 0,
+      statusBreakdown: statusCounts,
+      recentLogs: (logs || []).slice(0, 20),
+    };
+  },
 };

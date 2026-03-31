@@ -19,7 +19,10 @@ export type UserRole =
   | 'admin'
   | 'owner'
   | 'director'
-  | 'tax';
+  | 'tax'
+  | 'manager'
+  | 'purchasing'
+  | 'claim_officer';
 
 export type ClientType = 'regular' | 'kso' | 'cost_per_test';
 
@@ -78,7 +81,17 @@ export type ServiceIssueStatus = 'open' | 'otw' | 'arrived' | 'working' | 'compl
 export type AreaTransferStatus = 'pending' | 'accepted' | 'rejected';
 
 // ORION Business System Enums
-export type StockTransferStatus = 'requested' | 'approved' | 'in_transit' | 'received' | 'cancelled';
+export type StockTransferStatus = 
+  | 'draft' 
+  | 'requested' 
+  | 'approved' 
+  | 'preparing' 
+  | 'shipped' 
+  | 'in_transit' 
+  | 'arrived' 
+  | 'received' 
+  | 'completed' 
+  | 'cancelled';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type ApprovalType = 'expense_claim' | 'purchase_request' | 'cash_advance' | 'discount' | 'stock_transfer' | 'branch_override' | 'maintenance_cost' | 'large_purchase';
 export type PurchaseRequestStatus = 'draft' | 'submitted' | 'approved' | 'ordered' | 'partial_received' | 'received' | 'cancelled';
@@ -1157,4 +1170,46 @@ export interface IssueKnowledgeBase {
   created_by: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface StockTransferLog {
+  id: string;
+  transfer_id: string;
+  status: StockTransferStatus;
+  changed_by: string;
+  notes?: string;
+  created_at: string;
+  user?: Partial<Profile>;
+}
+
+export interface ClaimPayment {
+  id: string;
+  claim_id: string;
+  amount: number;
+  paid_by: string;
+  payment_method?: string;
+  payment_ref?: string;
+  notes?: string;
+  created_at: string;
+  payer?: Partial<Profile>;
+}
+
+export type SupplierInvoiceStatus = 'unpaid' | 'partial' | 'paid' | 'cancelled';
+
+export interface SupplierInvoice {
+  id: string;
+  purchase_order_id: string;
+  supplier_id: string;
+  branch_id: string;
+  invoice_number: string;
+  total_amount: number;
+  tax_amount: number;
+  status: SupplierInvoiceStatus;
+  due_date?: string;
+  paid_amount: number;
+  paid_at?: string;
+  created_at: string;
+  updated_at: string;
+  supplier?: Partial<Supplier>;
+  branch?: Partial<Branch>;
 }

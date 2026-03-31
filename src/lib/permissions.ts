@@ -28,6 +28,10 @@ export type AppRoute =
   | '/dashboard/cms'
   | '/dashboard/company'
   | '/dashboard/notifications'
+  | '/dashboard/purchasing'
+  | '/dashboard/approvals'
+  | '/dashboard/claims'
+  | '/dashboard/stock'
   | '/request';
 
 export type EntityScope =
@@ -76,12 +80,12 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
     writableEntities: ['requests:priced', 'notifications:own'],
   },
   finance: {
-    routes: ['/dashboard', '/dashboard/company', '/dashboard/finance', '/dashboard/notifications'],
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/finance', '/dashboard/claims', '/dashboard/approvals', '/dashboard/notifications'],
     readableEntities: ['profiles:self', 'requests:approved', 'invoices:finance', 'faktur_tasks:all', 'monthly_closing:finance', 'notifications:own', 'activity_logs:request', 'chat:staff'],
     writableEntities: ['requests:approved', 'invoices:finance', 'faktur_tasks:all', 'monthly_closing:finance', 'notifications:own'],
   },
   warehouse: {
-    routes: ['/dashboard', '/dashboard/company', '/dashboard/warehouse', '/dashboard/notifications'],
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/warehouse', '/dashboard/stock', '/dashboard/purchasing', '/dashboard/notifications'],
     readableEntities: ['profiles:self', 'requests:warehouse', 'products:all', 'inventory_logs:warehouse', 'equipment_assets:all', 'pm_schedules:all', 'notifications:own', 'chat:staff'],
     writableEntities: ['requests:warehouse', 'products:all', 'inventory_logs:warehouse', 'equipment_assets:all', 'notifications:own'],
   },
@@ -96,12 +100,12 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
     writableEntities: ['requests:courier', 'delivery_logs:courier', 'notifications:own'],
   },
   admin: {
-    routes: ['/dashboard', '/dashboard/company', '/dashboard/admin', '/dashboard/cms', '/dashboard/notifications'],
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/admin', '/dashboard/cms', '/dashboard/approvals', '/dashboard/purchasing', '/dashboard/claims', '/dashboard/stock', '/dashboard/notifications'],
     readableEntities: ['profiles:all', 'products:all', 'requests:all', 'issues:admin', 'inventory_logs:all', 'delivery_logs:all', 'notifications:own', 'activity_logs:all', 'chat:staff', 'cms:admin'],
     writableEntities: ['profiles:all', 'products:all', 'requests:issue', 'issues:admin', 'inventory_logs:all', 'notifications:own', 'cms:admin'],
   },
   owner: {
-    routes: ['/dashboard', '/dashboard/company', '/dashboard/owner', '/dashboard/owner/reports', '/dashboard/cms', '/dashboard/notifications'],
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/owner', '/dashboard/owner/reports', '/dashboard/cms', '/dashboard/approvals', '/dashboard/purchasing', '/dashboard/claims', '/dashboard/stock', '/dashboard/notifications'],
     readableEntities: ['profiles:all', 'products:all', 'price_list:all', 'requests:all', 'invoices:reporting', 'faktur_tasks:all', 'inventory_logs:all', 'delivery_logs:all', 'issues:admin', 'notifications:own', 'activity_logs:all', 'monthly_closing:owner', 'chat:staff', 'cms:admin'],
     writableEntities: ['notifications:own', 'cms:admin', 'faktur_tasks:all'],
   },
@@ -119,6 +123,21 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
     routes: ['/dashboard', '/dashboard/company', '/dashboard/faktur', '/dashboard/notifications'],
     readableEntities: ['profiles:self', 'faktur_tasks:own', 'faktur_tasks:all', 'notifications:own', 'chat:staff'],
     writableEntities: ['faktur_tasks:own', 'notifications:own'],
+  },
+  manager: {
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/approvals', '/dashboard/notifications'],
+    readableEntities: ['profiles:all', 'requests:all', 'inventory_logs:all', 'delivery_logs:all', 'issues:admin', 'chat:staff'],
+    writableEntities: ['notifications:own'],
+  },
+  purchasing: {
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/purchasing', '/dashboard/approvals', '/dashboard/notifications'],
+    readableEntities: ['profiles:self', 'products:all', 'inventory_logs:all', 'chat:staff'],
+    writableEntities: ['notifications:own'],
+  },
+  claim_officer: {
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/claims', '/dashboard/approvals', '/dashboard/notifications'],
+    readableEntities: ['profiles:self', 'chat:staff'],
+    writableEntities: ['notifications:own'],
   },
 };
 

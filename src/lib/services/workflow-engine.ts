@@ -77,6 +77,9 @@ const TRANSITION_MAP: Record<UserRole, Partial<Record<RequestStatus, RequestStat
   director: {},
   tax: {},
   faktur: {},
+  manager: {},
+  purchasing: {},
+  claim_officer: {},
 };
 
 // Who to notify on each status change

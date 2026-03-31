@@ -15,6 +15,9 @@ export const ROLE_REDIRECTS: Record<UserRole, string> = {
   owner: '/dashboard/owner',
   tax: '/dashboard/tax',
   faktur: '/dashboard/faktur',
+  manager: '/dashboard/approvals',
+  purchasing: '/dashboard/purchasing',
+  claim_officer: '/dashboard/claims',
 };
 
 export const ORDER_STATUS_FLOW: RequestStatus[] = [

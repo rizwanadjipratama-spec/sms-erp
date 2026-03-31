@@ -57,6 +57,9 @@ export const WORKFLOW_ROLE_TRANSITIONS: Record<UserRole, Partial<Record<RequestS
   director: {},
   tax: {},
   faktur: {},
+  manager: {},
+  purchasing: {},
+  claim_officer: {},
 };
 
 export type TransitionOrderInput = {
