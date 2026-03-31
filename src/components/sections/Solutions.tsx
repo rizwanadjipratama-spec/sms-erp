@@ -3,14 +3,20 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { solutions as fallbackSolutions } from '@/lib/data';
+import { useState, useEffect } from 'react';
+import { cmsService } from '@/lib/services';
+import type { CmsSolution } from '@/types/types';
 
 export default function Solutions() {
-  const loading = false;
+  const [loading, setLoading] = useState(true);
+  const [solutions, setSolutions] = useState<CmsSolution[]>([]);
+
+  useEffect(() => {
+    cmsService.getSolutions().then(setSolutions).finally(() => setLoading(false));
+  }, []);
+
   const title = 'Complete Laboratory Solutions';
   const subtitle = 'From equipment to consumables to full-service support — everything your lab needs to operate reliably.';
-
-  const displaySolutions = fallbackSolutions;
 
   return (
     <section id="solutions" className="py-32 px-4 sm:px-6 lg:px-8 bg-gray-50/50">
@@ -35,11 +41,15 @@ export default function Solutions() {
               <div key={i} className="bg-white rounded-3xl h-96 animate-pulse" />
             ))}
           </div>
+        ) : solutions.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 bg-white rounded-3xl border border-dashed border-gray-200">
+            No solutions currently available.
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {displaySolutions.map((solution, index) => (
+            {solutions.map((solution, index) => (
               <motion.div
-                key={solution.slug}
+                key={solution.slug || solution.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -49,7 +59,7 @@ export default function Solutions() {
               >
                 <div className="h-48 lg:h-56 overflow-hidden bg-gray-100 relative">
                   <Image
-                    src={solution.image}
+                    src={solution.image_url || ''}
                     alt={solution.title}
                     fill
                     className="object-cover group-hover:scale-110 transition-transform duration-700"

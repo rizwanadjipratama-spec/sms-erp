@@ -240,20 +240,6 @@ export default function MarketingDashboard() {
             Price submitted client requests before boss approval.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link
-            href="/dashboard/marketing/clients"
-            className="inline-flex items-center justify-center rounded-xl bg-apple-text-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-black active:scale-95"
-          >
-            My Clients
-          </Link>
-          <Link
-            href="/dashboard/marketing/prices"
-            className="inline-flex items-center justify-center rounded-xl bg-apple-blue px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-apple-blue-hover active:scale-95"
-          >
-            Price List
-          </Link>
-        </div>
       </div>
 
       {/* Stats */}

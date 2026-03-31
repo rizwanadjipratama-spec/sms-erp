@@ -137,6 +137,10 @@ export interface Branch {
   updated_at: string;
   // Joined
   region?: Region;
+  // Geofencing
+  latitude?: number;
+  longitude?: number;
+  geofence_radius?: number;
 }
 
 // ============================================================================
@@ -159,6 +163,7 @@ export interface Profile {
   handled_by?: string;
   branch_id?: string;
   profile_completed: boolean;
+  leave_balance: number;
   debt_amount: number;
   debt_limit: number;
   two_factor_secret?: string | null;
@@ -173,6 +178,52 @@ export interface Profile {
   // Joined fields (not in DB)
   handler?: { name?: string; email: string };
   branch?: Branch;
+}
+
+export interface LeaveRequest {
+  id: string;
+  user_id: string;
+  type: 'annual' | 'sick' | 'maternity' | 'marriage' | 'unpaid';
+  start_date: string;
+  end_date: string;
+  days_count: number;
+  reason: string;
+  attachment_url?: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string | null;
+  reviewed_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  
+  // Joins
+  profiles?: Pick<Profile, 'name' | 'email' | 'avatar_url' | 'role'>;
+  reviewer?: Pick<Profile, 'name' | 'email'>;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  user_id: string;
+  branch_id: string;
+  date: string;
+  clock_in?: string;
+  clock_out?: string;
+  clock_in_lat?: number;
+  clock_in_lng?: number;
+  clock_out_lat?: number;
+  clock_out_lng?: number;
+  is_late: boolean;
+  is_early_leave: boolean;
+  is_overtime: boolean;
+  early_leave_reason?: string;
+  overtime_reason?: string;
+  proof_url?: string;
+  is_manual: boolean;
+  manual_note?: string;
+  created_at: string;
+  updated_at: string;
+  // Joins
+  profiles?: Pick<Profile, 'id' | 'name' | 'email' | 'avatar_url' | 'role'>;
+  branches?: Pick<Branch, 'id' | 'name' | 'code'>;
 }
 
 export interface Product {

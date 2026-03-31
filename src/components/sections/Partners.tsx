@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { cmsService } from '@/lib/services';
 import type { CmsPartner } from '@/types/types';
-import { partners as fallbackPartners } from '@/lib/data';
 
 export default function Partners() {
   const [cmsPartners, setCmsPartners] = useState<CmsPartner[]>([]);
@@ -14,9 +13,7 @@ export default function Partners() {
     cmsService.getPartners().then(setCmsPartners).finally(() => setLoading(false));
   }, []);
 
-  const displayPartners = cmsPartners.length > 0
-    ? cmsPartners.sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map((p) => ({ name: p.name, logo: p.logo_url, website: p.website_url }))
-    : fallbackPartners.map((p) => ({ name: p.name, logo: p.logo, website: undefined }));
+  const displayPartners = cmsPartners.sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map((p) => ({ name: p.name, logo: p.logo_url, website: p.website_url }));
 
   return (
     <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gray-50">

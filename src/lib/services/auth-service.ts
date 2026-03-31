@@ -130,25 +130,23 @@ export const authService = {
    * Client profiles require full company info. Staff profiles need name + branch.
    */
   isProfileComplete(profile: Profile): boolean {
-    const baseComplete = Boolean(
-      profile.name?.trim()
-      && profile.phone?.trim()
-      && profile.branch_id
-    );
-
     if (profile.role === 'client') {
-      return baseComplete && Boolean(
-        profile.company?.trim()
+      return Boolean(
+        profile.name?.trim()
+        && profile.phone?.trim()
+        && profile.company?.trim()
         && profile.address?.trim()
-        && profile.city?.trim()
-        && profile.province?.trim()
         && profile.client_type
         && profile.pic_name?.trim()
       );
     }
 
     // Staff profiles: name + phone + branch is enough
-    return baseComplete;
+    return Boolean(
+      profile.name?.trim()
+      && profile.phone?.trim()
+      && profile.branch_id
+    );
   },
 
   getRoleFromEmail,

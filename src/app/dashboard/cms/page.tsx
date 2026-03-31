@@ -10,8 +10,9 @@ import CmsGeneralTab from './components/CmsGeneralTab';
 import CmsNewsTab from './components/CmsNewsTab';
 import CmsEventsTab from './components/CmsEventsTab';
 import CmsPartnersTab from './components/CmsPartnersTab';
+import CmsSolutionsTab from './components/CmsSolutionsTab';
 
-type TabKey = 'general' | 'news' | 'events' | 'partners';
+type TabKey = 'general' | 'news' | 'events' | 'partners' | 'solutions';
 
 export default function CmsDashboard() {
   const { profile, loading } = useAuth();
@@ -53,6 +54,7 @@ export default function CmsDashboard() {
           { key: 'news' as TabKey, label: 'News & Updates' },
           { key: 'events' as TabKey, label: 'Events' },
           { key: 'partners' as TabKey, label: 'Partners' },
+          { key: 'solutions' as TabKey, label: 'Solutions Catalog' },
         ]).map((item) => (
           <button
             key={item.key}
@@ -73,6 +75,7 @@ export default function CmsDashboard() {
         {tab === 'news' && <CmsNewsTab />}
         {tab === 'events' && <CmsEventsTab />}
         {tab === 'partners' && <CmsPartnersTab />}
+        {tab === 'solutions' && <CmsSolutionsTab />}
       </div>
     </div>
   );

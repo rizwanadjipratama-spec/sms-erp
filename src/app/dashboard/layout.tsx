@@ -74,9 +74,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const canChat = profile?.role ? chatService.canUseChat(profile.role) : false;
 
   const visibleNav = NAV_ITEMS.filter(item => canAccessRoute(role, item.href));
-  const currentPageLabel = visibleNav.find(
-    item => pathname === item.href || pathname.startsWith(item.href + '/')
-  )?.label ?? 'Dashboard';
+  const activeNavItem = [...visibleNav]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find(
+      (item) =>
+        pathname === item.href ||
+        (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
+    );
+  
+  const currentPageLabel = activeNavItem?.label ?? 'Dashboard';
 
   if (loading) return <PageSpinner />;
   if (!profile) return null;

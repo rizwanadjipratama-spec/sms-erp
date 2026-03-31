@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import type { CmsSettings, CmsNews, CmsEvent, CmsPartner } from '@/types/types';
+import type { CmsSettings, CmsNews, CmsEvent, CmsPartner, CmsSolution } from '@/types/types';
 
 function throwOnError<T>(result: { data: T | null; error: any }): T {
   if (result.error) throw new Error(result.error.message);
@@ -125,6 +125,36 @@ export const cmsService = {
 
   async deletePartner(id: string): Promise<void> {
     const { error } = await supabase.from('cms_partners').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ============================================================================
+  // SOLUTIONS (Catalog)
+  // ============================================================================
+
+  async getSolutions(): Promise<CmsSolution[]> {
+    const query = supabase
+      .from('cms_solutions')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+    return throwOnError(await query) as CmsSolution[];
+  },
+
+  async createSolution(solution: Partial<CmsSolution>): Promise<CmsSolution> {
+    return throwOnError(
+      await supabase.from('cms_solutions').insert({ ...solution, is_active: true }).select('*').single()
+    );
+  },
+
+  async updateSolution(id: string, updates: Partial<CmsSolution>): Promise<CmsSolution> {
+    return throwOnError(
+      await supabase.from('cms_solutions').update(updates).eq('id', id).select('*').single()
+    );
+  },
+
+  async deleteSolution(id: string): Promise<void> {
+    const { error } = await supabase.from('cms_solutions').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
 

@@ -16,3 +16,5 @@ export { analyticsService } from './analytics-service';
 export { technicianService } from './technician-service';
 export { pmService } from './preventive-maintenance-service';
 export { fakturService } from './faktur-service';
+export { leaveService } from './leave-service';
+export { attendanceService } from './attendance-service';

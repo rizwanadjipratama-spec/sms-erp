@@ -10,9 +10,13 @@ import { analyticsService, authService } from '@/lib/services';
 import { profilesDb } from '@/lib/db';
 import { formatCurrency, formatNumber, formatRelative } from '@/lib/format-utils';
 import { DashboardSkeleton, StatCard, EmptyState, ErrorState } from '@/components/ui';
-import type { CmsNews, CmsEvent, Profile } from '@/types/types';
+import type { CmsNews, CmsEvent, Profile, LeaveRequest, AttendanceRecord } from '@/types/types';
+import { leaveService, attendanceService } from '@/lib/services';
 
 type CompanyData = Awaited<ReturnType<typeof analyticsService.getCompanyDashboard>>;
+
+const isSupervisor = (role?: string | null) => 
+  ['owner', 'admin', 'director', 'manager'].includes(role || '');
 
 // ── Mini bar chart for revenue ──────────────────────────────────────────
 function RevenueChart({ data }: { data: { month: string; total_revenue: number }[] }) {
@@ -44,6 +48,9 @@ export default function CompanyDashboard() {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<CompanyData | null>(null);
   const [activeUsers, setActiveUsers] = useState<Profile[]>([]);
+  const [onLeaveUsers, setOnLeaveUsers] = useState<LeaveRequest[]>([]);
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord[]>([]);
+  const [streakData, setStreakData] = useState<Awaited<ReturnType<typeof attendanceService.getStreaksAndRankings>> | null>(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,12 +68,18 @@ export default function CompanyDashboard() {
     setFetching(true);
     setError(null);
     try {
-      const [data, online] = await Promise.all([
+      const [data, online, leaves, todayAtt, streaks] = await Promise.all([
         analyticsService.getCompanyDashboard(),
         profilesDb.getActiveUsers(5),
+        leaveService.getActiveStatusBoard(),
+        attendanceService.getAllTodayRecords(),
+        attendanceService.getStreaksAndRankings(),
       ]);
       setDashboard(data);
       setActiveUsers(online);
+      setOnLeaveUsers(leaves);
+      setTodayAttendance(todayAtt);
+      setStreakData(streaks);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load company dashboard');
     } finally {
@@ -185,6 +198,131 @@ export default function CompanyDashboard() {
           </div>
         )}
       </div>
+
+      {/* On Leave Today */}
+      {(onLeaveUsers.length > 0 || isSupervisor(profile?.role)) && (
+        <div className="bg-white border border-[var(--apple-border)] rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-[var(--apple-text-primary)]">
+              Out of Office
+              {onLeaveUsers.length > 0 && (
+                <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-bold rounded-full bg-orange-50 text-orange-600 border border-orange-200">
+                  {onLeaveUsers.length} on leave
+                </span>
+              )}
+            </h2>
+          </div>
+          {onLeaveUsers.length === 0 ? (
+            <p className="text-sm text-[var(--apple-text-tertiary)]">Everyone is active today.</p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {onLeaveUsers.map(leave => (
+                <div key={leave.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-50/50 border border-orange-100">
+                  <div className="relative">
+                    <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-black text-orange-600">
+                      {leave.profiles?.name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-[var(--apple-text-primary)] leading-tight">{leave.profiles?.name || leave.profiles?.email}</p>
+                    <p className="text-[10px] text-orange-600 uppercase font-bold">{leave.type} • Until {leave.end_date}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Today's Attendance Overview */}
+      <div className="bg-white border border-[var(--apple-border)] rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-[var(--apple-text-primary)]">
+            Today&apos;s Attendance
+            <span className="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-bold rounded-full bg-green-50 text-green-600 border border-green-200">
+              {todayAttendance.length} clocked in
+            </span>
+            {todayAttendance.filter(a => a.is_late).length > 0 && (
+              <span className="ml-1 inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full bg-red-50 text-red-600 border border-red-200">
+                {todayAttendance.filter(a => a.is_late).length} late
+              </span>
+            )}
+          </h2>
+        </div>
+        {todayAttendance.length === 0 ? (
+          <p className="text-sm text-[var(--apple-text-tertiary)]">No one has clocked in yet today.</p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {todayAttendance.map(att => (
+              <div key={att.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${att.is_late ? 'bg-red-50/50 border-red-100' : 'bg-green-50/50 border-green-100'}`}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ backgroundColor: att.is_late ? '#fef2f2' : '#f0fdf4', color: att.is_late ? '#dc2626' : '#16a34a' }}>
+                  {att.profiles?.name?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[var(--apple-text-primary)] leading-tight">{att.profiles?.name || att.profiles?.email}</p>
+                  <p className={`text-[10px] uppercase font-bold ${att.is_late ? 'text-red-500' : 'text-green-600'}`}>
+                    {att.is_late ? 'LATE' : 'ON TIME'} • {att.clock_in ? new Date(att.clock_in).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Streak Leaderboard & Late */}
+      {streakData && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* On-Time Leaderboard */}
+          <div className="bg-white border border-[var(--apple-border)] rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-[var(--apple-border)] bg-green-50/30">
+              <h2 className="text-lg font-bold text-[var(--apple-text-primary)]">🏆 On-Time Leaderboard</h2>
+            </div>
+            <div className="divide-y divide-[var(--apple-border)]">
+              {streakData.onTimeLeaderboard.slice(0, 5).map((entry, i) => (
+                <div key={entry.userId} className={`flex items-center justify-between px-5 py-3 ${i < 3 ? 'bg-yellow-50/30' : ''}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
+                      i === 0 ? 'bg-yellow-400 text-white' : i === 1 ? 'bg-gray-300 text-white' : i === 2 ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>{i + 1}</div>
+                    <div>
+                      <p className="text-sm font-bold">{entry.name}</p>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase">{entry.role}</p>
+                    </div>
+                  </div>
+                  <span className="text-lg font-black text-green-600">{entry.streak} <span className="text-xs text-gray-400">days</span></span>
+                </div>
+              ))}
+              {streakData.onTimeLeaderboard.length === 0 && (
+                <p className="px-5 py-4 text-sm text-gray-500">No data yet.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Late Streak Board */}
+          <div className="bg-white border border-[var(--apple-border)] rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-[var(--apple-border)] bg-red-50/30">
+              <h2 className="text-lg font-bold text-red-700">⏰ Late Streak</h2>
+            </div>
+            <div className="divide-y divide-[var(--apple-border)]">
+              {streakData.lateStreakBoard.length === 0 ? (
+                <p className="px-5 py-4 text-sm text-gray-500">No late streaks — great job team! 🎉</p>
+              ) : streakData.lateStreakBoard.slice(0, 5).map((entry, i) => (
+                <div key={entry.userId} className="flex items-center justify-between px-5 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-xs font-black text-red-600">{i + 1}</div>
+                    <div>
+                      <p className="text-sm font-bold">{entry.name}</p>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase">{entry.role}</p>
+                    </div>
+                  </div>
+                  <span className="text-lg font-black text-red-600">{entry.streak} <span className="text-xs text-gray-400">days</span></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid lg:grid-cols-3 gap-6">

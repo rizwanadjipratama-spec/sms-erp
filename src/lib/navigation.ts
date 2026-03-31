@@ -7,15 +7,17 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'H' },
   { href: '/dashboard/company', label: 'Company', icon: 'G' },
   { href: '/dashboard/client', label: 'My Orders', icon: 'O' },
   { href: '/request', label: 'New Request', icon: 'N' },
   { href: '/dashboard/marketing', label: 'Marketing', icon: 'M' },
+  { href: '/dashboard/marketing/clients', label: 'My Clients', icon: 'U' },
   { href: '/dashboard/marketing/prices', label: 'Price List', icon: 'P' },
   { href: '/dashboard/boss', label: 'Approvals', icon: 'B' },
   { href: '/dashboard/finance', label: 'Finance', icon: 'F' },
   { href: '/dashboard/warehouse', label: 'Warehouse', icon: 'W' },
+  { href: '/dashboard/warehouse/inventory', label: 'Inventory', icon: 'I' },
+  { href: '/dashboard/warehouse/catalog', label: 'Catalog', icon: 'C' },
   { href: '/dashboard/technician', label: 'Delivery', icon: 'D' },
   { href: '/dashboard/courier', label: 'Courier', icon: 'K' },
   { href: '/dashboard/client/products', label: 'Browse Products', icon: 'C' },
@@ -25,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/owner/reports', label: 'Reports', icon: 'R' },
   { href: '/dashboard/director', label: 'Director Overview', icon: 'V' },
   { href: '/dashboard/admin', label: 'Admin Panel', icon: 'S' },
+  { href: '/dashboard/leave', label: 'Time Off', icon: 'L' },
+  { href: '/dashboard/attendance', label: 'Attendance', icon: 'T' },
   { href: '/dashboard/cms', label: 'CMS System', icon: 'W' },
-  { href: '/dashboard/notifications', label: 'Notifications', icon: 'N' },
 ];

@@ -1,0 +1,413 @@
+﻿src/app/dashboard/finance/page.tsx(72,51): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/dashboard/finance/page.tsx(73,47): error TS2339: Property 'role' does not exist on type 'never'.
+src/components/dashboard/BranchSwitcher.tsx(25,40): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/2fa.ts(65,13): error TS2345: Argument of type '{ two_factor_secret: string; two_factor_enabled: boolean; }' is not assignable to parameter of type 'never'.
+src/lib/2fa.ts(83,13): error TS2345: Argument of type '{ two_factor_secret: null; two_factor_enabled: boolean; }' is not assignable to parameter of type 'never'.
+src/lib/activity.ts(35,60): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "activity_logs", never, "POST">', gave the following error.
+    Argument of type '{ user_id: string; user_email: string | null; action: string; entity_type: string; entity_id: string | null; metadata: Record<string, unknown> | null; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "activity_logs", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type 'never[]'.
+src/lib/auth.ts(69,21): error TS2339: Property 'role' does not exist on type 'never'.
+src/lib/auth.ts(70,46): error TS2345: Argument of type '{ role: UserRole; }' is not assignable to parameter of type 'never'.
+src/lib/auth.ts(71,16): error TS2698: Spread types may only be created from object types.
+src/lib/auth.ts(96,73): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "profiles", never, "POST">', gave the following error.
+    Argument of type '{ id: string; email: string; role: UserRole; debt_amount: number; debt_limit: number; two_factor_secret: null; two_factor_enabled: boolean; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "profiles", never, "POST">', gave the following error.
+    Argument of type '{ id: string; email: string; role: UserRole; debt_amount: number; debt_limit: number; two_factor_secret: null; two_factor_enabled: boolean; }' is not assignable to parameter of type 'never[]'.
+      Type '{ id: string; email: string; role: UserRole; debt_amount: number; debt_limit: number; two_factor_secret: null; two_factor_enabled: boolean; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/automation-service.ts(83,67): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "automation_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<AutomationLog, "id" | "created_at">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "automation_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<AutomationLog, "id" | "created_at">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<AutomationLog, "id" | "created_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/automation-service.ts(103,69): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+src/lib/automation-service.ts(246,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "automation_webhooks", never, "POST">', gave the following error.
+    Argument of type '{ event_type: string; webhook_url: string; active: boolean; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "automation_webhooks", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'event_type' does not exist in type 'never[]'.
+src/lib/automation-service.ts(261,15): error TS2345: Argument of type '{ active: boolean; }' is not assignable to parameter of type 'never'.
+src/lib/automation-service.ts(274,17): error TS2345: Argument of type '{ status: string; processed_at: null; last_error: null; }' is not assignable to parameter of type 'never'.
+src/lib/backup-service.ts(141,6): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "backup_logs", never, "POST">', gave the following error.
+    Argument of type '{ backup_type: BackupType; status: string; notes: string | null; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "backup_logs", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'backup_type' does not exist in type 'never[]'.
+src/lib/backup-service.ts(159,13): error TS2345: Argument of type 'Partial<BackupLog>' is not assignable to parameter of type 'never'.
+src/lib/backup-service.ts(288,57): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type 'Record<string, unknown>[]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type 'Record<string, unknown>[]' is not assignable to parameter of type 'never[]'.
+      Type 'Record<string, unknown>' is not assignable to type 'never'.
+src/lib/db/queries.ts(102,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type '{ updated_at: string; id: string; email?: string | undefined; role?: UserRole | undefined; name?: string | undefined; phone?: string | undefined; address?: string | undefined; city?: string | undefined; province?: string | undefined; client_type?: ClientType | undefined; ... 17 more ...; branch?: Branch | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'updated_at' does not exist in type 'never[]'.
+src/lib/db/queries.ts(112,17): error TS2345: Argument of type '{ updated_at: string; id?: string | undefined; email?: string | undefined; role?: UserRole | undefined; name?: string | undefined; phone?: string | undefined; address?: string | undefined; city?: string | undefined; province?: string | undefined; ... 18 more ...; branch?: Branch | undefined; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(122,15): error TS2345: Argument of type '{ last_active_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(154,7): error TS2698: Spread types may only be created from object types.
+src/lib/db/queries.ts(155,30): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(156,13): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(156,62): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(157,13): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(170,7): error TS2698: Spread types may only be created from object types.
+src/lib/db/queries.ts(171,33): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(172,16): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(172,68): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(173,16): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(184,7): error TS2698: Spread types may only be created from object types.
+src/lib/db/queries.ts(185,30): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(186,13): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(186,62): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(187,13): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/db/queries.ts(193,46): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "products", never, "POST">', gave the following error.
+    Argument of type 'Omit<Product, "id" | "created_at" | "updated_at" | "is_priced" | "price">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "products", never, "POST">', gave the following error.
+    Argument of type 'Omit<Product, "id" | "created_at" | "updated_at" | "is_priced" | "price">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<Product, "id" | "created_at" | "updated_at" | "is_priced" | "price">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(202,17): error TS2345: Argument of type '{ updated_at: string; id?: string | undefined; name?: string | undefined; description?: string | undefined; sku?: string | undefined; category?: ProductCategory | undefined; image_url?: string | undefined; ... 9 more ...; branch?: Branch | undefined; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(214,67): error TS2345: Argument of type '{ p_product_id: string; p_qty: number; }' is not assignable to parameter of type 'undefined'.
+src/lib/db/queries.ts(223,67): error TS2345: Argument of type '{ p_product_id: string; p_qty: number; }' is not assignable to parameter of type 'undefined'.
+src/lib/db/queries.ts(253,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type '{ is_active: boolean; updated_at: string; id?: string | undefined; product_id: string; price_regular?: number | undefined; price_kso?: number | undefined; price_cost_per_test?: number | undefined; ... 4 more ...; updated_by?: string | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'is_active' does not exist in type 'never[]'.
+src/lib/db/queries.ts(322,46): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "requests", never, "POST">', gave the following error.
+    Argument of type 'Omit<DbRequest, "id" | "created_at" | "updated_at" | "request_items" | "profiles">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "requests", never, "POST">', gave the following error.
+    Argument of type 'Omit<DbRequest, "id" | "created_at" | "updated_at" | "request_items" | "profiles">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<DbRequest, "id" | "created_at" | "updated_at" | "request_items" | "profiles">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(331,17): error TS2345: Argument of type '{ updated_at: string; id: string; user_id: string; user_email?: string; status: RequestStatus; priority: RequestPriority; total_price: number; note?: string; ... 22 more ...; updated_by?: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(340,51): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "request_items", never, "POST">', gave the following error.
+    Argument of type 'Omit<RequestItem, "id" | "created_at" | "updated_at">[]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "request_items", never, "POST">', gave the following error.
+    Argument of type 'Omit<RequestItem, "id" | "created_at" | "updated_at">[]' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<RequestItem, "id" | "created_at" | "updated_at">' is not assignable to type 'never'.
+src/lib/db/queries.ts(373,46): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "invoices", never, "POST">', gave the following error.
+    Argument of type 'Omit<Invoice, "id" | "created_at" | "updated_at" | "request">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "invoices", never, "POST">', gave the following error.
+    Argument of type 'Omit<Invoice, "id" | "created_at" | "updated_at" | "request">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<Invoice, "id" | "created_at" | "updated_at" | "request">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(382,17): error TS2345: Argument of type '{ updated_at: string; id: string; order_id: string; invoice_number: string; subtotal: number; discount_amount?: number; tax_rate: number; tax_amount: number; total: number; status: InvoiceStatus; ... 8 more ...; updated_by?: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(412,54): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "payment_promises", never, "POST">', gave the following error.
+    Argument of type 'Omit<PaymentPromise, "id" | "created_at" | "updated_at" | "fulfilled" | "fulfilled_at">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "payment_promises", never, "POST">', gave the following error.
+    Argument of type 'Omit<PaymentPromise, "id" | "created_at" | "updated_at" | "fulfilled" | "fulfilled_at">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<PaymentPromise, "id" | "created_at" | "updated_at" | "fulfilled" | "fulfilled_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(433,51): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<DeliveryLog, "id" | "created_at" | "updated_at" | "technician" | "courier">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<DeliveryLog, "id" | "created_at" | "updated_at" | "technician" | "courier">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<DeliveryLog, "id" | "created_at" | "updated_at" | "technician" | "courier">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(439,51): error TS2345: Argument of type '{ updated_at: string; status?: string | undefined; note?: string | undefined; delivered_at?: string | undefined; accompanying_staff?: string | undefined; proof_url?: string | undefined; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(497,52): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "inventory_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<InventoryLog, "id" | "created_at" | "product">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "inventory_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<InventoryLog, "id" | "created_at" | "product">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<InventoryLog, "id" | "created_at" | "product">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(527,44): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "issues", never, "POST">', gave the following error.
+    Argument of type 'Omit<Issue, "id" | "created_at" | "updated_at">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "issues", never, "POST">', gave the following error.
+    Argument of type 'Omit<Issue, "id" | "created_at" | "updated_at">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<Issue, "id" | "created_at" | "updated_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(554,17): error TS2345: Argument of type '{ updated_at: string; id?: string | undefined; order_id?: string | undefined; reported_by?: string | undefined; assigned_to?: string | undefined; description?: string | undefined; status?: IssueStatus | undefined; resolution?: string | undefined; resolved_at?: string | undefined; resolved_by?: string | undefined; cr...' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(579,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type 'Omit<MonthlyClosing, "id" | "created_at" | "updated_at">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type 'Omit<MonthlyClosing, "id" | "created_at" | "updated_at">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<MonthlyClosing, "id" | "created_at" | "updated_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(623,51): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "notifications", never, "POST">', gave the following error.
+    Argument of type 'Omit<Notification, "id" | "created_at" | "read" | "read_at">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "notifications", never, "POST">', gave the following error.
+    Argument of type 'Omit<Notification, "id" | "created_at" | "read" | "read_at">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<Notification, "id" | "created_at" | "read" | "read_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(629,67): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "notifications", never, "POST">', gave the following error.
+    Argument of type 'Omit<Notification, "id" | "created_at" | "read" | "read_at">[]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "notifications", never, "POST">', gave the following error.
+    Argument of type 'Omit<Notification, "id" | "created_at" | "read" | "read_at">[]' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<Notification, "id" | "created_at" | "read" | "read_at">' is not assignable to type 'never'.
+src/lib/db/queries.ts(636,15): error TS2345: Argument of type '{ read: boolean; read_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(644,15): error TS2345: Argument of type '{ read: boolean; read_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(662,13): error TS2339: Property 'channel' does not exist on type 'never'.
+src/lib/db/queries.ts(663,23): error TS2339: Property 'last_read_at' does not exist on type 'never'.
+src/lib/db/queries.ts(681,51): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "chat_messages", never, "POST">', gave the following error.
+    Argument of type '{ channel_id: string; sender_id: string; content: string; file_url?: string | undefined; file_name?: string | undefined; file_type?: string | undefined; reply_to?: string | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "chat_messages", never, "POST">', gave the following error.
+    Argument of type '{ channel_id: string; sender_id: string; content: string; file_url?: string | undefined; file_name?: string | undefined; file_type?: string | undefined; reply_to?: string | undefined; }' is not assignable to parameter of type 'never[]'.
+      Type '{ channel_id: string; sender_id: string; content: string; file_url?: string | undefined; file_name?: string | undefined; file_type?: string | undefined; reply_to?: string | undefined; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(688,15): error TS2345: Argument of type '{ last_read_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(694,69): error TS2345: Argument of type '{ p_user_id: string; }' is not assignable to parameter of type 'undefined'.
+src/lib/db/queries.ts(701,44): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "chat_channels", never, "POST">', gave the following error.
+    Argument of type '{ name: string; channel_type: ChatChannelType; description: string | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "chat_channels", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'name' does not exist in type 'never[]'.
+src/lib/db/queries.ts(711,67): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "chat_channel_members", never, "POST">', gave the following error.
+    Argument of type '{ channel_id: string; user_id: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "chat_channel_members", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'channel_id' does not exist in type 'never[]'.
+src/lib/db/queries.ts(724,72): error TS2345: Argument of type '{ p_channel_id: string; p_search_query: string | null; p_start_date: string | null; p_end_date: string | null; p_limit: number; p_offset: number; }' is not assignable to parameter of type 'undefined'.
+src/lib/db/queries.ts(764,36): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/lib/db/queries.ts(794,17): error TS2345: Argument of type '{ updated_at: string; id?: string | undefined; section_key?: string | undefined; title?: string | undefined; subtitle?: string | undefined; body?: string | undefined; image_url?: string | undefined; video_url?: string | undefined; cta_text?: string | undefined; ... 5 more ...; updated_by?: string | undefined; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(854,49): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "activity_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<ActivityLog, "id" | "created_at">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "activity_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<ActivityLog, "id" | "created_at">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<ActivityLog, "id" | "created_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(902,47): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "system_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<SystemLog, "id" | "created_at">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "system_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<SystemLog, "id" | "created_at">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<SystemLog, "id" | "created_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1014,54): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "technician_areas", never, "POST">', gave the following error.
+    Argument of type 'Omit<TechnicianArea, "id" | "created_at" | "updated_at" | "technician">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "technician_areas", never, "POST">', gave the following error.
+    Argument of type 'Omit<TechnicianArea, "id" | "created_at" | "updated_at" | "technician">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<TechnicianArea, "id" | "created_at" | "updated_at" | "technician">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1023,17): error TS2345: Argument of type '{ updated_at: string; id: string; technician_id: string; area_name: string; hospital_name: string; address?: string; phone?: string; notes?: string; is_active: boolean; created_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1038,60): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "area_transfer_requests", never, "POST">', gave the following error.
+    Argument of type 'Omit<AreaTransferRequest, "id" | "created_at" | "updated_at" | "area" | "from_technician" | "to_technician">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "area_transfer_requests", never, "POST">', gave the following error.
+    Argument of type 'Omit<AreaTransferRequest, "id" | "created_at" | "updated_at" | "area" | "from_technician" | "to_technician">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<AreaTransferRequest, "id" | "created_at" | "updated_at" | "area" | "from_technician" | "to_technician">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1065,17): error TS2345: Argument of type '{ status: "rejected" | "accepted"; response_note: string | undefined; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1080,52): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "service_issues", never, "POST">', gave the following error.
+    Argument of type 'Omit<ServiceIssue, "id" | "created_at" | "updated_at" | "product" | "area" | "reporter" | "assignee">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "service_issues", never, "POST">', gave the following error.
+    Argument of type 'Omit<ServiceIssue, "id" | "created_at" | "updated_at" | "product" | "area" | "reporter" | "assignee">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<ServiceIssue, "id" | "created_at" | "updated_at" | "product" | "area" | "reporter" | "assignee">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1150,17): error TS2345: Argument of type '{ updated_at: string; id: string; reported_by: string; area_id?: string; assigned_to?: string; location: string; device_name?: string; product_id?: string; description: string; notes?: string; ... 5 more ...; created_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1165,56): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "service_issue_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<ServiceIssueLog, "id" | "created_at" | "changer">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "service_issue_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<ServiceIssueLog, "id" | "created_at" | "changer">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<ServiceIssueLog, "id" | "created_at" | "changer">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1186,54): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "equipment_assets", never, "POST">', gave the following error.
+    Argument of type 'Omit<EquipmentAsset, "id" | "created_at" | "updated_at" | "client" | "product" | "area">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "equipment_assets", never, "POST">', gave the following error.
+    Argument of type 'Omit<EquipmentAsset, "id" | "created_at" | "updated_at" | "client" | "product" | "area">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<EquipmentAsset, "id" | "created_at" | "updated_at" | "client" | "product" | "area">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1221,17): error TS2345: Argument of type '{ updated_at: string; id: string; client_id: string; area_id?: string; product_id: string; serial_number: string; installation_date?: string; pm_frequency_months: number; status: "active" | "inactive" | "maintenance" | "retired"; notes?: string; created_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1232,50): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "pm_schedules", never, "POST">', gave the following error.
+    Argument of type 'Omit<PmSchedule, "id" | "created_at" | "updated_at" | "technician" | "asset">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "pm_schedules", never, "POST">', gave the following error.
+    Argument of type 'Omit<PmSchedule, "id" | "created_at" | "updated_at" | "technician" | "asset">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<PmSchedule, "id" | "created_at" | "updated_at" | "technician" | "asset">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1288,17): error TS2345: Argument of type '{ updated_at: string; id: string; asset_id: string; technician_id?: string; due_date: string; status: PmStatus; completed_at?: string; notes?: string; photo_urls: string[]; created_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1303,50): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "faktur_tasks", never, "POST">', gave the following error.
+    Argument of type 'Omit<FakturTask, "id" | "created_at" | "updated_at" | "client" | "assignee" | "creator">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "faktur_tasks", never, "POST">', gave the following error.
+    Argument of type 'Omit<FakturTask, "id" | "created_at" | "updated_at" | "client" | "assignee" | "creator">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<FakturTask, "id" | "created_at" | "updated_at" | "client" | "assignee" | "creator">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1354,17): error TS2345: Argument of type '{ updated_at: string; id: string; client_id: string; assigned_to?: string; created_by: string; task_type: FakturTaskType; status: FakturTaskStatus; scheduled_date?: string; notes?: string; completion_note?: string; created_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1444,48): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "deliveries", never, "POST">', gave the following error.
+    Argument of type '{ request_id: string; branch_id: string; invoice_id?: string | undefined; notes?: string | undefined; scheduled_date?: string | undefined; created_by: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "deliveries", never, "POST">', gave the following error.
+    Argument of type '{ request_id: string; branch_id: string; invoice_id?: string | undefined; notes?: string | undefined; scheduled_date?: string | undefined; created_by: string; }' is not assignable to parameter of type 'never[]'.
+      Type '{ request_id: string; branch_id: string; invoice_id?: string | undefined; notes?: string | undefined; scheduled_date?: string | undefined; created_by: string; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1451,48): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1456,60): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_team", never, "POST">', gave the following error.
+    Argument of type '{ delivery_id: string; user_id: string; team_role: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_team", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'delivery_id' does not exist in type 'never[]'.
+src/lib/db/queries.ts(1461,69): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_proofs", never, "POST">', gave the following error.
+    Argument of type '{ delivery_id: string; proof_type: string; file_url: string; caption?: string | undefined; uploaded_by: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_proofs", never, "POST">', gave the following error.
+    Argument of type '{ delivery_id: string; proof_type: string; file_url: string; caption?: string | undefined; uploaded_by: string; }' is not assignable to parameter of type 'never[]'.
+      Type '{ delivery_id: string; proof_type: string; file_url: string; caption?: string | undefined; uploaded_by: string; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1466,74): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_status_logs", never, "POST">', gave the following error.
+    Argument of type '{ delivery_id: string; from_status?: string | undefined; to_status: string; changed_by: string; note?: string | undefined; latitude?: number | undefined; longitude?: number | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_status_logs", never, "POST">', gave the following error.
+    Argument of type '{ delivery_id: string; from_status?: string | undefined; to_status: string; changed_by: string; note?: string | undefined; latitude?: number | undefined; longitude?: number | undefined; }' is not assignable to parameter of type 'never[]'.
+      Type '{ delivery_id: string; from_status?: string | undefined; to_status: string; changed_by: string; note?: string | undefined; latitude?: number | undefined; longitude?: number | undefined; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1502,47): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "approvals", never, "POST">', gave the following error.
+    Argument of type '{ approval_type: string; reference_id: string; reference_table: string; title: string; description?: string | undefined; amount?: number | undefined; branch_id?: string | undefined; requested_by: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "approvals", never, "POST">', gave the following error.
+    Argument of type '{ approval_type: string; reference_id: string; reference_table: string; title: string; description?: string | undefined; amount?: number | undefined; branch_id?: string | undefined; requested_by: string; }' is not assignable to parameter of type 'never[]'.
+      Type '{ approval_type: string; reference_id: string; reference_table: string; title: string; description?: string | undefined; amount?: number | undefined; branch_id?: string | undefined; requested_by: string; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1508,47): error TS2345: Argument of type '{ status: string; approved_by: string; approved_at: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1514,47): error TS2345: Argument of type '{ status: string; approved_by: string; approved_at: string; rejection_reason: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1530,65): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "suppliers", never, "POST">', gave the following error.
+    Argument of type '{ name: string; contact?: string | undefined; email?: string | undefined; phone?: string | undefined; address?: string | undefined; notes?: string | undefined; created_by?: string | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "suppliers", never, "POST">', gave the following error.
+    Argument of type '{ name: string; contact?: string | undefined; email?: string | undefined; phone?: string | undefined; address?: string | undefined; notes?: string | undefined; created_by?: string | undefined; }' is not assignable to parameter of type 'never[]'.
+      Type '{ name: string; contact?: string | undefined; email?: string | undefined; phone?: string | undefined; address?: string | undefined; notes?: string | undefined; created_by?: string | undefined; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1534,65): error TS2345: Argument of type '{ updated_at: string; id?: string | undefined; name?: string | undefined; contact?: string | undefined; email?: string | undefined; phone?: string | undefined; address?: string | undefined; notes?: string | undefined; is_active?: boolean | undefined; created_at?: string | undefined; created_by?: string | undefined; }' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1548,73): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "purchase_requests", never, "POST">', gave the following error.
+    Argument of type '{ branch_id: string; requested_by: string; title: string; notes?: string | undefined; total_estimated: number; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "purchase_requests", never, "POST">', gave the following error.
+    Argument of type '{ branch_id: string; requested_by: string; title: string; notes?: string | undefined; total_estimated: number; }' is not assignable to parameter of type 'never[]'.
+      Type '{ branch_id: string; requested_by: string; title: string; notes?: string | undefined; total_estimated: number; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1553,73): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1567,71): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "purchase_orders", never, "POST">', gave the following error.
+    Argument of type '{ purchase_request_id?: string | undefined; branch_id: string; supplier_id: string; po_number: string; total: number; tax_amount?: number | undefined; notes?: string | undefined; created_by: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "purchase_orders", never, "POST">', gave the following error.
+    Argument of type '{ purchase_request_id?: string | undefined; branch_id: string; supplier_id: string; po_number: string; total: number; tax_amount?: number | undefined; notes?: string | undefined; created_by: string; }' is not assignable to parameter of type 'never[]'.
+      Type '{ purchase_request_id?: string | undefined; branch_id: string; supplier_id: string; po_number: string; total: number; tax_amount?: number | undefined; notes?: string | undefined; created_by: string; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1572,71): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1590,70): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "expense_claims", never, "POST">', gave the following error.
+    Argument of type '{ branch_id: string; claimant_id: string; category: string; title: string; description?: string | undefined; amount: number; receipt_url?: string | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "expense_claims", never, "POST">', gave the following error.
+    Argument of type '{ branch_id: string; claimant_id: string; category: string; title: string; description?: string | undefined; amount: number; receipt_url?: string | undefined; }' is not assignable to parameter of type 'never[]'.
+      Type '{ branch_id: string; claimant_id: string; category: string; title: string; description?: string | undefined; amount: number; receipt_url?: string | undefined; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1595,70): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1619,69): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "cash_advances", never, "POST">', gave the following error.
+    Argument of type '{ branch_id: string; user_id: string; amount: number; purpose: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "cash_advances", never, "POST">', gave the following error.
+    Argument of type '{ branch_id: string; user_id: string; amount: number; purpose: string; }' is not assignable to parameter of type 'never[]'.
+      Type '{ branch_id: string; user_id: string; amount: number; purpose: string; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1624,69): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/lib/db/queries.ts(1642,78): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "financial_transactions", never, "POST">', gave the following error.
+    Argument of type '{ branch_id: string; transaction_type: string; direction: string; amount: number; reference_id?: string | undefined; reference_table?: string | undefined; description: string; payment_method?: string | undefined; payment_ref?: string | undefined; recorded_by: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "financial_transactions", never, "POST">', gave the following error.
+    Argument of type '{ branch_id: string; transaction_type: string; direction: string; amount: number; reference_id?: string | undefined; reference_table?: string | undefined; description: string; payment_method?: string | undefined; payment_ref?: string | undefined; recorded_by: string; }' is not assignable to parameter of type 'never[]'.
+      Type '{ branch_id: string; transaction_type: string; direction: string; amount: number; reference_id?: string | undefined; reference_table?: string | undefined; description: string; payment_method?: string | undefined; payment_ref?: string | undefined; recorded_by: string; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1650,45): error TS2339: Property 'direction' does not exist on type 'never'.
+src/lib/db/queries.ts(1650,99): error TS2339: Property 'amount' does not exist on type 'never'.
+src/lib/db/queries.ts(1651,46): error TS2339: Property 'direction' does not exist on type 'never'.
+src/lib/db/queries.ts(1651,101): error TS2339: Property 'amount' does not exist on type 'never'.
+src/lib/db/queries.ts(1673,58): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type '{ product_id: string; branch_id: string; stock: number; min_stock?: number | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ product_id: string; branch_id: string; stock: number; min_stock?: number | undefined; }' is not assignable to parameter of type 'never[]'.
+      Type '{ product_id: string; branch_id: string; stock: number; min_stock?: number | undefined; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1689,72): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "stock_transfer_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<StockTransferLog, "user" | "id" | "created_at">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "stock_transfer_logs", never, "POST">', gave the following error.
+    Argument of type 'Omit<StockTransferLog, "user" | "id" | "created_at">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<StockTransferLog, "user" | "id" | "created_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1702,67): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "claim_payments", never, "POST">', gave the following error.
+    Argument of type 'Omit<ClaimPayment, "id" | "created_at" | "payer">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "claim_payments", never, "POST">', gave the following error.
+    Argument of type 'Omit<ClaimPayment, "id" | "created_at" | "payer">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<ClaimPayment, "id" | "created_at" | "payer">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1725,70): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "supplier_invoices", never, "POST">', gave the following error.
+    Argument of type 'Omit<SupplierInvoice, "id" | "created_at" | "updated_at" | "branch" | "supplier">' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "supplier_invoices", never, "POST">', gave the following error.
+    Argument of type 'Omit<SupplierInvoice, "id" | "created_at" | "updated_at" | "branch" | "supplier">' is not assignable to parameter of type 'never[]'.
+      Type 'Omit<SupplierInvoice, "id" | "created_at" | "updated_at" | "branch" | "supplier">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/db/queries.ts(1731,70): error TS2345: Argument of type 'Partial<SupplierInvoice>' is not assignable to parameter of type 'never'.
+src/lib/delivery-service.ts(297,50): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/delivery-service.ts(315,12): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_logs", never, "POST">', gave the following error.
+    Argument of type '{ order_id: string; technician_id: string; proof_url: string | null; signature_url: string | null; note: string | null; delivered_at: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "delivery_logs", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'order_id' does not exist in type 'never[]'.
+src/lib/delivery-service.ts(341,53): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/events.ts(85,6): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "automation_events", never, "POST">', gave the following error.
+    Argument of type '{ event_type: "invoice_created" | "request_created" | "request_approved" | "request_rejected" | "invoice_paid" | "order_ready" | "order_delivered" | "issue_created" | "issue_resolved" | ... 6 more ... | "low_stock_warning"; payload: TPayload; status: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "automation_events", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'event_type' does not exist in type 'never[]'.
+src/lib/events.ts(119,36): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/events.ts(123,38): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/finance-service.ts(49,29): error TS2339: Property 'invoice_number' does not exist on type 'never'.
+src/lib/finance-service.ts(65,16): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/lib/finance-service.ts(179,43): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/finance-service.ts(193,12): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "invoices", never, "POST">', gave the following error.
+    Argument of type '{ order_id: string; invoice_number: string; total: number; status: string; issued_at: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "invoices", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'order_id' does not exist in type 'never[]'.
+src/lib/finance-service.ts(219,53): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/finance-service.ts(330,19): error TS2345: Argument of type '{ status: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/finance-service.ts(473,14): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ ...; }, ... 5 more ..., "POST">', gave the following error.
+    Argument of type '{ month: number; year: number; total_revenue: number; orders_count: number; paid_invoices: number; unpaid_invoices: number; closed_by: string; notes: string | null; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string | undefined; ignoreDuplicates?: boolean | undefined; count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'month' does not exist in type 'never[]'.
+src/lib/inventory-service.ts(67,59): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "inventory_logs", never, "POST">', gave the following error.
+    Argument of type '{ product_id: string; change: number; balance: number; reason: string; created_by: string | null; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "inventory_logs", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'product_id' does not exist in type 'never[]'.
+src/lib/inventory-service.ts(188,76): error TS2339: Property 'product_id' does not exist on type 'never'.
+src/lib/inventory-service.ts(195,43): error TS2339: Property 'product_id' does not exist on type 'never'.
+src/lib/inventory-service.ts(197,45): error TS2339: Property 'product_id' does not exist on type 'never'.
+src/lib/inventory-service.ts(199,36): error TS2339: Property 'quantity' does not exist on type 'never'.
+src/lib/inventory-service.ts(200,115): error TS2339: Property 'quantity' does not exist on type 'never'.
+src/lib/inventory-service.ts(205,77): error TS2345: Argument of type '{ p_product_id: any; p_qty: any; }' is not assignable to parameter of type 'undefined'.
+src/lib/inventory-service.ts(206,32): error TS2339: Property 'product_id' does not exist on type 'never'.
+src/lib/inventory-service.ts(207,25): error TS2339: Property 'quantity' does not exist on type 'never'.
+src/lib/inventory-service.ts(216,30): error TS2339: Property 'product_id' does not exist on type 'never'.
+src/lib/inventory-service.ts(217,27): error TS2339: Property 'quantity' does not exist on type 'never'.
+src/lib/inventory-service.ts(227,18): error TS2339: Property 'product_id' does not exist on type 'never'.
+src/lib/inventory-service.ts(229,32): error TS2339: Property 'product_id' does not exist on type 'never'.
+src/lib/inventory-service.ts(230,30): error TS2339: Property 'quantity' does not exist on type 'never'.
+src/lib/inventory-service.ts(313,19): error TS2345: Argument of type '{ stock: number; status: string; }' is not assignable to parameter of type 'never'.
+src/lib/service-utils.ts(83,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "system_logs", never, "POST">', gave the following error.
+    Argument of type '{ level: SystemLogLevel; service: string; action: string; message: string; metadata: Record<string, unknown> | null; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "system_logs", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'level' does not exist in type 'never[]'.
+src/lib/services/cms-service.ts(55,46): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "cms_news", never, "POST">', gave the following error.
+    Argument of type 'Partial<CmsNews>' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "cms_news", never, "POST">', gave the following error.
+    Argument of type 'Partial<CmsNews>' is not assignable to parameter of type 'never[]'.
+      Type 'Partial<CmsNews>' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/services/cms-service.ts(62,46): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/lib/services/cms-service.ts(85,48): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "cms_events", never, "POST">', gave the following error.
+    Argument of type 'Partial<CmsEvent>' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "cms_events", never, "POST">', gave the following error.
+    Argument of type 'Partial<CmsEvent>' is not assignable to parameter of type 'never[]'.
+      Type 'Partial<CmsEvent>' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/lib/services/cms-service.ts(92,48): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/lib/services/cms-service.ts(116,43): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "cms_partners", never, "POST">', gave the following error.
+    Argument of type '{ is_active: boolean; id?: string | undefined; name?: string | undefined; logo_url?: string | undefined; website_url?: string | undefined; sort_order?: number | undefined; created_at?: string | undefined; updated_at?: string | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "cms_partners", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'is_active' does not exist in type 'never[]'.
+src/lib/services/cms-service.ts(122,50): error TS2345: Argument of type 'Partial<CmsPartner>' is not assignable to parameter of type 'never'.
+src/lib/workflow-engine.ts(196,17): error TS2345: Argument of type '{ status: RequestStatus; updated_at: string; id?: string | undefined; user_id?: string | undefined; user_email?: string | undefined; priority?: RequestPriority | undefined; ... 26 more ...; profiles?: Pick<Profile, "name" | "email"> | undefined; }' is not assignable to parameter of type 'never'.
+src/lib/workflow.ts(73,21): error TS2339: Property 'role' does not exist on type 'never'.
+src/lib/workflow.ts(156,65): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "notifications", never, "POST">', gave the following error.
+    Argument of type '{ user_id: string; message: string; type: NotificationType; read: boolean; order_id: string | null; }[]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "notifications", never, "POST">', gave the following error.
+    Argument of type '{ user_id: string; message: string; type: NotificationType; read: boolean; order_id: string | null; }[]' is not assignable to parameter of type 'never[]'.
+      Type '{ user_id: string; message: string; type: NotificationType; read: boolean; order_id: string | null; }' is not assignable to type 'never'.

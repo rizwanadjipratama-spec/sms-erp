@@ -15,21 +15,25 @@ export default function Hero() {
 
   const title = settings?.hero_title || 'Precision Laboratory Systems\nBuilt for Real Operations';
   const subtitle = settings?.hero_subtitle || 'Equipment, reagents, and technical support for laboratories across Indonesia.';
-  const videoUrl = settings?.hero_video_url || '/videos/hero.mp4';
+  const videoUrl = settings?.hero_video_url || '';
   const ctaText = 'Explore Products';
   const ctaLink = '/products';
 
   return (
     <section className="relative w-full h-screen overflow-hidden">
-      <video
-        className="absolute inset-0 w-full h-full object-cover"
-        autoPlay
-        muted
-        loop
-        playsInline
-      >
-        <source src={videoUrl} type="video/mp4" />
-      </video>
+      {videoUrl ? (
+        <video
+          className="absolute inset-0 w-full h-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+        >
+          <source src={videoUrl} type="video/mp4" />
+        </video>
+      ) : (
+        <div className="absolute inset-0 w-full h-full bg-slate-900" />
+      )}
 
       <div className="absolute inset-0 bg-black/60" />
 

@@ -37,14 +37,14 @@ export default function CmsGeneralTab() {
     }
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: keyof CmsSettings) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: keyof CmsSettings) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       const url = await cmsService.uploadCmsAsset(file, 'general');
       setSettings((prev) => ({ ...prev, [field]: url }));
-      alert('Image uploaded successfully');
+      alert('File uploaded successfully');
     } catch (err: any) {
       alert(`Upload failed: ${err.message}`);
     }
@@ -86,7 +86,19 @@ export default function CmsGeneralTab() {
                 onChange={(e: any) => setSettings({ ...settings, hero_image_url: e.target.value })}
                 readOnly
               />
-              <input type="file" accept="image/*" onChange={(e: any) => handleImageUpload(e, 'hero_image_url')} className="w-64" />
+              <input type="file" accept="image/*" onChange={(e: any) => handleFileUpload(e, 'hero_image_url')} className="w-64" />
+            </div>
+          </div>
+          <div className="space-y-2 md:col-span-2 flex flex-col gap-2">
+            <label className={labelClass}>Hero Video URL</label>
+            <div className="flex gap-2 items-center">
+              <input
+                className={inputClass}
+                value={settings.hero_video_url || ''}
+                onChange={(e: any) => setSettings({ ...settings, hero_video_url: e.target.value })}
+                readOnly
+              />
+              <input type="file" accept="video/mp4,video/webm" onChange={(e: any) => handleFileUpload(e, 'hero_video_url')} className="w-64" />
             </div>
           </div>
         </div>
@@ -112,7 +124,7 @@ export default function CmsGeneralTab() {
               onChange={(e: any) => setSettings({ ...settings, about_image_url: e.target.value })}
               readOnly
             />
-            <input type="file" accept="image/*" onChange={(e: any) => handleImageUpload(e, 'about_image_url')} className="w-64" />
+            <input type="file" accept="image/*" onChange={(e: any) => handleFileUpload(e, 'about_image_url')} className="w-64" />
           </div>
         </div>
         <div className="space-y-2">

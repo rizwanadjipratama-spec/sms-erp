@@ -36,13 +36,6 @@ export const SidebarButton: React.FC<SidebarButtonProps> = ({
         }
       `}
     >
-      <span className={`flex items-center justify-center w-5 h-5 shrink-0 ${isActive ? 'text-white' : ''}`}>
-        {typeof icon === 'string' ? (
-          <span className="text-xs font-bold">{icon[0]}</span>
-        ) : (
-          icon
-        )}
-      </span>
       <span className="truncate flex-1 text-left">{label}</span>
       {showBadge && badgeCount !== undefined && badgeCount > 0 && (
         <span className={`

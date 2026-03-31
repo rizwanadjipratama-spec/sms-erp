@@ -21,6 +21,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const visibleNav = NAV_ITEMS.filter(item => canAccessRoute(role, item.href));
 
+  // Find the most specific active route explicitly (longest matching prefix)
+  const activeItem = React.useMemo(() => {
+    return [...visibleNav]
+      .sort((a, b) => b.href.length - a.href.length)
+      .find(
+        (item) =>
+          pathname === item.href ||
+          (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
+      );
+  }, [pathname, visibleNav]);
+
   return (
     <aside
       className={`
@@ -63,10 +74,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             label={item.label}
             href={item.href}
             icon={item.icon}
-            isActive={
-              pathname === item.href
-              || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
-            }
+            isActive={activeItem?.href === item.href}
             onClick={onClose}
           />
         ))}
