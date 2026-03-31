@@ -57,9 +57,11 @@ export default function PurchasingDashboard() {
 
   useEffect(() => { if (profile) refreshAll(); }, [profile, refreshAll]);
 
+  const visiblePrs = useMemo(() => prs.filter(p => !['draft', 'submitted', 'rejected'].includes(p.status)), [prs]);
+
   const stats = useMemo(() => ({
-    totalPRs: prs.length,
-    pendingPRs: prs.filter(p => p.status === 'submitted').length,
+    totalPRs: visiblePrs.length,
+    pendingPRs: visiblePrs.filter(p => p.status === 'approved').length,
     totalPOs: pos.length,
     openPOs: pos.filter(p => !['received', 'cancelled'].includes(p.status)).length,
     totalSuppliers: suppliers.length,
@@ -82,14 +84,14 @@ export default function PurchasingDashboard() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Purchase Requests" value={stats.totalPRs} color="blue" />
-        <StatCard label="Pending Approval" value={stats.pendingPRs} color="yellow" />
+        <StatCard label="Ready to Order" value={stats.pendingPRs} color="yellow" />
         <StatCard label="Active POs" value={stats.openPOs} color="purple" />
         <StatCard label="Total Spend" value={formatCurrency(stats.totalSpend)} color="green" />
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1 w-fit">
         {([
-          { key: 'requests' as TabKey, label: `Requests (${prs.length})` },
+          { key: 'requests' as TabKey, label: `Requests (${visiblePrs.length})` },
           { key: 'orders' as TabKey, label: `Orders (${pos.length})` },
           { key: 'suppliers' as TabKey, label: `Suppliers (${suppliers.length})` },
         ]).map(item => (
@@ -107,10 +109,10 @@ export default function PurchasingDashboard() {
 
       {tab === 'requests' && (
         <section className="space-y-3">
-          {prs.length === 0 ? (
-            <EmptyState title="No purchase requests" description="No purchase requests have been submitted yet." />
+          {visiblePrs.length === 0 ? (
+            <EmptyState title="No purchase requests" description="No approved purchase requests are available." />
           ) : (
-            prs.map(pr => (
+            visiblePrs.map(pr => (
               <div key={pr.id} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>

@@ -94,7 +94,7 @@ export type StockTransferStatus =
   | 'cancelled';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type ApprovalType = 'expense_claim' | 'purchase_request' | 'cash_advance' | 'discount' | 'stock_transfer' | 'branch_override' | 'maintenance_cost' | 'large_purchase';
-export type PurchaseRequestStatus = 'draft' | 'submitted' | 'approved' | 'ordered' | 'partial_received' | 'received' | 'cancelled';
+export type PurchaseRequestStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'ordered' | 'partial_received' | 'received' | 'cancelled';
 export type PurchaseOrderStatus = 'draft' | 'sent' | 'confirmed' | 'partial_received' | 'received' | 'cancelled';
 export type ExpenseClaimStatus = 'draft' | 'submitted' | 'approved' | 'paid' | 'partial_paid' | 'rejected' | 'cancelled';
 export type ExpenseCategory = 'fuel' | 'toll' | 'parking' | 'small_tools' | 'sparepart' | 'hotel' | 'meals' | 'vehicle_service' | 'operational' | 'other';
@@ -995,6 +995,7 @@ export interface PurchaseRequest {
   approved_at?: string;
   created_at: string;
   updated_at: string;
+  rejection_reason?: string;
   // Joined
   items?: PurchaseRequestItem[];
   branch?: Branch;

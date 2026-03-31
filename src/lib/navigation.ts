@@ -18,6 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/warehouse', label: 'Warehouse', icon: 'W' },
   { href: '/dashboard/warehouse/inventory', label: 'Inventory', icon: 'I' },
   { href: '/dashboard/warehouse/catalog', label: 'Catalog', icon: 'C' },
+  { href: '/dashboard/procurement-approvals', label: 'PR Approvals', icon: 'P' },
   { href: '/dashboard/technician', label: 'Delivery', icon: 'D' },
   { href: '/dashboard/courier', label: 'Courier', icon: 'K' },
   { href: '/dashboard/client/products', label: 'Browse Products', icon: 'C' },

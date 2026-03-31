@@ -35,7 +35,9 @@ export type AppRoute =
   | '/dashboard/claims'
   | '/dashboard/stock'
   | '/dashboard/leave'
+  | '/dashboard/leave'
   | '/dashboard/attendance'
+  | '/dashboard/procurement-approvals'
   | '/request';
 
 export type EntityScope =
@@ -75,12 +77,12 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
     writableEntities: ['requests:own', 'issues:own', 'service_issues:own', 'payment_promises:own', 'notifications:own'],
   },
   marketing: {
-    routes: ['/dashboard', '/dashboard/company', '/dashboard/marketing', '/dashboard/marketing/clients', '/dashboard/marketing/prices', '/dashboard/leave', '/dashboard/attendance', '/dashboard/notifications'],
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/marketing', '/dashboard/marketing/clients', '/dashboard/marketing/prices', '/dashboard/leave', '/dashboard/attendance', '/dashboard/procurement-approvals', '/dashboard/notifications'],
     readableEntities: ['profiles:self', 'products:catalog', 'products:all', 'price_list:all', 'requests:pending', 'equipment_assets:all', 'pm_schedules:all', 'notifications:own', 'chat:staff'],
     writableEntities: ['price_list:all', 'requests:pending', 'products:all', 'equipment_assets:all', 'notifications:own'],
   },
   boss: {
-    routes: ['/dashboard', '/dashboard/company', '/dashboard/boss', '/dashboard/leave', '/dashboard/attendance', '/dashboard/notifications'],
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/boss', '/dashboard/leave', '/dashboard/attendance', '/dashboard/procurement-approvals', '/dashboard/notifications'],
     readableEntities: ['profiles:self', 'requests:priced', 'requests:all', 'equipment_assets:all', 'pm_schedules:all', 'notifications:own', 'chat:staff'],
     writableEntities: ['requests:priced', 'notifications:own'],
   },
@@ -105,12 +107,12 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
     writableEntities: ['requests:courier', 'delivery_logs:courier', 'notifications:own'],
   },
   admin: {
-    routes: ['/dashboard', '/dashboard/company', '/dashboard/admin', '/dashboard/cms', '/dashboard/approvals', '/dashboard/purchasing', '/dashboard/claims', '/dashboard/stock', '/dashboard/leave', '/dashboard/attendance', '/dashboard/notifications'],
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/admin', '/dashboard/cms', '/dashboard/approvals', '/dashboard/purchasing', '/dashboard/claims', '/dashboard/stock', '/dashboard/leave', '/dashboard/attendance', '/dashboard/procurement-approvals', '/dashboard/notifications'],
     readableEntities: ['profiles:all', 'products:all', 'requests:all', 'issues:admin', 'inventory_logs:all', 'delivery_logs:all', 'notifications:own', 'activity_logs:all', 'chat:staff', 'cms:admin', 'leave_requests:all'],
     writableEntities: ['profiles:all', 'products:all', 'requests:issue', 'issues:admin', 'inventory_logs:all', 'notifications:own', 'cms:admin', 'leave_requests:all'],
   },
   owner: {
-    routes: ['/dashboard', '/dashboard/company', '/dashboard/owner', '/dashboard/owner/reports', '/dashboard/cms', '/dashboard/approvals', '/dashboard/purchasing', '/dashboard/claims', '/dashboard/stock', '/dashboard/leave', '/dashboard/attendance', '/dashboard/notifications'],
+    routes: ['/dashboard', '/dashboard/company', '/dashboard/owner', '/dashboard/owner/reports', '/dashboard/cms', '/dashboard/approvals', '/dashboard/purchasing', '/dashboard/claims', '/dashboard/stock', '/dashboard/leave', '/dashboard/attendance', '/dashboard/procurement-approvals', '/dashboard/notifications'],
     readableEntities: ['profiles:all', 'products:all', 'price_list:all', 'requests:all', 'invoices:reporting', 'faktur_tasks:all', 'inventory_logs:all', 'delivery_logs:all', 'issues:admin', 'notifications:own', 'activity_logs:all', 'monthly_closing:owner', 'chat:staff', 'cms:admin', 'leave_requests:all'],
     writableEntities: ['notifications:own', 'cms:admin', 'faktur_tasks:all', 'leave_requests:all'],
   },

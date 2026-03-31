@@ -12,6 +12,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import type { Product, Actor } from '@/types/types';
 import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
 
 export default function InventoryDashboard() {
   const { profile, role, loading } = useAuth();
@@ -164,6 +165,15 @@ export default function InventoryDashboard() {
                     {product.stock > 0 ? `${product.stock} ${product.unit}` : 'OUT'}
                   </span>
                 </div>
+
+                {product.stock <= (product.min_stock ?? 5) && (
+                  <Link 
+                    href={`/dashboard/warehouse/request-purchase?product_id=${product.id}`}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-50 px-4 py-2 mb-4 text-xs font-bold text-orange-600 border border-orange-100 transition-colors hover:bg-orange-100"
+                  >
+                    <span>⚠️ Low Stock — Request Purchase</span>
+                  </Link>
+                )}
 
                 <div className="flex gap-2">
                   <div className="relative flex-1">
