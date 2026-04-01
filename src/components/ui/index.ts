@@ -5,3 +5,4 @@ export { StatusBadge } from './StatusBadge';
 export { StatCard } from './StatCard';
 export { NotificationBell } from './NotificationBell';
 export { Modal } from './Modal';
+export { OrderNotes } from './OrderNotes';

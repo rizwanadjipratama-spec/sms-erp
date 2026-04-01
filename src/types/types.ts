@@ -1270,3 +1270,18 @@ export interface SupplierInvoice {
   supplier?: Partial<Supplier>;
   branch?: Partial<Branch>;
 }
+
+// ============================================================================
+// REQUEST NOTES (Targeted role-to-role private notes)
+// ============================================================================
+
+export interface RequestNote {
+  id: string;
+  request_id: string;
+  from_user_id: string;
+  from_role: string;
+  to_role: string;
+  message: string;
+  created_at: string;
+  sender?: Partial<Profile>;
+}

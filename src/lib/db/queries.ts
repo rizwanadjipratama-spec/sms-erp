@@ -25,7 +25,7 @@ import type {
   ExpenseClaim, ExpenseClaimStatus, ClaimLedger, CashAdvance,
   FinancialTransaction, FinancialTransactionType, FinancialDirection,
   ProductBranchStock, StockTransfer, StockTransferLog,
-  ClaimPayment, SupplierInvoice,
+  ClaimPayment, SupplierInvoice, RequestNote,
 } from '@/types/types';
 
 // ============================================================================
@@ -1745,4 +1745,33 @@ export const supplierInvoicesDb = {
   },
 };
 
+// ============================================================================
+// REQUEST NOTES (targeted role-to-role private notes)
+// ============================================================================
 
+export const requestNotesDb = {
+  async getByRequest(requestId: string): Promise<RequestNote[]> {
+    const { data } = await supabase
+      .from('request_notes')
+      .select('*, sender:profiles!from_user_id(name, email, role)')
+      .eq('request_id', requestId)
+      .order('created_at', { ascending: true });
+    return data ?? [];
+  },
+
+  async create(note: {
+    request_id: string;
+    from_user_id: string;
+    from_role: string;
+    to_role: string;
+    message: string;
+  }): Promise<RequestNote> {
+    const { data } = await supabase
+      .from('request_notes')
+      .insert(note)
+      .select('*, sender:profiles!from_user_id(name, email, role)')
+      .single();
+    if (!data) throw new Error('Failed to create note');
+    return data;
+  },
+};

@@ -8,7 +8,7 @@ import { canAccessRoute } from '@/lib/permissions';
 import { requestsDb, profilesDb } from '@/lib/db';
 import { workflowEngine, authService } from '@/lib/services';
 import { formatCurrency, formatDateTime, formatOrderId } from '@/lib/format-utils';
-import { DashboardSkeleton, EmptyState, ErrorState, StatCard, StatusBadge } from '@/components/ui';
+import { DashboardSkeleton, EmptyState, ErrorState, StatCard, StatusBadge, OrderNotes } from '@/components/ui';
 import type { DbRequest, DiscountType, Profile } from '@/types/types';
 
 export default function BossDashboard() {
@@ -303,14 +303,11 @@ export default function BossDashboard() {
                       </div>
                     </div>
 
-                    {request.note && (
-                      <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-4">
-                        <p className="text-xs uppercase tracking-wider text-purple-600/80 mb-1">
-                          Commercial Note
-                        </p>
-                        <p className="text-sm text-purple-900">{request.note}</p>
-                      </div>
-                    )}
+                    <OrderNotes
+                      requestId={request.id}
+                      allowedTargetRoles={['marketing', 'client', 'finance']}
+                      compact
+                    />
                   </div>
 
                   {/* Right: summary + debt + actions */}

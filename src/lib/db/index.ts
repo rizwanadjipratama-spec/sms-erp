@@ -44,4 +44,5 @@ export {
   stockTransferLogsDb,
   claimPaymentsDb,
   supplierInvoicesDb,
+  requestNotesDb,
 } from './queries';

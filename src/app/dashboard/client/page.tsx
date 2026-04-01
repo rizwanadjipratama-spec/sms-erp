@@ -13,6 +13,7 @@ import {
   DashboardSkeleton,
   EmptyState,
   ErrorState,
+  OrderNotes,
   StatCard,
   StatusBadge,
   Modal,
@@ -429,12 +430,12 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                {/* Note */}
-                {request.note && (
-                  <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-800">
-                    Note: {request.note}
-                  </div>
-                )}
+                {/* Targeted Notes */}
+                <OrderNotes
+                  requestId={request.id}
+                  allowedTargetRoles={['marketing', 'courier', 'warehouse', 'boss', 'finance']}
+                  compact
+                />
 
                 {/* Delivered actions */}
                 {request.status === 'delivered' && (
@@ -556,9 +557,7 @@ export default function ClientDashboard() {
                     {(request.request_items || []).length} item(s) &bull;{' '}
                     {formatDate(request.created_at)}
                   </p>
-                  {request.note && (
-                    <p className="text-xs text-red-600 mt-1">Note: {request.note}</p>
-                  )}
+
                 </div>
                 {request.total_price !== undefined && request.total_price > 0 && (
                   <div className="text-right">

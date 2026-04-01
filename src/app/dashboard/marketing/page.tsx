@@ -312,11 +312,11 @@ export default function MarketingDashboard() {
                       </div>
                     </div>
 
-                    {request.note && (
-                      <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-800">
-                        Note: {request.note}
-                      </div>
-                    )}
+                    <OrderNotes
+                      requestId={request.id}
+                      allowedTargetRoles={['boss', 'client', 'finance', 'warehouse', 'courier']}
+                      compact
+                    />
                   </div>
 
                   {/* Right: pricing controls */}
