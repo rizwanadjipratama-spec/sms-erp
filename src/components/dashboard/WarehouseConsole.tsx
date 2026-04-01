@@ -6,17 +6,16 @@ import { formatRelative } from '@/lib/format-utils';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { OrderNotes } from '@/components/ui';
 
 interface WarehouseConsoleProps {
   requests: DbRequest[];
-  inventoryLogs: InventoryLog[];
   processingId: string | null;
   updateOrder: (request: DbRequest, status: 'preparing' | 'ready') => Promise<void>;
 }
 
 export function WarehouseConsole({
   requests,
-  inventoryLogs,
   processingId,
   updateOrder,
 }: WarehouseConsoleProps) {
@@ -115,6 +114,12 @@ export function WarehouseConsole({
                       </div>
                       <div className="flex items-center gap-2">
                         <StatusBadge status={request.status} />
+                        {request.branch && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-100 uppercase tracking-wider">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            {request.branch.name}
+                          </span>
+                        )}
                         {request.priority === 'cito' && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-apple-danger/10 text-apple-danger uppercase">
                             {request.priority}
@@ -137,6 +142,14 @@ export function WarehouseConsole({
                       )}
                     </div>
 
+                    <div className="mb-6">
+                      <OrderNotes
+                        requestId={request.id}
+                        allowedTargetRoles={['courier', 'finance']}
+                        compact
+                      />
+                    </div>
+
                     <button
                       onClick={() => updateOrder(request, section.nextStatus)}
                       disabled={processingId === request.id}
@@ -151,57 +164,6 @@ export function WarehouseConsole({
           </section>
         ))}
       </div>
-
-
-
-      {/* Activity Log Section */}
-      <section className="bg-apple-gray-bg border border-apple-gray-border rounded-2xl p-8 sm:p-12">
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-apple-text-primary tracking-tight">Activity Log</h2>
-          <p className="text-apple-text-secondary text-sm font-medium mt-1">
-            Audit trail of all inventory movements.
-          </p>
-        </div>
-
-        {inventoryLogs.length === 0 ? (
-          <EmptyState
-            icon="📋"
-            title="No Recent Activity"
-            description="Inventory movements will appear here."
-          />
-        ) : (
-          <div className="space-y-3">
-            {inventoryLogs.map((log) => (
-              <div
-                key={log.id}
-                className="bg-white border border-apple-gray-border rounded-xl p-4 flex items-center justify-between gap-4 hover:border-apple-blue/30 transition-colors"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-apple-text-primary truncate">
-                    {log.product?.name || log.product_id.split('-')[0]}
-                  </p>
-                  <p className="text-xs text-apple-text-secondary mt-1">
-                    {log.reason.replace(/_/g, ' ')} &middot; {formatRelative(log.created_at)}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p
-                    className={`text-sm font-bold ${
-                      log.change >= 0 ? 'text-apple-success' : 'text-apple-danger'
-                    }`}
-                  >
-                    {log.change >= 0 ? '+' : ''}
-                    {log.change}
-                  </p>
-                  <p className="text-[10px] text-apple-text-secondary truncate max-w-[80px]">
-                    bal: {log.balance}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }

@@ -91,9 +91,17 @@ export default function UsersManagementPage() {
   const handleUpdateBranch = useCallback(async (userId: string, email: string, newBranchId: string) => {
     setSaving(email);
     try {
-      await profilesDb.update(userId, { branch_id: newBranchId === 'unassigned' ? null : newBranchId });
+      const isUnassigned = newBranchId === 'unassigned';
+      await profilesDb.update(userId, { 
+        branch_id: isUnassigned ? null : newBranchId,
+        is_branch_pinned: !isUnassigned,
+      });
       setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, branch_id: newBranchId === 'unassigned' ? null : newBranchId } : u))
+        prev.map((u) => (u.id === userId ? { 
+          ...u, 
+          branch_id: isUnassigned ? null : newBranchId,
+          is_branch_pinned: !isUnassigned,
+        } : u))
       );
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to update branch');
@@ -194,7 +202,7 @@ export default function UsersManagementPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-gray-900">
                       {user.name || '(no name)'} 
-                      {user.status === 'banned' && <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] uppercase text-red-600 font-bold">Banned</span>}
+                      {!user.is_active && <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] uppercase text-red-600 font-bold">Unmapped / Inactive</span>}
                     </p>
                     <p className="mt-0.5 truncate text-xs text-gray-500">{user.email}</p>
                   </div>

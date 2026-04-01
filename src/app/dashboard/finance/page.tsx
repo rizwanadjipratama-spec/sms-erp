@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Modal } from '@/components/ui/Modal';
+import { OrderNotes } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
 import type { DbRequest, Invoice, MonthlyClosing, FakturTask, FakturTaskType, Profile } from '@/types/types';
 import { useBranch } from '@/hooks/useBranch';
@@ -287,7 +288,15 @@ export default function FinanceDashboard() {
                       {formatDateTime(request.created_at)}
                     </p>
                   </div>
-                  <StatusBadge status={request.status} />
+                  <div className="flex flex-wrap gap-2">
+                    <StatusBadge status={request.status} />
+                    {request.branch && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-100 uppercase tracking-wider">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        {request.branch.name}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mb-4 space-y-1 text-sm text-gray-500">
@@ -296,6 +305,14 @@ export default function FinanceDashboard() {
                       {item.products?.name || item.product_id} x{item.quantity}
                     </p>
                   ))}
+                </div>
+
+                <div className="mb-4">
+                  <OrderNotes
+                    requestId={request.id}
+                    allowedTargetRoles={['boss', 'warehouse', 'client']}
+                    compact
+                  />
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

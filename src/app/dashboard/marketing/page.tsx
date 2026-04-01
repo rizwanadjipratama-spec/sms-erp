@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranch } from '@/hooks/useBranch';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
 import { requestsDb, priceListDb, profilesDb } from '@/lib/db';
@@ -14,11 +15,13 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { OrderNotes } from '@/components/ui';
 import type { ClientType, DbRequest, DiscountType, PriceList, Profile } from '@/types/types';
 
 export default function MarketingDashboard() {
   const { profile, role, loading } = useAuth();
   const router = useRouter();
+  const { activeBranchId } = useBranch();
 
   const [requests, setRequests] = useState<DbRequest[]>([]);
   const [clientProfiles, setClientProfiles] = useState<Record<string, Profile>>({});
@@ -46,7 +49,7 @@ export default function MarketingDashboard() {
 
     try {
       const [requestsResult, allPrices] = await Promise.all([
-        requestsDb.getByStatus(['submitted']),
+        requestsDb.getByStatus(['submitted'], undefined, activeBranchId),
         priceListDb.getAll(),
       ]);
 
@@ -109,11 +112,11 @@ export default function MarketingDashboard() {
     } finally {
       setFetching(false);
     }
-  }, [profile]);
+  }, [profile, activeBranchId]);
 
   useEffect(() => {
     if (profile) refresh();
-  }, [profile, refresh]);
+  }, [profile, refresh, activeBranchId]);
 
   // ---------- Realtime ----------
   useRealtimeTable('requests', 'status=eq.submitted', refresh, {
@@ -280,6 +283,12 @@ export default function MarketingDashboard() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <StatusBadge status={request.status} />
+                    {request.branch && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-100 uppercase tracking-wider">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        {request.branch.name}
+                      </span>
+                    )}
                     <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 uppercase">
                       {request.priority}
                     </span>

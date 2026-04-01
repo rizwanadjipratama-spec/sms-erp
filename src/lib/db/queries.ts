@@ -279,7 +279,7 @@ export const requestsDb = {
   async getById(id: string): Promise<DbRequest | null> {
     const { data } = await supabase
       .from('requests')
-      .select('*, request_items(*, products(name, image_url, unit))')
+      .select('*, request_items(*, products(name, image_url, unit)), branch:branches(name, code)')
       .eq('id', id)
       .single();
     return data;
@@ -288,7 +288,7 @@ export const requestsDb = {
   async getByUser(userId: string, pagination?: PaginationParams): Promise<{ data: DbRequest[]; count: number }> {
     let query = supabase
       .from('requests')
-      .select('*, request_items(*, products(name, image_url, unit))', { count: 'exact' })
+      .select('*, request_items(*, products(name, image_url, unit)), branch:branches(name, code)', { count: 'exact' })
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (pagination) query = paginate(query, pagination) as typeof query;
@@ -300,7 +300,7 @@ export const requestsDb = {
     const statuses = Array.isArray(status) ? status : [status];
     let query = supabase
       .from('requests')
-      .select('*, request_items(*, products(name, image_url, unit))', { count: 'exact' })
+      .select('*, request_items(*, products(name, image_url, unit)), branch:branches(name, code)', { count: 'exact' })
       .in('status', statuses)
       .order('created_at', { ascending: false });
     if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
@@ -312,7 +312,7 @@ export const requestsDb = {
   async getAll(pagination?: PaginationParams, branchId?: string): Promise<{ data: DbRequest[]; count: number }> {
     let query = supabase
       .from('requests')
-      .select('*, request_items(*, products(name, image_url, unit))', { count: 'exact' })
+      .select('*, request_items(*, products(name, image_url, unit)), branch:branches(name, code)', { count: 'exact' })
       .order('created_at', { ascending: false });
     if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
     if (pagination) query = paginate(query, pagination) as typeof query;
@@ -502,12 +502,18 @@ export const inventoryLogsDb = {
     );
   },
 
-  async getRecent(limit: number = 50): Promise<InventoryLog[]> {
-    const { data } = await supabase
+  async getRecent(limit: number = 50, branchId?: string): Promise<InventoryLog[]> {
+    let query = supabase
       .from('inventory_logs')
-      .select('*, product:products!product_id(name)')
+      .select('*, product:products!inner(name, branch_id)')
       .order('created_at', { ascending: false })
       .limit(limit);
+      
+    if (branchId && branchId !== 'ALL') {
+      query = query.eq('products.branch_id', branchId);
+    }
+
+    const { data } = await query;
     return data ?? [];
   },
 

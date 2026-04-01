@@ -10,7 +10,7 @@ export const inventoryService = {
     const [productsResult, warehouseRequests, recentLogs] = await Promise.all([
       productsDb.getAll({ onlyActive: true, branchId }),
       requestsDb.getByStatus(['invoice_ready', 'preparing', 'ready'], undefined, branchId),
-      inventoryLogsDb.getRecent(30),
+      inventoryLogsDb.getRecent(30, branchId),
     ]);
 
     return {

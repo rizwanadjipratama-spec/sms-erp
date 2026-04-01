@@ -3,22 +3,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranch } from '@/hooks/useBranch';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
 import { inventoryService, authService } from '@/lib/services';
-import { requireAuthUser } from '@/lib/db';
+import { requireAuthUser, inventoryLogsDb } from '@/lib/db';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
-import type { Product, Actor } from '@/types/types';
+import type { Product, Actor, InventoryLog } from '@/types/types';
+import { formatRelative } from '@/lib/format-utils';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function InventoryDashboard() {
   const { profile, role, loading } = useAuth();
   const router = useRouter();
+  const { activeBranchId } = useBranch();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [inventoryLogs, setInventoryLogs] = useState<InventoryLog[]>([]);
   const [stockInputs, setStockInputs] = useState<Record<string, number>>({});
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,16 +48,22 @@ export default function InventoryDashboard() {
     setFetching(true);
     setError(null);
     try {
-      const { data, error: dbError } = await supabase
-        .from('products')
-        .select('*')
-        .order('name');
-        
-      if (dbError) throw dbError;
+      let query = supabase.from('products').select('*').order('name');
+      if (activeBranchId && activeBranchId !== 'ALL') {
+        query = query.eq('branch_id', activeBranchId);
+      }
       
-      setProducts(data as Product[]);
+      const [productsResult, logsResult] = await Promise.all([
+        query,
+        inventoryLogsDb.getRecent(30, activeBranchId)
+      ]);
+        
+      if (productsResult.error) throw productsResult.error;
+      
+      setProducts(productsResult.data as Product[]);
+      setInventoryLogs(logsResult);
       setStockInputs(
-        (data as Product[]).reduce<Record<string, number>>((acc, product) => {
+        (productsResult.data as Product[]).reduce<Record<string, number>>((acc, product) => {
           acc[product.id] = product.stock;
           return acc;
         }, {})
@@ -63,13 +73,18 @@ export default function InventoryDashboard() {
     } finally {
       setFetching(false);
     }
-  }, []);
+  }, [activeBranchId]);
 
   useEffect(() => {
     if (profile) refresh();
-  }, [profile, refresh]);
+  }, [profile, refresh, activeBranchId]);
 
   useRealtimeTable('products', undefined, refresh, {
+    enabled: Boolean(profile),
+    debounceMs: 250,
+  });
+
+  useRealtimeTable('inventory_logs', undefined, refresh, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
@@ -200,6 +215,55 @@ export default function InventoryDashboard() {
                   >
                     {processingId === product.id ? '...' : 'SAVE'}
                   </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Activity Log Section */}
+      <section className="bg-apple-gray-bg border border-apple-gray-border rounded-2xl p-8 sm:p-12 mt-12">
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-apple-text-primary tracking-tight">Activity Log</h2>
+          <p className="text-apple-text-secondary text-sm font-medium mt-1">
+            Audit trail of all inventory movements.
+          </p>
+        </div>
+
+        {inventoryLogs.length === 0 ? (
+          <EmptyState
+            icon="📋"
+            title="No Recent Activity"
+            description="Inventory movements will appear here."
+          />
+        ) : (
+          <div className="space-y-3">
+            {inventoryLogs.map((log) => (
+              <div
+                key={log.id}
+                className="bg-white border border-apple-gray-border rounded-xl p-4 flex items-center justify-between gap-4 hover:border-apple-blue/30 transition-colors"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-apple-text-primary truncate">
+                    {log.product?.name || log.product_id.split('-')[0]}
+                  </p>
+                  <p className="text-xs text-apple-text-secondary mt-1">
+                    {log.reason.replace(/_/g, ' ')} &middot; {formatRelative(log.created_at)}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p
+                    className={`text-sm font-bold ${
+                      log.change >= 0 ? 'text-apple-success' : 'text-apple-danger'
+                    }`}
+                  >
+                    {log.change >= 0 ? '+' : ''}
+                    {log.change}
+                  </p>
+                  <p className="text-[10px] text-apple-text-secondary truncate max-w-[80px]">
+                    bal: {log.balance}
+                  </p>
                 </div>
               </div>
             ))}

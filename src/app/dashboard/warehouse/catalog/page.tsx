@@ -106,13 +106,17 @@ export default function CatalogDashboard() {
 
   const handleSaveProduct = useCallback(
     async (data: Partial<Product>, imageFile?: File) => {
+      if (!editingProduct && activeBranchId === 'ALL') {
+        alert('Mohon pilih spesifik cabang (contoh: Bogor, Cirebon) di kanan atas sebelum menambah produk agar data gudang tidak tumpang tindih.');
+        return;
+      }
       try {
         const actor = await getActor();
         if (editingProduct) {
           await productService.update(editingProduct.id, data, imageFile, actor);
         } else {
           await productService.create(
-            { ...data, branch_id: activeBranchId === 'ALL' ? undefined : activeBranchId } as any,
+            { ...data, branch_id: activeBranchId } as any,
             imageFile,
             actor
           );
@@ -161,11 +165,13 @@ export default function CatalogDashboard() {
                 </p>
               </div>
               <button
+                disabled={activeBranchId === 'ALL'}
                 onClick={() => {
                   setCatalogView('add-product');
                   router.push('/dashboard/warehouse/catalog?view=add-product');
                 }}
-                className="flex items-center gap-2 bg-apple-blue hover:bg-apple-blue-hover text-white text-xs font-bold px-5 py-3 rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-apple-blue/20"
+                title={activeBranchId === 'ALL' ? "Pilih cabang spesifik di atas untuk menambah produk" : ""}
+                className="flex items-center gap-2 bg-apple-blue hover:bg-apple-blue-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold px-5 py-3 rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-apple-blue/20"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

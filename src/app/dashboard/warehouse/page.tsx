@@ -21,7 +21,6 @@ export default function WarehouseDashboard() {
 
   // Data state
   const [requests, setRequests] = useState<DbRequest[]>([]);
-  const [inventoryLogs, setInventoryLogs] = useState<InventoryLog[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -51,7 +50,6 @@ export default function WarehouseDashboard() {
     try {
       const data = await inventoryService.getWarehouseDashboard(activeBranchId);
       setRequests(data.requests);
-      setInventoryLogs(data.recentLogs);
     } catch (err) {
       console.error('Warehouse refresh failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to load dashboard');
@@ -66,13 +64,6 @@ export default function WarehouseDashboard() {
 
   // Realtime subscriptions
   useRealtimeTable('requests', undefined, refresh, {
-    enabled: Boolean(profile),
-    debounceMs: 250,
-  });
-
-
-
-  useRealtimeTable('inventory_logs', undefined, refresh, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
@@ -145,7 +136,6 @@ export default function WarehouseDashboard() {
         </div>
         <WarehouseConsole
           requests={requests}
-          inventoryLogs={inventoryLogs}
           processingId={processingId}
           updateOrder={updateOrder}
         />

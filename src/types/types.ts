@@ -163,7 +163,8 @@ export interface Profile {
   company?: string;
   avatar_url?: string;
   handled_by?: string;
-  branch_id?: string;
+  branch_id?: string | null;
+  is_branch_pinned?: boolean | null;
   profile_completed: boolean;
   leave_balance: number;
   debt_amount: number;
@@ -301,6 +302,7 @@ export interface DbRequest {
   // Joined
   request_items?: RequestItemWithProduct[];
   profiles?: Pick<Profile, 'name' | 'email'>;
+  branch?: Pick<Branch, 'name' | 'code'>;
 }
 
 export interface RequestItem {

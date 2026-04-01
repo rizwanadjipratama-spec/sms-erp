@@ -45,7 +45,6 @@ export function OrderNotes({ requestId, allowedTargetRoles, compact = false }: O
   const [message, setMessage] = useState('');
   const [targetRole, setTargetRole] = useState<UserRole>(allowedTargetRoles[0]);
   const [sending, setSending] = useState(false);
-  const [expanded, setExpanded] = useState(!compact);
 
   const fetchNotes = useCallback(async () => {
     try {
@@ -82,131 +81,82 @@ export function OrderNotes({ requestId, allowedTargetRoles, compact = false }: O
     }
   }, [message, profile, requestId, targetRole, fetchNotes]);
 
-  // Memoize note count for the badge
-  const noteCount = notes.length;
-
   if (!profile) return null;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-      {/* Header / Toggle */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-          </svg>
-          <span className="text-sm font-bold text-gray-700">Notes</span>
-          {noteCount > 0 && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
-              {noteCount}
-            </span>
-          )}
-        </div>
-        <svg
-          className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {expanded && (
-        <div className="border-t border-gray-100">
-          {/* Notes list */}
-          <div className="max-h-60 overflow-y-auto px-4 py-3 space-y-3">
-            {loading ? (
-              <div className="flex items-center justify-center py-4">
-                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+    <div className="space-y-3">
+      {/* Display Notes */}
+      {!loading && notes.length > 0 && (
+        <div className="space-y-2">
+          {notes.map((note) => {
+            const isMine = note.from_user_id === profile.id;
+            const fromBadge = getRoleBadge(note.from_role);
+            const toBadge = getRoleBadge(note.to_role);
+            
+            return (
+              <div 
+                key={note.id} 
+                className={`rounded-xl border p-4 ${isMine ? 'bg-blue-50/50 border-blue-100' : 'bg-gray-50 border-gray-200'}`}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500">
+                    {isMine ? 'Sent to' : 'From'}
+                  </span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isMine ? toBadge.color : fromBadge.color}`}>
+                    {isMine ? toBadge.label : fromBadge.label}
+                  </span>
+                  <span className="text-[10px] text-gray-400 ml-auto flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {formatRelative(note.created_at)}
+                  </span>
+                </div>
+                <p className="text-sm font-medium text-gray-800 whitespace-pre-wrap">
+                  {note.message}
+                </p>
               </div>
-            ) : notes.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">No notes yet</p>
-            ) : (
-              notes.map((note) => {
-                const fromBadge = getRoleBadge(note.from_role);
-                const toBadge = getRoleBadge(note.to_role);
-                const isMine = note.from_user_id === profile.id;
-
-                return (
-                  <div
-                    key={note.id}
-                    className={`p-3 rounded-lg border ${
-                      isMine
-                        ? 'bg-blue-50/50 border-blue-100'
-                        : 'bg-gray-50 border-gray-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${fromBadge.color}`}>
-                        {fromBadge.label}
-                      </span>
-                      <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${toBadge.color}`}>
-                        {toBadge.label}
-                      </span>
-                      <span className="text-[10px] text-gray-400 ml-auto">
-                        {note.sender?.name || note.sender?.email || 'Unknown'} · {formatRelative(note.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-700 leading-relaxed">{note.message}</p>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Compose area */}
-          <div className="border-t border-gray-100 px-4 py-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 shrink-0">
-                Send to
-              </label>
-              <select
-                value={targetRole}
-                onChange={(e) => setTargetRole(e.target.value as UserRole)}
-                className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
-              >
-                {allowedTargetRoles.map((r) => {
-                  const badge = getRoleBadge(r);
-                  return (
-                    <option key={r} value={r}>
-                      {badge.label}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                placeholder="Type a note..."
-                className="flex-1 text-sm px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder-gray-400"
-              />
-              <button
-                onClick={handleSend}
-                disabled={sending || !message.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-              >
-                {sending ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                )}
-                Send
-              </button>
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
+
+      {/* Compose Note */}
+      <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+        <div className="flex items-center gap-2 mb-2 border-b border-gray-100 pb-2">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            Add Note For:
+          </label>
+          <select
+            value={targetRole}
+            onChange={(e) => setTargetRole(e.target.value as UserRole)}
+            className="text-xs font-bold text-gray-700 bg-gray-100 border-none rounded-md px-2 py-1 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
+          >
+            {allowedTargetRoles.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r]?.label || r}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            placeholder="Type your request note here..."
+            rows={1}
+            className="flex-1 text-sm bg-transparent border-none outline-none resize-none pt-1 placeholder-gray-400 text-gray-800"
+          />
+          <button
+            onClick={handleSend}
+            disabled={sending || !message.trim()}
+            className="self-end px-3 py-1.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {sending ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,1 @@
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_branch_pinned BOOLEAN DEFAULT false;

@@ -78,7 +78,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
 
   // Enforce branch locking and auto-geolocation when auth and branches are loaded
   useEffect(() => {
-    if (authLoading || branches.length === 0 || hasLocated) return;
+    if (authLoading || !profile || branches.length === 0 || hasLocated) return;
 
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
       const R = 6371; // Earth's radius in km
@@ -93,6 +93,17 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     };
 
     const determineNearestBranch = () => {
+      // Respect pinned branch overriding geo-location
+      if (profile?.is_branch_pinned && profile?.branch_id) {
+        if (!isExecutive) {
+          setActiveBranchIdState(profile.branch_id);
+        } else if (activeBranchId === null) {
+          setActiveBranchIdState('ALL');
+        }
+        setHasLocated(true);
+        return;
+      }
+
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
