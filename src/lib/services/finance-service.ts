@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { requestsDb, invoicesDb, monthlyClosingDb, activityLogsDb } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import type { Actor, Invoice, InvoiceStatus, MonthlyClosing, PaginationParams } from '@/types/types';
 
 export const financeService = {
@@ -83,6 +84,19 @@ export const financeService = {
       updated_by: actor.id,
     });
 
+    const existingTx = await supabase.from('financial_transactions').select('id').eq('reference_id', invoiceId).single();
+    if (!existingTx.data) {
+      await supabase.from('financial_transactions').insert({
+        branch_id: invoice.branch_id,
+        type: 'INFLOW',
+        category: 'invoice_payment',
+        amount: invoice.total,
+        reference_id: invoice.id,
+        description: `Payment for Invoice via ${paymentMethod} (Ref: ${paymentRef})`,
+        created_by: actor.id,
+      });
+    }
+
     await activityLogsDb.create({
       user_id: actor.id,
       user_email: actor.email,
@@ -95,41 +109,44 @@ export const financeService = {
     return invoice;
   },
 
-  async runMonthlyClosing(month: number, year: number, actor: Actor): Promise<MonthlyClosing> {
-    const { data: invoices } = await invoicesDb.getAll();
+  async runMonthlyClosing(month: number, year: number, branchId: string, actor: Actor): Promise<MonthlyClosing> {
+    const paddedMonth = month.toString().padStart(2, '0');
+    const periodStr = `${year}-${paddedMonth}`;
 
-    const monthInvoices = invoices.filter(i => {
-      const d = new Date(i.created_at);
-      return d.getMonth() + 1 === month && d.getFullYear() === year;
+    const { error: rpcError } = await supabase.rpc('rpc_monthly_closing', {
+      p_branch_id: branchId,
+      p_month: periodStr,
+      p_user_id: actor.id,
     });
 
-    const paidInvoices = monthInvoices.filter(i => i.status === 'paid');
-    const unpaidInvoices = monthInvoices.filter(i => ['issued', 'overdue'].includes(i.status));
+    if (rpcError) {
+      throw new Error(`RPC Monthly Closing Failed: ${rpcError.message}`);
+    }
 
-    const totalRevenue = paidInvoices.reduce((sum, i) => sum + i.total, 0);
-    const totalTax = paidInvoices.reduce((sum, i) => sum + i.tax_amount, 0);
+    // Fetch the newly created record to return it
+    const { data: closingRecord, error: fetchError } = await supabase
+      .from('monthly_closing')
+      .select('*')
+      .eq('branch_id', branchId)
+      .eq('month', periodStr)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
-    const closing = await monthlyClosingDb.upsert({
-      month,
-      year,
-      total_revenue: totalRevenue,
-      total_tax: totalTax,
-      orders_count: monthInvoices.length,
-      paid_invoices: paidInvoices.length,
-      unpaid_invoices: unpaidInvoices.length,
-      closed_by: actor.id,
-    });
+    if (fetchError || !closingRecord) {
+      throw new Error('Could not retrieve monthly closing record after generation.');
+    }
 
     await activityLogsDb.create({
       user_id: actor.id,
       user_email: actor.email,
-      action: 'monthly_closing',
+      action: 'run_monthly_closing',
       entity_type: 'monthly_closing',
-      entity_id: closing.id,
-      metadata: { month, year, total_revenue: totalRevenue },
+      entity_id: closingRecord.id,
+      metadata: { month, year, branch_id: branchId },
     });
 
-    return closing;
+    return closingRecord as MonthlyClosing;
   },
 
   async getInvoices(filters?: { status?: InvoiceStatus[] }, pagination?: PaginationParams) {

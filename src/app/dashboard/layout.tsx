@@ -12,7 +12,7 @@ import { chatService } from '@/lib/services/chat-service';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { NotificationBell } from '@/components/ui/NotificationBell';
 import { ChatPanel } from '@/components/chat/ChatPanel';
-import { BranchSwitcher } from '@/components/dashboard/BranchSwitcher';
+import BranchIndicator from '@/components/layout/BranchIndicator';
 import { NAV_ITEMS } from '@/lib/navigation';
 import { PageSpinner } from '@/components/ui/LoadingSkeleton';
 
@@ -109,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <h2 className="hidden text-sm font-semibold tracking-tight sm:block">
               {currentPageLabel}
             </h2>
-            <BranchSwitcher />
+            <BranchIndicator />
           </div>
 
           <div className="flex items-center gap-1">

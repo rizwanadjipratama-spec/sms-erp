@@ -12,6 +12,7 @@ import type {
   Actor, ServiceIssue, ServiceIssueStatus, TechnicianArea,
   AreaTransferRequest,
 } from '@/types/types';
+import { supabase } from '@/lib/supabase';
 
 const ALLOWED_PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 const MAX_PHOTO_SIZE = 10 * 1024 * 1024; // 10MB
@@ -50,17 +51,19 @@ export const technicianService = {
       throw new Error('Only technicians can take issues');
     }
 
-    const issue = await serviceIssuesDb.getById(issueId);
-    if (!issue) throw new Error('Issue not found');
-    if (issue.status !== 'open') throw new Error('Issue is no longer open');
-    if (issue.assigned_to) throw new Error('Issue already assigned');
+    const { error: rpcError } = await supabase.rpc('rpc_technician_take_job', {
+      p_issue_id: issueId,
+      p_tech_id: actor.id,
+    });
+    
+    if (rpcError) {
+      throw new Error(rpcError.message || 'Failed to take issue. It may already be assigned or no longer open.');
+    }
+
+    const updated = await serviceIssuesDb.getById(issueId);
+    if (!updated) throw new Error('Issue not found after assignment');
 
     const now = new Date().toISOString();
-    const updated = await serviceIssuesDb.update(issueId, {
-      assigned_to: actor.id,
-      status: 'otw',
-      taken_at: now,
-    });
 
     await serviceIssueLogsDb.create({
       issue_id: issueId,
@@ -71,11 +74,11 @@ export const technicianService = {
     });
 
     // Notify the reporter
-    if (issue.reported_by) {
+    if (updated.reported_by) {
       await notificationsDb.create({
-        user_id: issue.reported_by,
+        user_id: updated.reported_by,
         title: 'Technician Assigned',
-        message: `A technician is on the way to resolve your issue at ${issue.location}`,
+        message: `A technician is on the way to resolve your issue at ${updated.location}`,
         type: 'info',
         action_url: '/dashboard/client/issues',
       });

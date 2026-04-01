@@ -33,4 +33,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/profile', label: 'My Profile', icon: 'U' },
   { href: '/dashboard/attendance', label: 'Attendance', icon: 'T' },
   { href: '/dashboard/cms', label: 'CMS System', icon: 'W' },
+  { href: '/dashboard/users', label: 'Users', icon: 'U' },
 ];

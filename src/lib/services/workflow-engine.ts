@@ -6,6 +6,7 @@
 import { requireAuthUser } from '@/lib/db';
 import { requestsDb, invoicesDb, notificationsDb, profilesDb, activityLogsDb, systemLogsDb } from '@/lib/db';
 import type { DbRequest, RequestStatus, UserRole, NotificationType } from '@/types/types';
+import { supabase } from '@/lib/supabase';
 
 // ============================================================================
 // STATUS CONFIGURATION
@@ -186,33 +187,8 @@ async function runSideEffects(input: TransitionInput, updatedRequest: DbRequest)
 
   // 1. Auto-create invoice when transitioning to invoice_ready
   if (nextStatus === 'invoice_ready') {
-    const existingCount = await invoicesDb.countByOrder(updatedRequest.id);
-    if (existingCount === 0) {
-      const invoiceNumber = await invoicesDb.generateNumber();
-      const subtotal = updatedRequest.total_price;
-      const discountAmount = updatedRequest.discount_amount ?? 0;
-      const taxableAmount = subtotal - discountAmount;
-      const taxRate = 0.11;
-      const taxAmount = Math.round(taxableAmount * taxRate);
-      const total = taxableAmount + taxAmount;
-
-      const invoice = await invoicesDb.create({
-        order_id: updatedRequest.id,
-        invoice_number: invoiceNumber,
-        subtotal,
-        discount_amount: discountAmount,
-        tax_rate: taxRate,
-        tax_amount: taxAmount,
-        total,
-        status: 'issued',
-        issued_at: new Date().toISOString(),
-        due_date: new Date(Date.now() + 14 * 86400000).toISOString(),
-        created_by: actorId,
-      });
-
-      // Link invoice to request
-      await requestsDb.update(updatedRequest.id, { invoice_id: invoice.id });
-    }
+    // Phase 4: This is now handled atomically via rpc_create_invoice inside the transition block.
+    // The previous JS implementation resulted in partial state race conditions.
   }
 
   // 2. Consume stock when preparing
@@ -304,8 +280,40 @@ export const workflowEngine = {
         (updates as Record<string, unknown>)[timestampField] = now;
       }
 
-      // Execute transition
-      const updatedRequest = await requestsDb.update(input.request.id, updates);
+      // Execute transition atomically if required
+      let updatedRequest: DbRequest | null = null;
+
+      if (input.nextStatus === 'invoice_ready') {
+        const subtotal = (input.extraUpdates?.total_price ?? input.request.total_price) || 0;
+        const discountAmount = (input.extraUpdates?.discount_amount ?? input.request.discount_amount) || 0;
+        const taxableAmount = subtotal - discountAmount;
+        const taxRate = 0.11;
+        const taxAmount = Math.round(taxableAmount * taxRate);
+        const total = taxableAmount + taxAmount;
+        
+        const { error: rpcError } = await supabase.rpc('rpc_create_invoice', {
+          p_order_id: input.request.id,
+          p_user_id: input.actorId,
+          p_total: total,
+          p_tax: taxAmount,
+        });
+        if (rpcError) throw new Error(`Atomic invoice generation failed: ${rpcError.message}`);
+        
+        // Apply remaining updates (timestamps etc)
+        updatedRequest = await requestsDb.update(input.request.id, updates);
+      } else if (input.nextStatus === 'preparing') {
+        const { error: rpcError } = await supabase.rpc('rpc_prepare_order_stock', {
+          p_order_id: input.request.id,
+          p_user_id: input.actorId,
+        });
+        if (rpcError) throw new Error(`Atomic stock prep failed: ${rpcError.message}`);
+
+        updatedRequest = await requestsDb.update(input.request.id, updates);
+      } else {
+        updatedRequest = await requestsDb.update(input.request.id, updates);
+      }
+
+      if (!updatedRequest) throw new Error('Failed to retrieve request after update');
 
       // Side effects (non-blocking for primary operation)
       try {

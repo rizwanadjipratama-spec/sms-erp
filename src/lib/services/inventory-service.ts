@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { productsDb, requestsDb, inventoryLogsDb, activityLogsDb, systemLogsDb } from '@/lib/db';
-import type { Actor, DbRequest, InventoryLog, Product, PaginationParams } from '@/types/types';
+import type { Actor, DbRequest, InventoryLog, Product, PaginationParams, InventoryMovementType } from '@/types/types';
 
 export const inventoryService = {
   async getWarehouseDashboard(branchId?: string) {
@@ -38,6 +38,7 @@ export const inventoryService = {
         order_id: request.id,
         change: -item.quantity,
         balance: newBalance,
+        movement_type: 'SALES_OUT',
         reason: `Stock consumed for order ${request.id}`,
         created_by: actor.id,
       });
@@ -55,7 +56,7 @@ export const inventoryService = {
     });
   },
 
-  async adjustStock(productId: string, change: number, reason: string, actor: Actor): Promise<Product> {
+  async adjustStock(productId: string, change: number, reason: string, actor: Actor, movementType: InventoryMovementType = 'ADJUSTMENT'): Promise<Product> {
     const product = await productsDb.getById(productId);
     if (!product) throw new Error('Product not found');
 
@@ -73,6 +74,7 @@ export const inventoryService = {
       product_id: productId,
       change,
       balance: newBalance,
+      movement_type: movementType,
       reason,
       created_by: actor.id,
     });
@@ -119,4 +121,32 @@ export const inventoryService = {
       monthlyMovement: Object.fromEntries(monthlyMovement),
     };
   },
+
+  // ── PHASE 2 / 3 Scaffolding: These will eventually utilize pure Postgres RPCs ──
+
+  async stockOpname(productId: string, actualStock: number, reason: string, actor: Actor): Promise<Product> {
+    const product = await productsDb.getById(productId);
+    if (!product) throw new Error('Product not found');
+    const change = actualStock - product.stock;
+    if (change === 0) return product; // No variance
+    return this.adjustStock(productId, change, `Opname Variance: ${reason}`, actor, 'STOCK_OPNAME');
+  },
+
+  async recordSparePartUsage(issueId: string, productId: string, qty: number, actor: Actor): Promise<void> {
+    // Deduct stock for a service job
+    await this.adjustStock(productId, -Math.abs(qty), `Used for issue ${issueId}`, actor, 'SERVICE_PART');
+  },
+
+  async receivePurchase(poId: string, productId: string, qty: number, actor: Actor): Promise<void> {
+    // Increase stock from supplier PO
+    await this.adjustStock(productId, Math.abs(qty), `Received from PO ${poId}`, actor, 'PURCHASE_IN');
+  },
+
+  async executeStockTransfer(transferId: string, productId: string, qty: number, fromBranch: string, toBranch: string, actor: Actor): Promise<void> {
+    // Logic will be atomic in Phase 3. For now, scaffold the intent.
+    // await productsDb.decrementStock(productId, fromBranch...) -> 'TRANSFER_OUT'
+    // await productsDb.incrementStock(productId, toBranch...) -> 'TRANSFER_IN'
+    throw new Error('executeStockTransfer must be implemented via Postgres RPC to guarantee ACID compliance across branches.');
+  }
+
 };

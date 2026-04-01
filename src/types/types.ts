@@ -109,6 +109,7 @@ export type DeliveryProofType = 'photo' | 'signature' | 'document' | 'other';
 export type IssueTechRole = 'primary' | 'supporting';
 export type EnhancedIssueStatus = 'reported' | 'assigned' | 'open' | 'otw' | 'arrived' | 'working' | 'waiting_parts' | 'testing' | 'completed' | 'cancelled';
 export type IssuePriority = 'normal' | 'high' | 'critical';
+export type InventoryMovementType = 'PURCHASE_IN' | 'SALES_OUT' | 'TRANSFER_IN' | 'TRANSFER_OUT' | 'ADJUSTMENT' | 'STOCK_OPNAME' | 'RETURN' | 'SERVICE_PART';
 
 // ============================================================================
 // REGION & BRANCH
@@ -319,6 +320,7 @@ export interface RequestItemWithProduct extends RequestItem {
 export interface Invoice {
   id: string;
   order_id: string;
+  branch_id?: string;
   invoice_number: string;
   subtotal: number;
   discount_amount?: number;
@@ -379,6 +381,7 @@ export interface InventoryLog {
   order_id?: string;
   change: number;
   balance: number;
+  movement_type: InventoryMovementType;
   reason: string;
   created_by?: string;
   created_at: string;
@@ -536,8 +539,9 @@ export interface FakturTask {
 
 export interface MonthlyClosing {
   id: string;
-  month: number;
-  year: number;
+  branch_id?: string;
+  month: string;
+  year?: number;
   total_revenue: number;
   total_tax: number;
   orders_count: number;

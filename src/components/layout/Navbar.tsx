@@ -11,12 +11,12 @@ import BranchIndicator from '@/components/layout/BranchIndicator';
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const { profile, logout } = useAuth();
+  const { profile, logout, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
     await logout();
-    router.refresh();
+    window.location.href = '/login';
   };
 
   return (
@@ -53,7 +53,13 @@ const Navbar = () => {
 
           {/* RIGHT: NOTIFICATION + PROFILE PIC */}
           <div className="flex-1 flex items-center justify-end gap-3">
-            {profile ? (
+            {authLoading ? (
+              /* Skeleton while auth is resolving */
+              <div className="flex items-center gap-3">
+                <div className="h-5 w-20 animate-pulse rounded-full bg-gray-200" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-gray-200" />
+              </div>
+            ) : profile ? (
               <>
                 {/* 📍 Multi-Branch Context Switcher / Indicator */}
                 <BranchIndicator />
@@ -86,12 +92,12 @@ const Navbar = () => {
                       </div>
                       
                       <div className="py-1">
-                        <Link href="/dashboard" onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm font-bold text-[var(--apple-text-primary)] hover:bg-[var(--apple-gray-bg)] transition-colors">My Profile</Link>
-                        <Link href="/dashboard/settings" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-secondary)] hover:bg-[var(--apple-gray-bg)] hover:text-[var(--apple-text-primary)] transition-colors">Settings</Link>
-                        <Link href="/dashboard/settings?tab=region" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-secondary)] hover:bg-[var(--apple-gray-bg)] hover:text-[var(--apple-text-primary)] transition-colors">Region / Branch</Link>
-                        <Link href="/dashboard/settings?tab=language" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-secondary)] hover:bg-[var(--apple-gray-bg)] hover:text-[var(--apple-text-primary)] transition-colors">Language</Link>
-                        <Link href="/dashboard/notifications" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-secondary)] hover:bg-[var(--apple-gray-bg)] hover:text-[var(--apple-text-primary)] transition-colors">Notifications</Link>
-                        <Link href="/help" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-secondary)] hover:bg-[var(--apple-gray-bg)] hover:text-[var(--apple-text-primary)] transition-colors">Help</Link>
+                        <Link href="/dashboard" onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm font-bold text-[var(--apple-text-primary)] hover:bg-[var(--apple-gray-bg)] transition-colors">Dashboard</Link>
+                        <Link href="/dashboard/settings" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-primary)] hover:bg-[var(--apple-gray-bg)] transition-colors">Settings</Link>
+                        <Link href="/dashboard/settings?tab=region" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-primary)] hover:bg-[var(--apple-gray-bg)] transition-colors">Region / Branch</Link>
+                        <Link href="/dashboard/settings?tab=language" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-primary)] hover:bg-[var(--apple-gray-bg)] transition-colors">Language</Link>
+                        <Link href="/dashboard/notifications" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-primary)] hover:bg-[var(--apple-gray-bg)] transition-colors">Notifications</Link>
+                        <Link href="/help" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--apple-text-primary)] hover:bg-[var(--apple-gray-bg)] transition-colors">Help</Link>
                       </div>
                       
                       <div className="border-t border-[var(--apple-border)] py-1 mt-1">
@@ -110,9 +116,9 @@ const Navbar = () => {
             ) : (
               <Link
                 href="/login"
-                className="text-sm font-bold text-white bg-[var(--apple-blue)] px-6 py-2.5 rounded-full hover:bg-[var(--apple-blue-hover)] transition-colors shadow-sm"
+                className="rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white transition-all hover:bg-blue-700 active:scale-95 shadow-sm"
               >
-                Login
+                Get Started
               </Link>
             )}
 

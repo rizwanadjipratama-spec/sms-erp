@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranch } from '@/hooks/useBranch';
 import { requireAuthUser } from '@/lib/db/client';
 import { requestsDb, paymentPromisesDb, productsDb, priceListDb } from '@/lib/db';
 import { notificationService } from '@/lib/services/notification-service';
@@ -46,6 +47,7 @@ async function calculateTotal(
 export default function RequestProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const { profile } = useAuth();
+  const { activeBranchId } = useBranch();
 
   const add = useCallback((id: string, name?: string) => {
     // Block clients from adding to cart if profile is incomplete
@@ -132,6 +134,7 @@ export default function RequestProvider({ children }: { children: React.ReactNod
       total_price: totalPrice,
       note: note ?? undefined,
       created_by: user.id,
+      branch_id: activeBranchId !== 'ALL' ? activeBranchId : (profile?.branch_id ?? undefined),
     });
 
     // Create request items

@@ -1,9 +1,15 @@
 import { supabase } from '../supabase';
 import type { CmsSettings, CmsNews, CmsEvent, CmsPartner, CmsSolution } from '@/types/types';
 
-function throwOnError<T>(result: { data: T | null; error: any }): T {
-  if (result.error) throw new Error(result.error.message);
-  return result.data as T;
+function throwOnError<T>(result: { data: T | null; error: any }, fallback?: any): T {
+  if (result.error) {
+    if (String(result.error).includes('Failed to fetch') && fallback !== undefined) {
+      console.warn('CMS Network fetch failed, using fallback data');
+      return fallback as T;
+    }
+    throw new Error(result.error.message);
+  }
+  return (result.data || fallback) as T;
 }
 
 export const cmsService = {
@@ -12,14 +18,19 @@ export const cmsService = {
   // ============================================================================
 
   async getSettings(): Promise<CmsSettings | null> {
-    const { data, error } = await supabase
-      .from('cms_settings')
-      .select('*, employee_of_month:profiles!employee_of_month_id(name, email, role)')
-      .eq('id', 1)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('cms_settings')
+        .select('*, employee_of_month:profiles!employee_of_month_id(name, email, role)')
+        .eq('id', 1)
+        .maybeSingle();
 
-    if (error) throw new Error(error.message);
-    return data;
+      if (error) throw new Error(error.message);
+      return data;
+    } catch (err: any) {
+      console.warn('getSettings error:', err?.message || String(err));
+      return null;
+    }
   },
 
   async updateSettings(updates: Partial<CmsSettings>): Promise<CmsSettings> {
@@ -47,7 +58,7 @@ export const cmsService = {
       query = query.eq('is_published', true);
     }
 
-    return throwOnError(await query) as CmsNews[];
+    return throwOnError(await query, []) as CmsNews[];
   },
 
   async createNews(news: Partial<CmsNews>): Promise<CmsNews> {
@@ -77,7 +88,7 @@ export const cmsService = {
       .from('cms_events')
       .select('*, creator:profiles!created_by(name, email)')
       .order('event_date', { ascending: true });
-    return throwOnError(await query) as CmsEvent[];
+    return throwOnError(await query, []) as CmsEvent[];
   },
 
   async createEvent(event: Partial<CmsEvent>): Promise<CmsEvent> {
@@ -108,7 +119,7 @@ export const cmsService = {
       .select('*')
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
-    return throwOnError(await query) as CmsPartner[];
+    return throwOnError(await query, []) as CmsPartner[];
   },
 
   async createPartner(partner: Partial<CmsPartner>): Promise<CmsPartner> {
@@ -138,7 +149,7 @@ export const cmsService = {
       .select('*')
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
-    return throwOnError(await query) as CmsSolution[];
+    return throwOnError(await query, []) as CmsSolution[];
   },
 
   async createSolution(solution: Partial<CmsSolution>): Promise<CmsSolution> {

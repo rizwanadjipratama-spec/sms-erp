@@ -333,7 +333,7 @@ export default function CourierDashboard() {
                 <button
                   onClick={() => claimDelivery(request)}
                   disabled={processingId === request.id}
-                  className="w-full py-2.5 bg-[var(--apple-blue)] hover:bg-[var(--apple-blue-hover)] text-white text-sm font-bold rounded-xl shadow-sm active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {processingId === request.id ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -427,7 +427,7 @@ export default function CourierDashboard() {
                     <button
                       onClick={() => advanceSubStatus(activeLog.id, nextSubStatus)}
                       disabled={processingId === activeLog.id}
-                      className="w-full mb-4 py-3 bg-[var(--apple-blue)] hover:bg-[var(--apple-blue-hover)] text-white text-sm font-bold rounded-xl active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full mb-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {processingId === activeLog.id ? (
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -502,7 +502,7 @@ export default function CourierDashboard() {
                     <button
                       onClick={() => completeDelivery(request)}
                       disabled={processingId === request.id}
-                      className="w-full py-4 bg-[var(--apple-success)] hover:opacity-90 text-white text-base font-bold rounded-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="w-full py-4 bg-green-600 hover:bg-green-700 text-white text-base font-bold rounded-xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {processingId === request.id ? (
                         <>
