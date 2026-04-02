@@ -549,20 +549,28 @@ export default function FinanceDashboard() {
 
       {/* ===== Print Overlay ===== */}
       {printRequest && (
-        <div className="print-overlay fixed inset-0 z-[9999] bg-white overflow-auto">
-          {/* Close button - hidden during print */}
-          <div className="no-print sticky top-0 z-10 flex items-center justify-between bg-gray-900 px-6 py-3">
-            <p className="text-white text-sm font-semibold">Print Preview — Sales Invoice & Delivery Order</p>
-            <button
-              onClick={() => setPrintRequest(null)}
-              className="rounded-lg bg-white/10 px-4 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition-colors"
-            >
-              ✕ Close Preview
-            </button>
+        <div className="print-overlay fixed inset-0 z-[9999] bg-gray-400 overflow-auto">
+          {/* Close button + toolbar - hidden during print */}
+          <div className="no-print sticky top-0 z-10 flex items-center justify-between bg-gray-900 px-6 py-3 shadow-lg">
+            <p className="text-white text-sm font-semibold">🖨️ Print Preview — Sales Invoice & Delivery Order</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => window.print()}
+                className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+              >
+                🖨️ Print
+              </button>
+              <button
+                onClick={() => setPrintRequest(null)}
+                className="rounded-lg bg-white/10 px-4 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition-colors"
+              >
+                ✕ Close
+              </button>
+            </div>
           </div>
 
           {/* Page 1: Sales Invoice */}
-          <div className="print-page">
+          <div className="print-page print-preview-page">
             <SalesInvoicePrint
               request={printRequest}
               client={clients.find(c => c.email === printRequest.user_email)}
@@ -570,7 +578,7 @@ export default function FinanceDashboard() {
           </div>
 
           {/* Page 2: Delivery Order */}
-          <div className="print-page">
+          <div className="print-page print-preview-page">
             <DeliveryOrderPrint
               request={printRequest}
               client={clients.find(c => c.email === printRequest.user_email)}
@@ -582,24 +590,50 @@ export default function FinanceDashboard() {
       {/* Print Styles */}
       <style jsx global>{`
         @media print {
-          /* Hide everything except print overlay */
-          body > *:not(.print-overlay) { display: none !important; }
-          .no-print { display: none !important; }
+          /* Hide EVERYTHING */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          body > * { display: none !important; }
+          
+          /* Show only the print overlay */
           .print-overlay {
+            display: block !important;
             position: static !important;
             overflow: visible !important;
+            background: white !important;
           }
+          .print-overlay > .no-print { display: none !important; }
+          
+          /* Each page is exactly A4 */
           .print-page {
             page-break-after: always;
             break-after: page;
+            width: 210mm;
+            height: 297mm;
+            overflow: hidden;
           }
           .print-page:last-child {
             page-break-after: avoid;
           }
+
+          /* Zero margin — documents have their own padding */
           @page {
             size: A4;
-            margin: 10mm;
+            margin: 0;
           }
+        }
+
+        /* Screen preview styling */
+        .print-preview-page {
+          width: 210mm;
+          min-height: 297mm;
+          margin: 10mm auto;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+          background: white;
+          overflow: hidden;
         }
       `}</style>
     </>

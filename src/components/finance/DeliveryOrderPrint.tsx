@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { formatDateTime } from '@/lib/format-utils';
 import { DbRequest, Profile } from '@/types/types';
@@ -5,105 +7,286 @@ import { DbRequest, Profile } from '@/types/types';
 interface DeliveryOrderPrintProps {
   request: DbRequest;
   client?: Profile;
+  deliveryNo?: string;
 }
 
-export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request, client }) => {
+export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request, client, deliveryNo }) => {
   const items = request.request_items || [];
+  const MAX_ROWS = 20;
+
+  const dateStr = formatDateTime(request.created_at).split(' ')[0];
+  const doNo = deliveryNo || request.id.slice(0, 6).toUpperCase();
+
+  const emptyRows = Math.max(0, MAX_ROWS - items.length);
 
   return (
-    <div className="bg-white w-full h-full p-8 text-black text-sm font-sans" style={{ minHeight: '29.7cm' }}>
-      {/* Header */}
-      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
-        <div>
-          <h1 className="text-xl font-bold uppercase tracking-widest text-black">Company Name</h1>
-          <p className="mt-1 text-xs max-w-xs text-black">
-            123 Business Road, Industrial Estate.<br/>
-            City, Country 12345<br/>
-            Phone: (123) 456-7890
-          </p>
-        </div>
-        <div className="text-right">
-          <h2 className="text-3xl font-bold uppercase tracking-widest text-black">DELIVERY ORDER</h2>
-          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-left">
-            <span className="font-semibold">DO No:</span>
-            <span>DO-{request.id.slice(0, 8).toUpperCase()}</span>
-            <span className="font-semibold">Date:</span>
-            <span>{formatDateTime(request.created_at).split(' ')[0]}</span>
-            <span className="font-semibold">Ref INV:</span>
-            <span>INV-{request.id.slice(0, 8).toUpperCase()}</span>
+    <div className="do-page">
+      <style>{`
+        .do-page {
+          width: 210mm;
+          height: 297mm;
+          padding: 8mm 10mm 6mm 10mm;
+          box-sizing: border-box;
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 9pt;
+          color: #000;
+          background: #fff;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* ── HEADER ── */
+        .do-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 2px solid #000;
+          padding-bottom: 2mm;
+          margin-bottom: 2mm;
+        }
+        .do-header-left {
+          max-width: 55%;
+        }
+        .do-company {
+          font-weight: bold;
+          font-size: 11pt;
+          letter-spacing: 0.5px;
+        }
+        .do-addr {
+          font-size: 8pt;
+          line-height: 1.4;
+          margin-top: 1mm;
+        }
+        .do-header-right {
+          text-align: right;
+        }
+        .do-title {
+          font-size: 18pt;
+          font-weight: bold;
+          letter-spacing: 1px;
+        }
+        .do-meta-table {
+          margin-top: 2mm;
+          border-collapse: collapse;
+          font-size: 8pt;
+          margin-left: auto;
+        }
+        .do-meta-table td {
+          padding: 0.5mm 2mm;
+          border: 1px solid #000;
+          white-space: nowrap;
+        }
+        .do-meta-table td:first-child {
+          font-weight: bold;
+          text-align: left;
+        }
+        .do-meta-table td:last-child {
+          min-width: 22mm;
+          text-align: left;
+        }
+
+        /* ── CUSTOMER ── */
+        .do-customer {
+          display: flex;
+          gap: 6mm;
+          margin-bottom: 2mm;
+          font-size: 8pt;
+          line-height: 1.4;
+        }
+        .do-customer-block {
+          flex: 1;
+        }
+        .do-customer-label {
+          font-weight: bold;
+          font-size: 8pt;
+          margin-bottom: 0.5mm;
+        }
+
+        /* ── ITEM TABLE ── */
+        .do-items-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 8pt;
+          flex: 1;
+        }
+        .do-items-table th,
+        .do-items-table td {
+          border: 1px solid #000;
+          padding: 1mm 1.5mm;
+          vertical-align: top;
+        }
+        .do-items-table th {
+          background: transparent;
+          font-weight: bold;
+          text-align: center;
+          font-size: 8pt;
+          white-space: nowrap;
+        }
+        .do-items-table td.num {
+          text-align: center;
+        }
+        .do-items-table .empty-row td {
+          height: 6mm;
+        }
+
+        /* Column widths */
+        .do-col-no { width: 7mm; }
+        .do-col-item { width: auto; }
+        .do-col-qty { width: 12mm; }
+        .do-col-nie { width: 36mm; }
+        .do-col-lot { width: 48mm; }
+
+        /* ── FOOTER ── */
+        .do-footer {
+          margin-top: 2mm;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 4mm;
+        }
+        .do-signatures {
+          display: flex;
+          gap: 2mm;
+          width: 100%;
+        }
+        .do-sig-block {
+          flex: 1;
+          text-align: center;
+          border: 1px solid #000;
+          padding: 1mm 1mm 2mm 1mm;
+          font-size: 7.5pt;
+        }
+        .do-sig-title {
+          font-weight: bold;
+          font-size: 7.5pt;
+          border-bottom: 1px solid #000;
+          padding-bottom: 1mm;
+          margin-bottom: 1mm;
+        }
+        .do-sig-space {
+          height: 16mm;
+        }
+        .do-sig-date {
+          font-size: 7pt;
+          border-top: 1px solid #000;
+          padding-top: 1mm;
+          margin-top: 1mm;
+        }
+
+        .do-desc-box {
+          border: 1px solid #000;
+          min-width: 42mm;
+          padding: 1mm 2mm;
+          font-size: 7.5pt;
+          align-self: stretch;
+        }
+        .do-desc-title {
+          font-weight: bold;
+          font-size: 7.5pt;
+          margin-bottom: 1mm;
+        }
+      `}</style>
+
+      {/* ═══ HEADER ═══ */}
+      <div className="do-header">
+        <div className="do-header-left">
+          <div className="do-company">PT. SARANA MEGAMEDILAP SEJAHTERA</div>
+          <div className="do-addr">
+            PERUMAHAN TAMAN CIMANGGU<br />
+            BLOK V.1 NO. 32 RT. 01 / RW. 012<br />
+            BOGOR - NPWP 66.500.624.3-404.000
           </div>
         </div>
-      </div>
-
-      {/* Bill To */}
-      <div className="mb-6 grid grid-cols-2 gap-8">
-        <div>
-          <p className="font-bold text-xs uppercase border-b border-black mb-2 pb-1">Bill To</p>
-          <p className="font-semibold">{client?.name || request.user_email}</p>
-          {client?.phone && <p className="text-xs mt-1">Phone: {client.phone}</p>}
-        </div>
-        <div>
-          <p className="font-bold text-xs uppercase border-b border-black mb-2 pb-1">Ship To</p>
-          <p className="font-semibold">{client?.name || request.user_email}</p>
-          {client?.phone && <p className="text-xs mt-1">Phone: {client.phone}</p>}
+        <div className="do-header-right">
+          <div className="do-title">Delivery Order</div>
+          <table className="do-meta-table">
+            <tbody>
+              <tr><td>Delivery Date</td><td>{dateStr}</td></tr>
+              <tr><td>Delivery No.</td><td>{doNo}</td></tr>
+              <tr><td>Ship Via</td><td></td></tr>
+              <tr><td>PO No.</td><td></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Main Table */}
-      <table className="w-full mb-6 border-collapse">
+      {/* ═══ CUSTOMER ═══ */}
+      <div className="do-customer">
+        <div className="do-customer-block">
+          <div className="do-customer-label">Bill To :</div>
+          <div><strong>{client?.name || request.user_email || '-'}</strong></div>
+          {client?.phone && <div>Phone: {client.phone}</div>}
+        </div>
+        <div className="do-customer-block">
+          <div className="do-customer-label">Ship To :</div>
+          <div><strong>{client?.name || request.user_email || '-'}</strong></div>
+          {client?.phone && <div>Phone: {client.phone}</div>}
+        </div>
+      </div>
+
+      {/* ═══ ITEM TABLE ═══ */}
+      <table className="do-items-table">
         <thead>
-          <tr className="border-y-2 border-black">
-            <th className="py-2 px-2 text-left w-12 font-bold uppercase text-xs">No</th>
-            <th className="py-2 px-2 text-left font-bold uppercase text-xs">Description</th>
-            <th className="py-2 px-2 text-center w-24 font-bold uppercase text-xs">Qty</th>
-            <th className="py-2 px-2 text-center w-24 font-bold uppercase text-xs">UOM</th>
-            <th className="py-2 px-2 text-left w-36 font-bold uppercase text-xs">Remarks</th>
+          <tr>
+            <th className="do-col-no">No.</th>
+            <th className="do-col-item">Item Description</th>
+            <th className="do-col-qty">Qty</th>
+            <th className="do-col-nie">N.I.E</th>
+            <th className="do-col-lot">LOT / ED / Kemasan</th>
           </tr>
         </thead>
-        <tbody className="border-b-2 border-black">
-          {items.map((item, idx) => {
-            return (
-              <tr key={idx} className="border-b border-gray-200 last:border-0 h-10">
-                <td className="py-2 px-2 align-top">{idx + 1}</td>
-                <td className="py-2 px-2 align-top font-medium">{item.products?.name || item.product_id}</td>
-                <td className="py-2 px-2 text-center align-top">{item.quantity}</td>
-                <td className="py-2 px-2 text-center align-top">PCS</td>
-                <td className="py-2 px-2 text-left align-top"></td>
-              </tr>
-            );
-          })}
+        <tbody>
+          {items.map((item, idx) => (
+            <tr key={idx}>
+              <td className="num">{idx + 1}</td>
+              <td>{item.products?.name || item.product_id}</td>
+              <td className="num">{item.quantity}</td>
+              <td></td>
+              <td></td>
+            </tr>
+          ))}
+          {/* Fill empty rows */}
+          {Array.from({ length: emptyRows }).map((_, i) => (
+            <tr key={`empty-${i}`} className="empty-row">
+              <td>&nbsp;</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          ))}
         </tbody>
       </table>
 
-      {/* Notes */}
-      <div className="mt-8">
-        <p className="font-bold text-xs uppercase mb-1">Remarks / Details</p>
-        <div className="h-20 w-1/2 border border-black p-2 text-xs italic">
-          Goods received in good condition.
+      {/* ═══ FOOTER ═══ */}
+      <div className="do-footer">
+        <div className="do-signatures">
+          <div className="do-sig-block">
+            <div className="do-sig-title">Created By</div>
+            <div className="do-sig-space"></div>
+            <div className="do-sig-date">Date: ............</div>
+          </div>
+          <div className="do-sig-block">
+            <div className="do-sig-title">Approved By</div>
+            <div className="do-sig-space"></div>
+            <div className="do-sig-date">Date: ............</div>
+          </div>
+          <div className="do-sig-block">
+            <div className="do-sig-title">Shipped By</div>
+            <div className="do-sig-space"></div>
+            <div className="do-sig-date">Date: ............</div>
+          </div>
+          <div className="do-sig-block">
+            <div className="do-sig-title">Received By</div>
+            <div className="do-sig-space"></div>
+            <div className="do-sig-date">Date: ............</div>
+          </div>
         </div>
-      </div>
 
-      {/* Signatures */}
-      <div className="mt-16 grid grid-cols-4 gap-4 text-center text-xs">
-        <div>
-          <div className="border-b border-black w-24 mx-auto mb-2 mt-16"></div>
-          <p className="uppercase font-bold text-[10px]">Received By</p>
-          <p className="text-[10px] mt-1 text-gray-500">(Customer)</p>
-        </div>
-        <div>
-          <div className="border-b border-black w-24 mx-auto mb-2 mt-16"></div>
-          <p className="uppercase font-bold text-[10px]">Delivered By</p>
-          <p className="text-[10px] mt-1 text-gray-500">(Courier)</p>
-        </div>
-        <div>
-          <div className="border-b border-black w-24 mx-auto mb-2 mt-16"></div>
-          <p className="uppercase font-bold text-[10px]">Prepared By</p>
-          <p className="text-[10px] mt-1 text-gray-500">(Warehouse)</p>
-        </div>
-        <div>
-          <div className="border-b border-black w-24 mx-auto mb-2 mt-16"></div>
-          <p className="uppercase font-bold text-[10px]">Authorized By</p>
-          <p className="text-[10px] mt-1 text-gray-500">(Warehouse Mgr)</p>
+        <div className="do-desc-box">
+          <div className="do-desc-title">Description:</div>
+          <div style={{ minHeight: '14mm' }}></div>
         </div>
       </div>
     </div>

@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { formatCurrency, formatDateTime } from '@/lib/format-utils';
 import { DbRequest, Profile } from '@/types/types';
@@ -5,138 +7,373 @@ import { DbRequest, Profile } from '@/types/types';
 interface SalesInvoicePrintProps {
   request: DbRequest;
   client?: Profile;
+  invoiceNo?: string;
 }
 
-export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, client }) => {
+export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, client, invoiceNo }) => {
   const items = request.request_items || [];
-  
-  // Calculate Subtotals
-  const subTotal = items.reduce((sum, item) => sum + ((item.price_at_order || 0) * item.quantity), 0);
+  const MAX_ROWS = 25;
+
+  // Calculate totals
+  const subTotal = items.reduce((sum, item) => {
+    const base = (item.price_at_order || 0) * item.quantity;
+    return sum + base;
+  }, 0);
+
   const itemDiscountsTotal = items.reduce((sum, item) => {
     const base = (item.price_at_order || 0) * item.quantity;
-    const finalPrice = base * (1 - (item.discount_percentage || 0) / 100);
-    return sum + (base - finalPrice);
+    const disc = (item.discount_percentage || 0) / 100;
+    return sum + (base * disc);
   }, 0);
-  
-  const grandTotal = subTotal - itemDiscountsTotal - (request.discount_amount || 0);
+
+  const overallDiscount = request.discount_amount || 0;
+  const afterDiscount = subTotal - itemDiscountsTotal - overallDiscount;
+  const ppn = Math.round(afterDiscount * 0.11);
+  const totalInvoice = afterDiscount + ppn;
+
+  // Number to words (Indonesian)
+  const numToWords = (n: number): string => {
+    const satuan = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+    if (n < 12) return satuan[n];
+    if (n < 20) return satuan[n - 10] + ' belas';
+    if (n < 100) return satuan[Math.floor(n / 10)] + ' puluh ' + satuan[n % 10];
+    if (n < 200) return 'seratus ' + numToWords(n - 100);
+    if (n < 1000) return satuan[Math.floor(n / 100)] + ' ratus ' + numToWords(n % 100);
+    if (n < 2000) return 'seribu ' + numToWords(n - 1000);
+    if (n < 1000000) return numToWords(Math.floor(n / 1000)) + ' ribu ' + numToWords(n % 1000);
+    if (n < 1000000000) return numToWords(Math.floor(n / 1000000)) + ' juta ' + numToWords(n % 1000000);
+    return numToWords(Math.floor(n / 1000000000)) + ' milyar ' + numToWords(n % 1000000000);
+  };
+
+  const sayAmount = numToWords(Math.round(totalInvoice)).trim().replace(/\s+/g, ' ');
+  const dateStr = formatDateTime(request.created_at).split(' ')[0];
+  const invNo = invoiceNo || request.id.slice(0, 6).toUpperCase();
+
+  // Build empty rows to fill table
+  const emptyRows = Math.max(0, MAX_ROWS - items.length);
 
   return (
-    <div className="bg-white w-full h-full p-8 text-black text-sm font-sans" style={{ minHeight: '29.7cm' }}>
-      {/* Header */}
-      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold uppercase tracking-widest text-black">Company Name</h1>
-          <p className="mt-1 text-xs max-w-xs text-black">
-            123 Business Road, Industrial Estate.<br/>
-            City, Country 12345<br/>
-            Phone: (123) 456-7890
-          </p>
-        </div>
-        <div className="text-right">
-          <h2 className="text-3xl font-bold uppercase tracking-widest text-black">SALES INVOICE</h2>
-          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-left">
-            <span className="font-semibold">Invoice No:</span>
-            <span>INV-{request.id.slice(0, 8).toUpperCase()}</span>
-            <span className="font-semibold">Date:</span>
-            <span>{formatDateTime(request.created_at).split(' ')[0]}</span>
-            <span className="font-semibold">Terms:</span>
-            <span>Net 30 Days</span>
+    <div className="si-page">
+      <style>{`
+        .si-page {
+          width: 210mm;
+          height: 297mm;
+          padding: 8mm 10mm 6mm 10mm;
+          box-sizing: border-box;
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 9pt;
+          color: #000;
+          background: #fff;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* ── HEADER ── */
+        .si-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 2px solid #000;
+          padding-bottom: 2mm;
+          margin-bottom: 2mm;
+        }
+        .si-header-left {
+          max-width: 55%;
+        }
+        .si-company {
+          font-weight: bold;
+          font-size: 11pt;
+          letter-spacing: 0.5px;
+        }
+        .si-addr {
+          font-size: 8pt;
+          line-height: 1.4;
+          margin-top: 1mm;
+        }
+        .si-header-right {
+          text-align: right;
+        }
+        .si-title {
+          font-size: 18pt;
+          font-weight: bold;
+          font-style: italic;
+          letter-spacing: 1px;
+        }
+        .si-meta-table {
+          margin-top: 2mm;
+          border-collapse: collapse;
+          font-size: 8pt;
+          margin-left: auto;
+        }
+        .si-meta-table td {
+          padding: 0.5mm 2mm;
+          border: 1px solid #000;
+          white-space: nowrap;
+        }
+        .si-meta-table td:first-child {
+          font-weight: bold;
+          text-align: left;
+        }
+        .si-meta-table td:last-child {
+          min-width: 22mm;
+          text-align: left;
+        }
+
+        /* ── CUSTOMER ── */
+        .si-customer {
+          display: flex;
+          gap: 6mm;
+          margin-bottom: 2mm;
+          font-size: 8pt;
+          line-height: 1.4;
+        }
+        .si-customer-block {
+          flex: 1;
+        }
+        .si-customer-label {
+          font-weight: bold;
+          font-size: 8pt;
+          margin-bottom: 0.5mm;
+        }
+
+        /* ── ITEM TABLE ── */
+        .si-items-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 8pt;
+          flex: 1;
+        }
+        .si-items-table th,
+        .si-items-table td {
+          border: 1px solid #000;
+          padding: 1mm 1.5mm;
+          vertical-align: top;
+        }
+        .si-items-table th {
+          background: transparent;
+          font-weight: bold;
+          text-align: center;
+          font-size: 8pt;
+          white-space: nowrap;
+        }
+        .si-items-table td.num {
+          text-align: center;
+        }
+        .si-items-table td.right {
+          text-align: right;
+        }
+        .si-items-table .empty-row td {
+          height: 5.5mm;
+        }
+
+        /* Column widths */
+        .si-col-no { width: 7mm; }
+        .si-col-nama { width: auto; }
+        .si-col-harga { width: 22mm; }
+        .si-col-qty { width: 10mm; }
+        .si-col-kemasan { width: 18mm; }
+        .si-col-disc { width: 14mm; }
+        .si-col-amount { width: 26mm; }
+
+        /* ── FOOTER ── */
+        .si-footer {
+          margin-top: 1mm;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 4mm;
+        }
+        .si-footer-left {
+          flex: 1;
+          font-size: 8pt;
+        }
+        .si-say-box {
+          border: 1px solid #000;
+          padding: 1mm 2mm;
+          margin-bottom: 1mm;
+          min-height: 7mm;
+          font-size: 7.5pt;
+          font-style: italic;
+        }
+        .si-say-label {
+          font-weight: bold;
+          font-style: normal;
+        }
+        .si-desc-label {
+          font-weight: bold;
+          margin-top: 1mm;
+          font-size: 8pt;
+        }
+        .si-signatures {
+          display: flex;
+          gap: 14mm;
+          margin-top: 8mm;
+          font-size: 8pt;
+        }
+        .si-sig-block {
+          text-align: center;
+        }
+        .si-sig-line {
+          width: 28mm;
+          border-bottom: 1px solid #000;
+          margin-bottom: 1mm;
+          height: 14mm;
+        }
+        .si-sig-label {
+          font-weight: bold;
+          font-size: 7.5pt;
+        }
+
+        /* Summary box */
+        .si-summary-box {
+          border: 1px solid #000;
+          border-collapse: collapse;
+          font-size: 8.5pt;
+          min-width: 60mm;
+        }
+        .si-summary-box td {
+          border: 1px solid #000;
+          padding: 1mm 2mm;
+        }
+        .si-summary-box td:first-child {
+          font-weight: bold;
+          text-align: right;
+          white-space: nowrap;
+        }
+        .si-summary-box td:last-child {
+          text-align: right;
+          min-width: 28mm;
+        }
+        .si-summary-box .si-total-row td {
+          font-weight: bold;
+          font-size: 9pt;
+        }
+      `}</style>
+
+      {/* ═══ HEADER ═══ */}
+      <div className="si-header">
+        <div className="si-header-left">
+          <div className="si-company">PT. SARANA MEGAMEDILAP SEJAHTERA</div>
+          <div className="si-addr">
+            PERUMAHAN TAMAN CIMANGGU<br />
+            BLOK V.1 NO. 32 RT. 01 / RW. 012<br />
+            BOGOR - NPWP 66.500.624.3-404.000
           </div>
         </div>
-      </div>
-
-      {/* Bill To */}
-      <div className="mb-6 grid grid-cols-2 gap-8">
-        <div>
-          <p className="font-bold text-xs uppercase border-b border-black mb-2 pb-1">Bill To</p>
-          <p className="font-semibold">{client?.name || request.user_email}</p>
-          {client?.phone && <p className="text-xs mt-1">Phone: {client.phone}</p>}
-        </div>
-        <div>
-          <p className="font-bold text-xs uppercase border-b border-black mb-2 pb-1">Ship To</p>
-          <p className="font-semibold">{client?.name || request.user_email}</p>
-          {client?.phone && <p className="text-xs mt-1">Phone: {client.phone}</p>}
+        <div className="si-header-right">
+          <div className="si-title">Sales Invoice</div>
+          <table className="si-meta-table">
+            <tbody>
+              <tr><td>Invoice Date</td><td>{dateStr}</td></tr>
+              <tr><td>Invoice No.</td><td>{invNo}</td></tr>
+              <tr><td>PO No.</td><td></td></tr>
+              <tr><td>Terms</td><td>Net 30</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Main Table */}
-      <table className="w-full mb-6 border-collapse">
+      {/* ═══ CUSTOMER ═══ */}
+      <div className="si-customer">
+        <div className="si-customer-block">
+          <div className="si-customer-label">Bill To :</div>
+          <div><strong>{client?.name || request.user_email || '-'}</strong></div>
+          {client?.phone && <div>Phone: {client.phone}</div>}
+        </div>
+        <div className="si-customer-block">
+          <div className="si-customer-label">Ship To :</div>
+          <div><strong>{client?.name || request.user_email || '-'}</strong></div>
+          {client?.phone && <div>Phone: {client.phone}</div>}
+        </div>
+      </div>
+
+      {/* ═══ ITEM TABLE ═══ */}
+      <table className="si-items-table">
         <thead>
-          <tr className="border-y-2 border-black">
-            <th className="py-2 px-2 text-left w-12 font-bold uppercase text-xs">No</th>
-            <th className="py-2 px-2 text-left font-bold uppercase text-xs">Description</th>
-            <th className="py-2 px-2 text-center w-20 font-bold uppercase text-xs">Qty</th>
-            <th className="py-2 px-2 text-right w-32 font-bold uppercase text-xs">Unit Price</th>
-            <th className="py-2 px-2 text-center w-20 font-bold uppercase text-xs">Disc %</th>
-            <th className="py-2 px-2 text-right w-36 font-bold uppercase text-xs">Amount</th>
+          <tr>
+            <th className="si-col-no">No.</th>
+            <th className="si-col-nama">Nama Barang</th>
+            <th className="si-col-harga">Harga Satuan</th>
+            <th className="si-col-qty">Qty</th>
+            <th className="si-col-kemasan">Kemasan</th>
+            <th className="si-col-disc">Disc %</th>
+            <th className="si-col-amount">Amount</th>
           </tr>
         </thead>
-        <tbody className="border-b-2 border-black">
+        <tbody>
           {items.map((item, idx) => {
-            const basePrice = item.price_at_order || 0;
-            const lineTotal = basePrice * item.quantity;
-            const finalLineTotal = lineTotal * (1 - (item.discount_percentage || 0) / 100);
-            
+            const unitPrice = item.price_at_order || 0;
+            const disc = item.discount_percentage || 0;
+            const lineTotal = unitPrice * item.quantity * (1 - disc / 100);
+
             return (
-              <tr key={idx} className="border-b border-gray-200 last:border-0 h-10">
-                <td className="py-2 px-2 align-top">{idx + 1}</td>
-                <td className="py-2 px-2 align-top font-medium">{item.products?.name || item.product_id}</td>
-                <td className="py-2 px-2 text-center align-top">{item.quantity}</td>
-                <td className="py-2 px-2 text-right align-top">{formatCurrency(basePrice)}</td>
-                <td className="py-2 px-2 text-center align-top">{item.discount_percentage ? `${item.discount_percentage}%` : '-'}</td>
-                <td className="py-2 px-2 text-right align-top">{formatCurrency(finalLineTotal)}</td>
+              <tr key={idx}>
+                <td className="num">{idx + 1}</td>
+                <td>{item.products?.name || item.product_id}</td>
+                <td className="right">{unitPrice.toLocaleString('id-ID')}</td>
+                <td className="num">{item.quantity}</td>
+                <td className="num">PCS</td>
+                <td className="num">{disc > 0 ? disc : 0}</td>
+                <td className="right">{Math.round(lineTotal).toLocaleString('id-ID')}</td>
               </tr>
             );
           })}
+          {/* Fill empty rows to maintain fixed table height */}
+          {Array.from({ length: emptyRows }).map((_, i) => (
+            <tr key={`empty-${i}`} className="empty-row">
+              <td>&nbsp;</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          ))}
         </tbody>
       </table>
 
-      {/* Totals & Notes */}
-      <div className="grid grid-cols-[1fr_300px] gap-8">
-        <div>
-          <p className="font-bold text-xs uppercase mb-1">Remarks / Details</p>
-          <div className="h-24 w-full border border-black p-2 text-xs italic">
-            Please make all checks payable to Company Name.
+      {/* ═══ FOOTER ═══ */}
+      <div className="si-footer">
+        <div className="si-footer-left">
+          <div className="si-say-box">
+            <span className="si-say-label">Say : </span>
+            {sayAmount}
+          </div>
+          <div className="si-desc-label">Description:</div>
+          <div className="si-signatures">
+            <div className="si-sig-block">
+              <div className="si-sig-line"></div>
+              <div className="si-sig-label">Disiapkan</div>
+            </div>
+            <div className="si-sig-block">
+              <div className="si-sig-line"></div>
+              <div className="si-sig-label">Diterima oleh</div>
+            </div>
           </div>
         </div>
-        <div className="space-y-2">
-          <div className="flex justify-between font-medium">
-            <span>Subtotal</span>
-            <span>{formatCurrency(subTotal)}</span>
-          </div>
-          {itemDiscountsTotal > 0 && (
-            <div className="flex justify-between font-medium text-xs">
-              <span>Item Discounts</span>
-              <span>-{formatCurrency(itemDiscountsTotal)}</span>
-            </div>
-          )}
-          {(request.discount_amount || 0) > 0 && (
-            <div className="flex justify-between font-medium">
-              <span>Additional Discount</span>
-              <span>-{formatCurrency(request.discount_amount || 0)}</span>
-            </div>
-          )}
-          <div className="flex justify-between font-bold text-lg border-t-2 border-black pt-2 mt-2">
-            <span>Total</span>
-            <span>{formatCurrency(grandTotal)}</span>
-          </div>
-        </div>
-      </div>
 
-      {/* Signatures */}
-      <div className="mt-16 grid grid-cols-3 gap-8 text-center text-xs">
-        <div>
-          <div className="border-b border-black w-32 mx-auto mb-2 mt-16"></div>
-          <p className="uppercase font-bold">Received By</p>
-        </div>
-        <div>
-          <div className="border-b border-black w-32 mx-auto mb-2 mt-16"></div>
-          <p className="uppercase font-bold">Delivered By</p>
-        </div>
-        <div>
-          <div className="border-b border-black w-32 mx-auto mb-2 mt-16"></div>
-          <p className="uppercase font-bold">Authorized By</p>
-        </div>
+        <table className="si-summary-box">
+          <tbody>
+            <tr>
+              <td>Sub Total :</td>
+              <td>{subTotal.toLocaleString('id-ID')}</td>
+            </tr>
+            <tr>
+              <td>Discount :</td>
+              <td>{(itemDiscountsTotal + overallDiscount) > 0 ? (itemDiscountsTotal + overallDiscount).toLocaleString('id-ID') : ''}</td>
+            </tr>
+            <tr>
+              <td>PPN :</td>
+              <td>{ppn.toLocaleString('id-ID')}</td>
+            </tr>
+            <tr className="si-total-row">
+              <td>Total Invoice :</td>
+              <td>{totalInvoice.toLocaleString('id-ID')}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );
