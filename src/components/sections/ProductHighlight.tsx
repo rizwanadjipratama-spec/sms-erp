@@ -6,18 +6,25 @@ import { motion } from 'framer-motion';
 import { productsDb } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
 import type { Product } from '@/types/types';
+import { useAuth } from '@/hooks/useAuth';
+import { useBranch } from '@/hooks/useBranch';
 
 export default function ProductHighlight() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
+  const { activeBranchId } = useBranch();
 
   useEffect(() => {
     // Fetch products with prices just like the dashboard
-    productsDb.getAll({ onlyPriced: true })
+    productsDb.getAll({ 
+      onlyPriced: true,
+      branchId: activeBranchId === 'ALL' ? undefined : activeBranchId
+    })
       .then((res) => setProducts(res.data.slice(0, 4)))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeBranchId]);
 
   if (loading) {
     return <div className="w-full h-80 bg-gray-50 animate-pulse" />;
@@ -47,6 +54,8 @@ export default function ProductHighlight() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {products.map((product, i) => {
+            const clientType = profile?.client_type?.toLowerCase() || '';
+            const isNoPriceUser = clientType === 'kso' || clientType === 'cost per test';
             const price = product.price ? product.price.price_regular : null;
 
             return (
@@ -95,7 +104,7 @@ export default function ProductHighlight() {
                   <div className="mt-auto pt-3">
                     <div className="flex items-end justify-between gap-2">
                       <div>
-                        {price !== null ? (
+                        {price !== null && !isNoPriceUser ? (
                           <>
                             <p className="text-lg font-bold text-gray-900">
                               {formatCurrency(price)}

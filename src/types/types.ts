@@ -174,6 +174,8 @@ export interface Profile {
   is_active: boolean;
   last_login?: string;
   last_active_at?: string;
+  quotes?: string[];
+  avg_rating?: number;
   created_at: string;
   updated_at: string;
   created_by?: string;
@@ -1286,4 +1288,32 @@ export interface RequestNote {
   message: string;
   created_at: string;
   sender?: Partial<Profile>;
+}
+
+// ============================================================================
+// REQUEST STATUS LOGS (who handled each step)
+// ============================================================================
+
+export interface RequestStatusLog {
+  id: string;
+  request_id: string;
+  status: RequestStatus;
+  actor_id: string;
+  created_at: string;
+  // Joined
+  actor?: Pick<Profile, 'id' | 'name' | 'email' | 'avatar_url' | 'role' | 'bio' | 'created_at' | 'quotes' | 'avg_rating'>;
+}
+
+// ============================================================================
+// STAFF RATINGS (client rates handler per step)
+// ============================================================================
+
+export interface StaffRating {
+  id: string;
+  request_id: string;
+  status: RequestStatus;
+  staff_id: string;
+  client_id: string;
+  rating: number;
+  created_at: string;
 }

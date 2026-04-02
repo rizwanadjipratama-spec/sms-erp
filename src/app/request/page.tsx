@@ -9,18 +9,28 @@ import Link from 'next/link';
 import { productService } from '@/lib/services';
 import { Product } from '@/types/types';
 import { formatCurrency } from '@/lib/format-utils';
+import { supabase } from '@/lib/db/client';
+
+const CITO_MONTHLY_LIMIT = 4;
 
 export default function RequestPage() {
   const { profile, loading } = useAuth();
-  const { items, submit } = useRequest();
+  const { items, submit, updateQty, remove } = useRequest();
 
   const [submitting, setSubmitting] = useState(false);
   const [priority, setPriority] = useState<'normal' | 'cito'>('normal');
   const [reason, setReason] = useState('');
+  const [destination, setDestination] = useState('Laboratory');
+  const [customDestination, setCustomDestination] = useState('');
+  const [floor, setFloor] = useState('1');
+  const [customFloor, setCustomFloor] = useState('');
   const [promiseDate, setPromiseDate] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [citoUsed, setCitoUsed] = useState(0);
+  const citoRemaining = CITO_MONTHLY_LIMIT - citoUsed;
+  const citoExhausted = citoRemaining <= 0;
 
   const router = useRouter();
 
@@ -33,8 +43,41 @@ export default function RequestPage() {
       .catch(() => setProductsLoading(false));
   }, []);
 
+  // Fetch CITO usage for this month
+  useEffect(() => {
+    if (!profile?.id) return;
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+    supabase
+      .from('requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', profile.id)
+      .eq('priority', 'cito')
+      .gte('created_at', startOfMonth)
+      .lte('created_at', endOfMonth)
+      .then(({ count }) => {
+        setCitoUsed(count || 0);
+      });
+  }, [profile?.id]);
+
   const total = items.reduce((acc, item) => acc + (item.qty || 0), 0);
-  const hasDebtIssue = profile?.debt_amount && profile.debt_amount > profile.debt_limit;
+  const hasDebtIssue = (profile?.debt_amount || 0) > (profile?.debt_limit || 0);
+
+  const clientType = profile?.client_type?.toLowerCase() || 'regular';
+  const isNoPriceUser = clientType === 'cost per test' || clientType === 'cost_per_test';
+
+  const getUnitPrice = (prod: Product | undefined): number => {
+    if (!prod?.price) return 0;
+    if (clientType === 'kso') return prod.price.price_kso || 0;
+    return prod.price.price_regular || 0;
+  };
+
+  const totalPriceValue = items.reduce((acc, item) => {
+    const prod = products.find(p => p.id === item.id);
+    return acc + (getUnitPrice(prod) * item.qty);
+  }, 0);
 
   if (loading || productsLoading) {
     return (
@@ -104,9 +147,14 @@ export default function RequestPage() {
     setSubmitting(true);
 
     try {
+      const finalDest = destination === 'Other' ? (customDestination || 'Other') : destination;
+      const finalFlr = floor === 'Other' ? (customFloor || 'Other') : floor;
+      let finalNote = `Destination: ${finalDest}, Floor: ${finalFlr}`;
+      if (reason) finalNote += `\n\nUrgency Reason:\n${reason}`;
+
       await submit({
         priority,
-        note: reason || undefined,
+        note: finalNote,
         promise_date: hasDebtIssue ? promiseDate : undefined,
         payment_note: hasDebtIssue ? paymentNote : undefined,
       });
@@ -125,8 +173,8 @@ export default function RequestPage() {
     }
   };
 
-  const getProductName = (id: string) => {
-    return products.find((p) => p.id === id)?.name || id;
+  const getProduct = (id: string) => {
+    return products.find((p) => p.id === id);
   };
 
   return (
@@ -138,7 +186,12 @@ export default function RequestPage() {
           className="bg-white shadow-2xl rounded-[2rem] overflow-hidden border border-apple-gray-border"
         >
           <div className="p-8 sm:p-12 border-b border-apple-gray-border">
-            <h1 className="text-3xl font-black text-apple-text-primary tracking-tight">New Request</h1>
+            <div className="flex items-center gap-4">
+              <button type="button" onClick={() => router.back()} className="p-2 -ml-2 rounded-xl hover:bg-gray-100 transition-colors text-apple-text-secondary hover:text-apple-text-primary">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <h1 className="text-3xl font-black text-apple-text-primary tracking-tight">New Request</h1>
+            </div>
             <p className="text-apple-text-secondary mt-2 font-medium">
               Review your items and system requirements.
               {profile?.client_type === 'kso' && (
@@ -155,30 +208,137 @@ export default function RequestPage() {
               <div className="space-y-6">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-apple-text-secondary">Cart Summary</h3>
                 <div className="space-y-4">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center text-sm font-medium">
-                      <span className="text-apple-text-primary">{getProductName(item.id)}</span>
-                      <span className="text-apple-blue bg-apple-blue/10 px-2 py-0.5 rounded-full text-[10px] font-bold">x{item.qty}</span>
-                    </div>
-                  ))}
+                  {items.map((item) => {
+                    const prod = getProduct(item.id);
+                    const name = prod?.name || item.id;
+                    const price = getUnitPrice(prod);
+                    const subtotal = price * item.qty;
+
+                    return (
+                      <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-apple-gray-bg border border-apple-gray-border rounded-xl gap-4">
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-apple-text-primary line-clamp-2">{name}</p>
+                          {!isNoPriceUser && price > 0 && (
+                            <p className="text-xs text-apple-text-secondary mt-1 tracking-wide">
+                              {formatCurrency(price)} <span className="text-[10px]">/ unit</span>
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center bg-white border border-apple-gray-border rounded-lg shadow-sm">
+                            <button type="button" onClick={() => updateQty(item.id, item.qty - 1)} className="px-3 py-1.5 text-apple-text-secondary hover:text-red-500 font-black transition-colors rounded-l-lg hover:bg-gray-50">-</button>
+                            <span className="px-3 py-1.5 text-xs font-bold text-apple-text-primary min-w-[2.5rem] border-x border-apple-gray-border text-center">{item.qty}</span>
+                            <button type="button" onClick={() => updateQty(item.id, item.qty + 1)} className="px-3 py-1.5 text-apple-text-secondary hover:text-apple-blue font-black transition-colors rounded-r-lg hover:bg-gray-50">+</button>
+                          </div>
+                          <button type="button" onClick={() => remove(item.id)} className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </div>
+                        
+                        {!isNoPriceUser && price > 0 && (
+                          <div className="w-24 text-right">
+                            <p className="text-sm font-black text-apple-text-primary">{formatCurrency(subtotal)}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="pt-6 border-t border-apple-gray-border flex justify-between items-center font-black text-lg">
-                  <span className="text-apple-text-primary">Total items</span>
-                  <span className="text-apple-blue">{total}</span>
+                <div className="pt-6 border-t border-apple-gray-border flex flex-col gap-2">
+                  <div className="flex justify-between items-center font-black text-lg">
+                    <span className="text-apple-text-primary">Total items</span>
+                    <span className="text-apple-blue">{total}</span>
+                  </div>
+                  {!isNoPriceUser && totalPriceValue > 0 && (
+                    <div className="flex justify-between items-center font-black text-xl text-apple-text-primary mt-2">
+                      <span>Total Price</span>
+                      <span>{formatCurrency(totalPriceValue)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-8">
                 <div className="space-y-4 font-bold text-sm">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-4">Destination</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] uppercase tracking-widest text-apple-text-secondary">Location</label>
+                      <select value={destination} onChange={e => setDestination(e.target.value)} className="w-full border border-apple-gray-border rounded-xl p-3 text-sm font-bold bg-white focus:ring-4 focus:ring-apple-blue/10 outline-none">
+                        <option value="Laboratory">Laboratory</option>
+                        <option value="Warehouse">Warehouse</option>
+                        <option value="Front Desk">Front Desk</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      {destination === 'Other' && (
+                        <input type="text" value={customDestination} onChange={e => setCustomDestination(e.target.value)} placeholder="Specify location..." required className="w-full border border-apple-gray-border rounded-xl p-3 text-sm font-medium bg-white focus:ring-4 focus:ring-apple-blue/10 outline-none mt-2" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] uppercase tracking-widest text-apple-text-secondary">Floor</label>
+                      <select value={floor} onChange={e => setFloor(e.target.value)} className="w-full border border-apple-gray-border rounded-xl p-3 text-sm font-bold bg-white focus:ring-4 focus:ring-apple-blue/10 outline-none">
+                        <option value="1">1st Floor</option>
+                        <option value="2">2nd Floor</option>
+                        <option value="3">3rd Floor</option>
+                        <option value="4">4th Floor</option>
+                        <option value="5">5th Floor</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      {floor === 'Other' && (
+                        <input type="text" value={customFloor} onChange={e => setCustomFloor(e.target.value)} placeholder="Specify floor..." required className="w-full border border-apple-gray-border rounded-xl p-3 text-sm font-medium bg-white focus:ring-4 focus:ring-apple-blue/10 outline-none mt-2" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 font-bold text-sm pt-4 border-t border-apple-gray-border">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-4">Priority Level</h3>
                   <label className="flex items-center gap-3 p-3 rounded-apple bg-apple-gray-bg border border-apple-gray-border cursor-pointer group transition-all">
                     <input type="radio" checked={priority === 'normal'} onChange={() => setPriority('normal')} className="w-4 h-4 text-apple-blue focus:ring-apple-blue" />
                     <span className="text-apple-text-primary group-hover:text-apple-blue transition-colors">Normal</span>
                   </label>
-                  <label className="flex items-center gap-3 p-3 rounded-apple bg-apple-gray-bg border border-apple-gray-border cursor-pointer group transition-all">
-                    <input type="radio" checked={priority === 'cito'} onChange={() => setPriority('cito')} className="w-4 h-4 text-apple-danger focus:ring-apple-danger" />
-                    <span className="text-apple-danger">CITO (Urgent)</span>
+                  <label className={`flex items-center gap-3 p-3 rounded-apple border cursor-pointer group transition-all ${
+                    citoExhausted
+                      ? 'bg-gray-100 border-gray-200 opacity-60 cursor-not-allowed'
+                      : 'bg-apple-gray-bg border-apple-gray-border'
+                  }`}>
+                    <input type="radio" checked={priority === 'cito'} onChange={() => !citoExhausted && setPriority('cito')} disabled={citoExhausted} className="w-4 h-4 text-apple-danger focus:ring-apple-danger disabled:opacity-50" />
+                    <div className="flex-1">
+                      <span className={citoExhausted ? 'text-gray-400' : 'text-apple-danger'}>CITO (Urgent)</span>
+                      <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        citoExhausted
+                          ? 'bg-red-100 text-red-500'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {citoRemaining}/{CITO_MONTHLY_LIMIT} remaining
+                      </span>
+                    </div>
                   </label>
+                  {citoExhausted && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl space-y-3">
+                      <p className="text-xs text-red-600 font-bold">⚠️ Kuota CITO bulan ini sudah habis ({CITO_MONTHLY_LIMIT}x/bulan). Silakan gunakan prioritas Normal atau hubungi tim kami jika benar-benar darurat.</p>
+                      <div className="pt-2 border-t border-red-200">
+                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-2">💡 Tips Menghindari Pesanan Darurat:</p>
+                        <ul className="text-[10px] text-red-600/80 space-y-1.5 list-none">
+                          <li>📦 Pantau stok secara rutin — segera lakukan request ulang saat stok mulai menipis agar tidak sampai kehabisan total.</li>
+                          <li>📅 Buat jadwal pemesanan berkala (mingguan/bulanan) agar kebutuhan selalu terpenuhi tepat waktu.</li>
+                          <li>📊 Catat pola pemakaian alat & reagent Anda, agar bisa memprediksi kapan harus restock.</li>
+                          <li>🤝 Koordinasi dengan tim gudang/lab untuk mengetahui kebutuhan sebelum benar-benar habis.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  {!citoExhausted && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+                      <p className="text-[10px] text-amber-700 leading-relaxed">
+                        ⚡ Mohon gunakan CITO hanya untuk kebutuhan yang <strong>benar-benar mendesak</strong>. Kuota CITO dibatasi <strong>{CITO_MONTHLY_LIMIT}x per bulan</strong> agar permintaan darurat yang sebenarnya dapat ditangani dengan cepat tanpa terhambat.
+                      </p>
+                      <p className="text-[10px] text-amber-600/80 leading-relaxed">
+                        💡 <strong>Tip:</strong> Pantau stok Anda secara berkala dan segera ajukan request baru jika stok mulai menipis. Perencanaan yang baik akan mengurangi kebutuhan darurat dan memastikan operasional laboratorium Anda berjalan lancar.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {priority === 'cito' && (
@@ -206,13 +366,22 @@ export default function RequestPage() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={submitting || total === 0}
-              className="w-full bg-apple-text-primary text-white py-4 rounded-apple font-black text-sm hover:bg-black transition-all active:scale-95 shadow-2xl shadow-black/20 disabled:opacity-50"
-            >
-              {submitting ? 'SUBMITTING...' : `SUBMIT REQUEST (${total} ITEMS)`}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="flex-1 bg-white border-2 border-gray-200 text-gray-700 py-4 rounded-apple font-black text-sm hover:bg-gray-50 transition-all active:scale-95"
+              >
+                ← BACK
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || total === 0}
+                className="flex-[2] bg-apple-text-primary text-white py-4 rounded-apple font-black text-sm hover:bg-black transition-all active:scale-95 shadow-2xl shadow-black/20 disabled:opacity-50"
+              >
+                {submitting ? 'SUBMITTING...' : `SUBMIT REQUEST (${total} ITEMS)`}
+              </button>
+            </div>
           </form>
         </motion.div>
       </div>

@@ -23,6 +23,7 @@ export default function UsersManagementPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [search, setSearch] = useState('');
   const [usersLimit, setUsersLimit] = useState(PAGE_SIZE);
+  const [viewType, setViewType] = useState<'internal' | 'client'>('internal');
   const [saving, setSaving] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,12 +130,13 @@ export default function UsersManagementPage() {
   // ---------- Computed ----------
   const filteredUsers = useMemo(
     () =>
-      users.filter(
-        (u) =>
-          u.email.toLowerCase().includes(search.toLowerCase()) ||
-          (u.name || '').toLowerCase().includes(search.toLowerCase())
-      ),
-    [users, search]
+      users.filter((u) => {
+        const matchesSearch = u.email.toLowerCase().includes(search.toLowerCase()) ||
+          (u.name || '').toLowerCase().includes(search.toLowerCase());
+        const matchesType = viewType === 'client' ? u.role === 'client' : u.role !== 'client';
+        return matchesSearch && matchesType;
+      }),
+    [users, search, viewType]
   );
 
   const displayedUsers = useMemo(
@@ -173,9 +175,33 @@ export default function UsersManagementPage() {
       </div>
 
       <section className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Toggle Tabs */}
+        <div className="flex gap-4 border-b border-gray-200">
+          <button
+            onClick={() => { setViewType('internal'); setUsersLimit(PAGE_SIZE); }}
+            className={`pb-3 border-b-2 font-bold text-sm px-2 transition-colors ${
+              viewType === 'internal'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Internal Staff
+          </button>
+          <button
+            onClick={() => { setViewType('client'); setUsersLimit(PAGE_SIZE); }}
+            className={`pb-3 border-b-2 font-bold text-sm px-2 transition-colors ${
+              viewType === 'client'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Clients
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
           <h2 className="text-lg font-bold tracking-tight text-gray-900">
-            Total Users ({filteredUsers.length})
+            Total {viewType === 'client' ? 'Clients' : 'Staff'} ({filteredUsers.length})
           </h2>
           <input
             type="text"

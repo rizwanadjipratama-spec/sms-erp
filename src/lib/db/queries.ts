@@ -26,6 +26,7 @@ import type {
   FinancialTransaction, FinancialTransactionType, FinancialDirection,
   ProductBranchStock, StockTransfer, StockTransferLog,
   ClaimPayment, SupplierInvoice, RequestNote,
+  RequestStatusLog, StaffRating,
 } from '@/types/types';
 
 // ============================================================================
@@ -1779,5 +1780,64 @@ export const requestNotesDb = {
       .single();
     if (!data) throw new Error('Failed to create note');
     return data;
+  },
+};
+
+// ============================================================================
+// REQUEST STATUS LOGS
+// ============================================================================
+
+export const requestStatusLogsDb = {
+  async create(log: { request_id: string; status: RequestStatus; actor_id: string }): Promise<RequestStatusLog> {
+    const { data } = await supabase
+      .from('request_status_logs')
+      .insert(log)
+      .select('*')
+      .single();
+    if (!data) throw new Error('Failed to create status log');
+    return data;
+  },
+
+  async getByRequestId(requestId: string): Promise<RequestStatusLog[]> {
+    const { data } = await supabase
+      .from('request_status_logs')
+      .select('*, actor:profiles!actor_id(id, name, email, avatar_url, role, bio, created_at, quotes, avg_rating)')
+      .eq('request_id', requestId)
+      .order('created_at', { ascending: true });
+    return (data ?? []) as RequestStatusLog[];
+  },
+};
+
+// ============================================================================
+// STAFF RATINGS
+// ============================================================================
+
+export const staffRatingsDb = {
+  async upsert(rating: { request_id: string; status: RequestStatus; staff_id: string; client_id: string; rating: number }): Promise<StaffRating> {
+    const { data } = await supabase
+      .from('staff_ratings')
+      .upsert(rating, { onConflict: 'request_id,status,client_id' })
+      .select('*')
+      .single();
+    if (!data) throw new Error('Failed to save rating');
+    return data;
+  },
+
+  async getByRequestId(requestId: string): Promise<StaffRating[]> {
+    const { data } = await supabase
+      .from('staff_ratings')
+      .select('*')
+      .eq('request_id', requestId);
+    return data ?? [];
+  },
+
+  async getAverageByStaffId(staffId: string): Promise<number> {
+    const { data } = await supabase
+      .from('staff_ratings')
+      .select('rating')
+      .eq('staff_id', staffId);
+    if (!data || data.length === 0) return 0;
+    const sum = data.reduce((acc, r) => acc + r.rating, 0);
+    return Math.round((sum / data.length) * 100) / 100;
   },
 };
