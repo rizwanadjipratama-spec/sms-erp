@@ -176,6 +176,7 @@ export interface Profile {
   last_active_at?: string;
   quotes?: string[];
   avg_rating?: number;
+  joined_date?: string;
   created_at: string;
   updated_at: string;
   created_by?: string;
@@ -313,6 +314,7 @@ export interface RequestItem {
   product_id: string;
   quantity: number;
   price_at_order: number;
+  discount_percentage?: number;
   created_at: string;
   updated_at: string;
 }
@@ -580,7 +582,7 @@ export interface CmsSettings {
   employee_of_month_id?: string;
   updated_at: string;
   // Joined
-  employee_of_month?: Pick<Profile, 'name' | 'email' | 'role'>;
+  employee_of_month?: Pick<Profile, 'name' | 'email' | 'role' | 'avatar_url' | 'quotes' | 'avg_rating'>;
 }
 
 export interface CmsNews {
@@ -1301,7 +1303,7 @@ export interface RequestStatusLog {
   actor_id: string;
   created_at: string;
   // Joined
-  actor?: Pick<Profile, 'id' | 'name' | 'email' | 'avatar_url' | 'role' | 'bio' | 'created_at' | 'quotes' | 'avg_rating'>;
+  actor?: Pick<Profile, 'id' | 'name' | 'email' | 'avatar_url' | 'role' | 'bio' | 'created_at' | 'quotes' | 'avg_rating' | 'joined_date'>;
 }
 
 // ============================================================================

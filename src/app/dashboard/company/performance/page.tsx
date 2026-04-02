@@ -234,6 +234,7 @@ export default function EmployeePerformancePage() {
                   <th className="text-right py-2 px-3 text-[var(--apple-text-secondary)] font-bold text-xs uppercase">Actions</th>
                   <th className="text-right py-2 px-3 text-[var(--apple-text-secondary)] font-bold text-xs uppercase">Logins</th>
                   <th className="text-right py-2 px-3 text-[var(--apple-text-secondary)] font-bold text-xs uppercase">Deliveries</th>
+                  <th className="text-right py-2 px-3 text-[var(--apple-text-secondary)] font-bold text-xs uppercase">Rating</th>
                   <th className="text-right py-2 px-3 text-[var(--apple-text-secondary)] font-bold text-xs uppercase hidden sm:table-cell">Last Login</th>
                 </tr>
               </thead>
@@ -262,6 +263,15 @@ export default function EmployeePerformancePage() {
                     <td className="py-2.5 px-3 text-right">
                       {emp.deliveries > 0 ? (
                         <span className="font-bold text-[var(--apple-success)]">{emp.deliveries}</span>
+                      ) : (
+                        <span className="text-[var(--apple-text-tertiary)]">—</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      {emp.avgRating > 0 ? (
+                        <span className="font-bold text-amber-500 flex items-center justify-end gap-1">
+                          {emp.avgRating.toFixed(1)} <span className="text-[10px]">★</span>
+                        </span>
                       ) : (
                         <span className="text-[var(--apple-text-tertiary)]">—</span>
                       )}

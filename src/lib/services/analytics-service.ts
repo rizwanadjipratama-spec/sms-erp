@@ -129,6 +129,7 @@ export const analyticsService = {
         // Role-specific metrics
         deliveries: techData?.total_deliveries ?? courierDeliveries[p.id] ?? 0,
         avgDeliveryHours: techData?.avg_delivery_hours ?? 0,
+        avgRating: p.avg_rating ?? 0,
       };
     });
 

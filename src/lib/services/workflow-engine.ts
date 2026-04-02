@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { requireAuthUser } from '@/lib/db';
-import { requestsDb, invoicesDb, notificationsDb, profilesDb, activityLogsDb, systemLogsDb } from '@/lib/db';
+import { requestsDb, invoicesDb, notificationsDb, profilesDb, activityLogsDb, systemLogsDb, requestStatusLogsDb } from '@/lib/db';
 import type { DbRequest, RequestStatus, UserRole, NotificationType } from '@/types/types';
 import { supabase } from '@/lib/supabase';
 
@@ -232,7 +232,22 @@ async function runSideEffects(input: TransitionInput, updatedRequest: DbRequest)
     );
   }
 
-  // 4. Log activity
+  // 4. Record handler in request_status_logs
+  // Don't record client submissions, issues, or admin resolutions since these aren't parts of the core order fulfillment SLA
+  const RECORDABLE_STATUSES: RequestStatus[] = ['priced', 'approved', 'invoice_ready', 'preparing', 'ready', 'on_delivery', 'delivered', 'completed'];
+  if (RECORDABLE_STATUSES.includes(nextStatus)) {
+    try {
+      await requestStatusLogsDb.create({
+        request_id: updatedRequest.id,
+        status: nextStatus,
+        actor_id: actorId,
+      });
+    } catch (err) {
+      console.error('Failed to log status transition for ratings UI:', err);
+    }
+  }
+
+  // 5. Log activity
   await activityLogsDb.create({
     user_id: actorId,
     user_email: actorEmail,

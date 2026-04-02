@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
@@ -18,6 +18,8 @@ import { supabase } from '@/lib/supabase';
 import type { DbRequest, Invoice, MonthlyClosing, FakturTask, FakturTaskType, Profile } from '@/types/types';
 import { useBranch } from '@/hooks/useBranch';
 import FakturDispatchTab from './components/FakturDispatchTab';
+import { SalesInvoicePrint } from '@/components/finance/SalesInvoicePrint';
+import { DeliveryOrderPrint } from '@/components/finance/DeliveryOrderPrint';
 
 type TabKey = 'queue' | 'invoices' | 'closing' | 'faktur_dispatch';
 
@@ -40,6 +42,24 @@ export default function FinanceDashboard() {
   const [paymentModal, setPaymentModal] = useState<Invoice | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentRef, setPaymentRef] = useState('');
+  const [printRequest, setPrintRequest] = useState<DbRequest | null>(null);
+  const printTriggerRef = useRef(false);
+
+  // Auto-trigger print after render
+  useEffect(() => {
+    if (printRequest && printTriggerRef.current) {
+      const timer = setTimeout(() => {
+        window.print();
+        printTriggerRef.current = false;
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [printRequest]);
+
+  const handlePrintDocs = useCallback((request: DbRequest) => {
+    setPrintRequest(request);
+    printTriggerRef.current = true;
+  }, []);
 
   // ---------- Auth guard ----------
   useEffect(() => {
@@ -225,6 +245,7 @@ export default function FinanceDashboard() {
 
   // ---------- Render: main ----------
   return (
+    <>
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
       {/* Header */}
       <div>
@@ -328,13 +349,24 @@ export default function FinanceDashboard() {
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleGenerateInvoice(request)}
-                    disabled={processingId === request.id}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {processingId === request.id ? 'Generating...' : 'Generate Invoice'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handlePrintDocs(request)}
+                      className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        Print Invoice &amp; DO
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => handleGenerateInvoice(request)}
+                      disabled={processingId === request.id}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {processingId === request.id ? 'Generating...' : 'Generate Invoice'}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -514,5 +546,62 @@ export default function FinanceDashboard() {
         )}
       </Modal>
     </div>
+
+      {/* ===== Print Overlay ===== */}
+      {printRequest && (
+        <div className="print-overlay fixed inset-0 z-[9999] bg-white overflow-auto">
+          {/* Close button - hidden during print */}
+          <div className="no-print sticky top-0 z-10 flex items-center justify-between bg-gray-900 px-6 py-3">
+            <p className="text-white text-sm font-semibold">Print Preview — Sales Invoice & Delivery Order</p>
+            <button
+              onClick={() => setPrintRequest(null)}
+              className="rounded-lg bg-white/10 px-4 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition-colors"
+            >
+              ✕ Close Preview
+            </button>
+          </div>
+
+          {/* Page 1: Sales Invoice */}
+          <div className="print-page">
+            <SalesInvoicePrint
+              request={printRequest}
+              client={clients.find(c => c.email === printRequest.user_email)}
+            />
+          </div>
+
+          {/* Page 2: Delivery Order */}
+          <div className="print-page">
+            <DeliveryOrderPrint
+              request={printRequest}
+              client={clients.find(c => c.email === printRequest.user_email)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Print Styles */}
+      <style jsx global>{`
+        @media print {
+          /* Hide everything except print overlay */
+          body > *:not(.print-overlay) { display: none !important; }
+          .no-print { display: none !important; }
+          .print-overlay {
+            position: static !important;
+            overflow: visible !important;
+          }
+          .print-page {
+            page-break-after: always;
+            break-after: page;
+          }
+          .print-page:last-child {
+            page-break-after: avoid;
+          }
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+        }
+      `}</style>
+    </>
   );
 }

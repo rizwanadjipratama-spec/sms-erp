@@ -45,4 +45,6 @@ export {
   claimPaymentsDb,
   supplierInvoicesDb,
   requestNotesDb,
+  requestStatusLogsDb,
+  staffRatingsDb,
 } from './queries';

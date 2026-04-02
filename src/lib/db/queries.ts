@@ -1801,7 +1801,7 @@ export const requestStatusLogsDb = {
   async getByRequestId(requestId: string): Promise<RequestStatusLog[]> {
     const { data } = await supabase
       .from('request_status_logs')
-      .select('*, actor:profiles!actor_id(id, name, email, avatar_url, role, bio, created_at, quotes, avg_rating)')
+      .select('*, actor:profiles(id, name, email, avatar_url, role, bio, created_at, quotes, avg_rating, joined_date)')
       .eq('request_id', requestId)
       .order('created_at', { ascending: true });
     return (data ?? []) as RequestStatusLog[];

@@ -29,6 +29,7 @@ export default function MarketingDashboard() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [pricingModes, setPricingModes] = useState<Record<string, ClientType>>({});
   const [discounts, setDiscounts] = useState<Record<string, { type: DiscountType; value: number; reason: string }>>({});
+  const [itemDiscounts, setItemDiscounts] = useState<Record<string, Record<string, number>>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -138,14 +139,20 @@ export default function MarketingDashboard() {
   const calculateTotalPrice = useCallback(
     (request: DbRequest, clientType: ClientType): number => {
       const items = request.request_items ?? [];
+      const itemDiscMap = itemDiscounts[request.id] || {};
+      
       return items.reduce((sum, item) => {
         const price = priceMap.get(item.product_id);
         if (!price) return sum;
         const unitPrice = clientType === 'kso' ? price.price_kso : price.price_regular;
-        return sum + unitPrice * item.quantity;
+        
+        const discPct = itemDiscMap[item.id] || 0;
+        const discountedUnitPrice = unitPrice * (1 - discPct / 100);
+        
+        return sum + discountedUnitPrice * item.quantity;
       }, 0);
     },
-    [priceMap]
+    [priceMap, itemDiscounts]
   );
 
   // ---------- Discount calculator ----------
@@ -174,6 +181,21 @@ export default function MarketingDashboard() {
         const totalPrice = calculateTotalPrice(request, selectedType);
         const discountAmount = calculateDiscountAmount(totalPrice, request.id);
         const disc = discounts[request.id];
+        const itemDiscMap = itemDiscounts[request.id] || {};
+
+        // Save per-item discounts and prices to request_items
+        if (request.request_items?.length) {
+          const { supabase } = await import('@/lib/db/client');
+          for (const item of request.request_items) {
+            const price = priceMap.get(item.product_id);
+            const unitPrice = price ? (selectedType === 'kso' ? price.price_kso : price.price_regular) : 0;
+            const pct = itemDiscMap[item.id] || 0;
+            await supabase.from('request_items').update({
+              price_at_order: unitPrice,
+              discount_percentage: pct
+            }).eq('id', item.id);
+          }
+        }
 
         await workflowEngine.transition({
           request,
@@ -309,15 +331,39 @@ export default function MarketingDashboard() {
                         Items
                       </p>
                       <div className="space-y-2 text-sm text-gray-700">
-                        {(request.request_items ?? []).map((item, idx) => (
-                          <div
-                            key={`${request.id}-item-${idx}`}
-                            className="flex justify-between gap-3"
-                          >
-                            <span>{item.products?.name || item.product_id}</span>
-                            <span className="text-gray-500">x{item.quantity}</span>
-                          </div>
-                        ))}
+                        {(request.request_items ?? []).map((item, idx) => {
+                          const itemName = item.products?.name || item.product_id;
+                          return (
+                            <div
+                              key={`${request.id}-item-${idx}`}
+                              className="flex items-center justify-between gap-3"
+                            >
+                              <span className="truncate flex-1" title={itemName}>{itemName}</span>
+                              <span className="text-gray-500 shrink-0 w-8 text-right">x{item.quantity}</span>
+                              <div className="w-16 shrink-0 relative">
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">%</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={itemDiscounts[request.id]?.[item.id] || ''}
+                                  onChange={(e) => {
+                                    const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                                    setItemDiscounts(prev => ({
+                                      ...prev,
+                                      [request.id]: {
+                                        ...prev[request.id],
+                                        [item.id]: val
+                                      }
+                                    }));
+                                  }}
+                                  placeholder="Disc"
+                                  className="w-full rounded border border-gray-200 py-1 pl-2 pr-5 text-xs outline-none transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-right"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 

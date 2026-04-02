@@ -21,7 +21,7 @@ export const cmsService = {
     try {
       const { data, error } = await supabase
         .from('cms_settings')
-        .select('*, employee_of_month:profiles!employee_of_month_id(name, email, role)')
+        .select('*, employee_of_month:profiles!employee_of_month_id(name, email, role, avatar_url, quotes, avg_rating)')
         .eq('id', 1)
         .maybeSingle();
 

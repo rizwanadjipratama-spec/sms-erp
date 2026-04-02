@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
-import { requestsDb, profilesDb } from '@/lib/db';
+import { requestsDb, profilesDb, requestStatusLogsDb, staffRatingsDb } from '@/lib/db';
 import { workflowEngine, ACTIVE_STATUSES, authService, deliveryService } from '@/lib/services';
 import { formatCurrency, formatDateTime, formatDate, formatOrderId } from '@/lib/format-utils';
 import {
@@ -17,8 +17,9 @@ import {
   StatCard,
   StatusBadge,
   Modal,
+  StepTimeline,
 } from '@/components/ui';
-import type { DbRequest, DeliveryLog, DeliverySubStatus, RequestStatus } from '@/types/types';
+import type { DbRequest, DeliveryLog, DeliverySubStatus, RequestStatus, RequestStatusLog, StaffRating } from '@/types/types';
 
 // ---------- Timeline configuration ----------
 const TIMELINE_STEPS: Array<{ key: RequestStatus; label: string }> = [
@@ -32,10 +33,6 @@ const TIMELINE_STEPS: Array<{ key: RequestStatus; label: string }> = [
   { key: 'delivered', label: 'Delivered' },
   { key: 'completed', label: 'Completed' },
 ];
-
-function getStepIndex(status: RequestStatus) {
-  return TIMELINE_STEPS.findIndex((step) => step.key === status);
-}
 
 const CANCEL_REASONS = ['Wrong item', 'Change plan', 'Ordered by mistake', 'Need revision', 'Other'];
 const CANCELLABLE_STATUSES: RequestStatus[] = ['submitted', 'priced', 'approved'];
@@ -52,6 +49,8 @@ export default function ClientDashboard() {
 
   // Cancel modal state
   const [deliveryTracking, setDeliveryTracking] = useState<Record<string, DeliveryLog | null>>({});
+  const [requestLogs, setRequestLogs] = useState<Record<string, RequestStatusLog[]>>({});
+  const [requestRatings, setRequestRatings] = useState<Record<string, StaffRating[]>>({});
   const [cancellingRequest, setCancellingRequest] = useState<DbRequest | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelOtherReason, setCancelOtherReason] = useState('');
@@ -92,6 +91,27 @@ export default function ClientDashboard() {
         );
         setDeliveryTracking(Object.fromEntries(trackingResults));
       }
+
+      // Fetch status logs and ratings for ACTIVE orders (to not overload)
+      const activeIds = data.filter(r => ACTIVE_STATUSES.includes(r.status) || r.status === 'completed').map(r => r.id);
+      
+      const logsMap: Record<string, RequestStatusLog[]> = {};
+      const ratingsMap: Record<string, StaffRating[]> = {};
+
+      await Promise.all(
+        activeIds.map(async id => {
+          const [logsReq, ratingsReq] = await Promise.all([
+            requestStatusLogsDb.getByRequestId(id),
+            staffRatingsDb.getByRequestId(id)
+          ]);
+          logsMap[id] = logsReq;
+          ratingsMap[id] = ratingsReq;
+        })
+      );
+      
+      setRequestLogs(logsMap);
+      setRequestRatings(ratingsMap);
+
     } catch (err) {
       console.error('Client fetch failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to load orders');
@@ -310,7 +330,6 @@ export default function ClientDashboard() {
           />
         ) : (
           activeOrders.map((request) => {
-            const currentStep = getStepIndex(request.status);
             const isProcessing = processingId === request.id;
 
             return (
@@ -351,35 +370,20 @@ export default function ClientDashboard() {
                   )}
                 </div>
 
-                {/* Timeline */}
-                <div className="overflow-x-auto">
-                  <div className="grid grid-cols-9 min-w-[720px] gap-3">
-                    {TIMELINE_STEPS.map((step, index) => {
-                      const isDone = currentStep >= index;
-                      const isCurrent = request.status === step.key;
-                      return (
-                        <div key={step.key} className="flex flex-col items-center text-center gap-2">
-                          <div
-                            className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-black transition-all ${
-                              isDone
-                                ? 'bg-apple-blue border-apple-blue text-white shadow-sm'
-                                : 'bg-white border-apple-gray-border text-apple-text-secondary'
-                            }`}
-                          >
-                            {index + 1}
-                          </div>
-                          <p
-                            className={`text-[10px] font-bold uppercase tracking-tight ${
-                              isCurrent ? 'text-apple-blue' : 'text-apple-text-secondary'
-                            }`}
-                          >
-                            {step.label}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                {/* Timeline Component */}
+                <StepTimeline
+                  currentStatus={request.status}
+                  requestId={request.id}
+                  logs={requestLogs[request.id] || []}
+                  ratings={requestRatings[request.id] || []}
+                  clientId={profile!.id}
+                  onRatingSubmitted={(newRating) => {
+                    setRequestRatings(prev => ({
+                      ...prev,
+                      [request.id]: [...(prev[request.id] || []), newRating]
+                    }));
+                  }}
+                />
 
                 {/* Delivery Tracking Card (visible when on_delivery) */}
                 {request.status === 'on_delivery' && (() => {

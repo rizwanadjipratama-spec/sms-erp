@@ -300,14 +300,31 @@ export default function BossDashboard() {
                   {/* Left: items + note */}
                   <div className="space-y-4">
                     <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
-                      <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Items</p>
-                      <div className="space-y-2 text-sm text-gray-700">
-                        {(request.request_items || []).map((item: any, idx: number) => (
-                          <div key={`${request.id}-${idx}`} className="flex justify-between gap-3">
-                            <span>{item.products?.name || item.product_id}</span>
-                            <span className="text-gray-500">x{item.quantity}</span>
-                          </div>
-                        ))}
+                      <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Items & Pricing</p>
+                      <div className="space-y-3 text-sm text-gray-700">
+                        {(request.request_items || []).map((item: any, idx: number) => {
+                          const itemName = item.products?.name || item.product_id;
+                          const basePrice = item.price_at_order || 0;
+                          const discPct = item.discount_percentage || 0;
+                          const finalUnitPrice = basePrice * (1 - discPct / 100);
+                          const totalLinePrice = finalUnitPrice * item.quantity;
+                          
+                          return (
+                            <div key={`${request.id}-${idx}`} className="flex flex-col gap-1 border-b border-gray-100 last:border-0 pb-2 last:pb-0">
+                              <div className="flex justify-between gap-3">
+                                <span className="font-semibold text-gray-900 truncate">{itemName}</span>
+                                <span className="text-gray-500 font-bold shrink-0 text-right w-12">x{item.quantity}</span>
+                              </div>
+                              <div className="flex justify-between text-[11px] text-gray-500">
+                                <span>
+                                  {formatCurrency(basePrice)} 
+                                  {discPct > 0 && <span className="text-amber-600 ml-1 font-semibold">(-{discPct}%)</span>}
+                                </span>
+                                <span className="font-medium text-gray-700">{formatCurrency(totalLinePrice)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 

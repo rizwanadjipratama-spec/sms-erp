@@ -19,6 +19,11 @@ type CompanyData = Awaited<ReturnType<typeof analyticsService.getCompanyDashboar
 const isSupervisor = (role?: string | null) => 
   ['owner', 'admin', 'director', 'manager'].includes(role || '');
 
+function getRandomQuote(quotes?: string[] | null) {
+  if (!quotes || quotes.length === 0) return null;
+  return quotes[Math.floor(Math.random() * quotes.length)];
+}
+
 // ── Mini bar chart for revenue ──────────────────────────────────────────
 function RevenueChart({ data }: { data: { month: string; total_revenue: number }[] }) {
   const reversed = [...data].reverse().slice(-6);
@@ -193,7 +198,14 @@ export default function CompanyDashboard() {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-[var(--apple-text-primary)] leading-tight">{user.name || user.email}</p>
-                  <p className="text-[10px] text-[var(--apple-text-tertiary)] uppercase font-bold">{user.role}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-[10px] text-[var(--apple-text-tertiary)] uppercase font-bold">{user.role}</p>
+                    {user.avg_rating !== undefined && user.avg_rating > 0 && (
+                      <span className="text-[9px] font-bold text-amber-500 bg-amber-50 px-1 py-0.5 rounded flex items-center">
+                        ★ {user.avg_rating.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -347,11 +359,28 @@ export default function CompanyDashboard() {
                 {employeeOfMonth.name?.[0]?.toUpperCase() || '?'}
               </div>
               <div>
-                <p className="font-bold text-[var(--apple-text-primary)] text-lg">{employeeOfMonth.name || 'Unknown'}</p>
+                <p className="font-bold text-[var(--apple-text-primary)] text-lg flex items-center justify-center gap-2">
+                  {employeeOfMonth.name || 'Unknown'}
+                  {employeeOfMonth.avg_rating !== undefined && employeeOfMonth.avg_rating > 0 && (
+                    <span className="text-xs font-bold text-amber-500 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded flex items-center">
+                      ★ {employeeOfMonth.avg_rating.toFixed(1)}
+                    </span>
+                  )}
+                </p>
                 <p className="text-sm text-[var(--apple-text-secondary)]">{employeeOfMonth.email}</p>
                 <span className="inline-block mt-2 px-3 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-600 border border-amber-200 uppercase">
                   {employeeOfMonth.role}
                 </span>
+
+                {employeeOfMonth.quotes && employeeOfMonth.quotes.length > 0 && (
+                  <div className="mt-4 px-6 py-3 bg-[var(--apple-gray-bg)] rounded-xl border border-[var(--apple-border)]">
+                    <p className="text-sm italic text-[var(--apple-text-primary)] relative">
+                      <span className="text-2xl text-[var(--apple-blue)]/20 absolute -left-3 -top-2">"</span>
+                      {getRandomQuote(employeeOfMonth.quotes)}
+                      <span className="text-2xl text-[var(--apple-blue)]/20 absolute -bottom-4">"</span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
