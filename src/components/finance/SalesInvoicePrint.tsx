@@ -12,7 +12,7 @@ interface SalesInvoicePrintProps {
 
 export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, client, invoiceNo }) => {
   const items = request.request_items || [];
-  const MAX_ROWS = 25;
+  const MAX_ROWS = 28;
 
   // Calculate totals
   const subTotal = items.reduce((sum, item) => {
@@ -60,113 +60,183 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
         .si-page {
           width: 210mm;
           height: 297mm;
-          padding: 8mm 10mm 6mm 10mm;
+          padding: 10mm 12mm 8mm 12mm;
           box-sizing: border-box;
-          font-family: 'Courier New', Courier, monospace;
-          font-size: 9pt;
-          color: #000;
+          font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+          font-size: 8.5pt;
+          color: #1d1d1f;
           background: #fff;
           position: relative;
           display: flex;
           flex-direction: column;
         }
 
-        /* ── HEADER ── */
-        .si-header {
+        /* ── TOP SECTION ── */
+        .si-top-section {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          border-bottom: 2px solid #000;
-          padding-bottom: 2mm;
-          margin-bottom: 2mm;
+          margin-bottom: 4mm;
         }
-        .si-header-left {
-          max-width: 55%;
+        .si-top-left {
+          flex: 1;
+          padding-right: 4mm;
+        }
+        .si-company-box {
+          border: 1px solid #d2d2d7;
+          border-radius: 8px;
+          padding: 3mm 4mm;
+          margin-bottom: 4mm;
+          width: fit-content;
+          background: #fafafa;
         }
         .si-company {
-          font-weight: bold;
-          font-size: 11pt;
-          letter-spacing: 0.5px;
+          font-weight: 600;
+          font-size: 10.5pt;
+          letter-spacing: -0.2px;
+          color: #1d1d1f;
         }
         .si-addr {
-          font-size: 8pt;
-          line-height: 1.4;
-          margin-top: 1mm;
+          font-size: 7.5pt;
+          line-height: 1.5;
+          margin-top: 1.5mm;
+          color: #515154;
         }
-        .si-header-right {
+        .si-top-right {
           text-align: right;
+          width: 65mm; /* reduced width so it doesn't collide */
         }
         .si-title {
-          font-size: 18pt;
-          font-weight: bold;
-          font-style: italic;
-          letter-spacing: 1px;
+          font-size: 20pt;
+          font-weight: 700;
+          letter-spacing: -0.5px;
+          margin-bottom: 3mm;
+          color: #1d1d1f;
         }
         .si-meta-table {
-          margin-top: 2mm;
-          border-collapse: collapse;
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          border: 1px solid #d2d2d7;
+          border-radius: 8px;
           font-size: 8pt;
-          margin-left: auto;
+          overflow: hidden;
         }
         .si-meta-table td {
-          padding: 0.5mm 2mm;
-          border: 1px solid #000;
-          white-space: nowrap;
+          border-bottom: 1px solid #d2d2d7;
+          border-right: 1px solid #d2d2d7;
+          padding: 1.5mm 2mm;
+          vertical-align: top;
+          height: 9mm;
+          width: 50%;
         }
-        .si-meta-table td:first-child {
-          font-weight: bold;
-          text-align: left;
+        .si-meta-table tr:last-child td {
+          border-bottom: none;
         }
         .si-meta-table td:last-child {
-          min-width: 22mm;
+          border-right: none;
+        }
+        .si-meta-label {
+          font-size: 6.5pt;
           text-align: left;
+          color: #86868b;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-weight: 600;
+        }
+        .si-meta-value {
+          text-align: right;
+          margin-top: 0.5mm;
+          font-weight: 500;
+          color: #1d1d1f;
         }
 
         /* ── CUSTOMER ── */
-        .si-customer {
-          display: flex;
-          gap: 6mm;
-          margin-bottom: 2mm;
-          font-size: 8pt;
-          line-height: 1.4;
+        .si-customer-table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          margin-bottom: 4mm;
+          font-size: 8.5pt;
         }
-        .si-customer-block {
-          flex: 1;
+        .si-customer-table td {
+          vertical-align: top;
         }
-        .si-customer-label {
-          font-weight: bold;
-          font-size: 8pt;
-          margin-bottom: 0.5mm;
+        .si-col-label {
+          width: 14mm;
+          font-weight: 600;
+          color: #515154;
+          padding: 1.5mm 0;
+        }
+        .si-col-colon {
+          width: 3mm;
+          color: #86868b;
+          padding: 1.5mm 0;
+        }
+        .si-box-cell {
+          border-left: 1px solid #d2d2d7;
+          border-right: 1px solid #d2d2d7;
+          border-bottom: 1px solid #e5e5ea;
+          padding: 1.5mm 3mm;
+        }
+        .si-box-name {
+          font-weight: 600;
+          color: #1d1d1f;
+          background: #fafafa;
+        }
+        .si-box-addr {
+          color: #515154;
+          line-height: 1.5;
+        }
+        .si-radius-top {
+          border-top: 1px solid #d2d2d7;
+          border-top-left-radius: 8px;
+          border-top-right-radius: 8px;
+        }
+        .si-radius-bot {
+          border-bottom: 1px solid #d2d2d7;
+          border-bottom-left-radius: 8px;
+          border-bottom-right-radius: 8px;
         }
 
         /* ── ITEM TABLE ── */
         .si-items-table {
           width: 100%;
-          border-collapse: collapse;
+          border-collapse: separate;
+          border-spacing: 0;
+          border: 1px solid #e5e5ea;
+          border-radius: 8px;
           font-size: 8pt;
           flex: 1;
+          font-variant-numeric: tabular-nums;
+          overflow: hidden;
         }
         .si-items-table th,
         .si-items-table td {
-          border: 1px solid #000;
-          padding: 1mm 1.5mm;
+          padding: 0.5mm 2mm;
           vertical-align: top;
+          border-bottom: 1px solid #e5e5ea;
+          border-right: 1px solid #e5e5ea;
         }
+        .si-items-table tr:last-child td { border-bottom: none; }
+        .si-items-table th:last-child,
+        .si-items-table td:last-child { border-right: none; }
         .si-items-table th {
-          background: transparent;
-          font-weight: bold;
+          background: #fafafa;
+          font-weight: 600;
           text-align: center;
-          font-size: 8pt;
+          color: #515154;
           white-space: nowrap;
+          border-bottom: 1px solid #d2d2d7;
         }
-        .si-items-table td.num {
-          text-align: center;
-        }
-        .si-items-table td.right {
-          text-align: right;
-        }
+        .si-items-table td.num { text-align: center; }
+        .si-items-table td.right { text-align: right; }
         .si-items-table .empty-row td {
-          height: 5.5mm;
+          height: 5mm;
+          border-bottom: 1px dashed #f5f5f7;
+        }
+        .si-items-table tr.empty-row:last-child td {
+          border-bottom: none;
         }
 
         /* Column widths */
@@ -180,10 +250,10 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
 
         /* ── FOOTER ── */
         .si-footer {
-          margin-top: 1mm;
+          margin-top: 3mm;
           display: flex;
           justify-content: space-between;
-          align-items: flex-end;
+          align-items: flex-start;
           gap: 4mm;
         }
         .si-footer-left {
@@ -191,21 +261,26 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
           font-size: 8pt;
         }
         .si-say-box {
-          border: 1px solid #000;
-          padding: 1mm 2mm;
+          border: 1px solid #d2d2d7;
+          border-radius: 8px;
+          padding: 1.5mm 3mm;
           margin-bottom: 1mm;
           min-height: 7mm;
-          font-size: 7.5pt;
+          font-size: 8pt;
           font-style: italic;
+          background: #fafafa;
+          color: #515154;
         }
         .si-say-label {
-          font-weight: bold;
+          font-weight: 600;
           font-style: normal;
+          color: #1d1d1f;
         }
         .si-desc-label {
-          font-weight: bold;
+          font-weight: 600;
           margin-top: 1mm;
           font-size: 8pt;
+          color: #515154;
         }
         .si-signatures {
           display: flex;
@@ -218,75 +293,127 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
         }
         .si-sig-line {
           width: 28mm;
-          border-bottom: 1px solid #000;
-          margin-bottom: 1mm;
+          border-bottom: 1px solid #86868b;
+          margin-bottom: 1.5mm;
           height: 14mm;
         }
         .si-sig-label {
-          font-weight: bold;
+          font-weight: 600;
           font-size: 7.5pt;
+          color: #515154;
         }
 
         /* Summary box */
         .si-summary-box {
-          border: 1px solid #000;
-          border-collapse: collapse;
+          border: 1px solid #d2d2d7;
+          border-radius: 8px;
+          border-collapse: separate;
+          border-spacing: 0;
           font-size: 8.5pt;
           min-width: 60mm;
+          overflow: hidden;
         }
         .si-summary-box td {
-          border: 1px solid #000;
-          padding: 1mm 2mm;
+          border-bottom: 1px solid #e5e5ea;
+          border-right: 1px solid #e5e5ea;
+          padding: 1.5mm 2.5mm;
         }
+        .si-summary-box tr:last-child td { border-bottom: none; }
+        .si-summary-box td:last-child { border-right: none; }
         .si-summary-box td:first-child {
-          font-weight: bold;
+          font-weight: 600;
           text-align: right;
           white-space: nowrap;
+          background: #fafafa;
+          color: #515154;
         }
         .si-summary-box td:last-child {
           text-align: right;
           min-width: 28mm;
+          font-variant-numeric: tabular-nums;
         }
         .si-summary-box .si-total-row td {
-          font-weight: bold;
-          font-size: 9pt;
+          font-weight: 700;
+          font-size: 9.5pt;
+          color: #1d1d1f;
+          background: #fff;
+          border-top: 1px solid #d2d2d7;
         }
       `}</style>
 
-      {/* ═══ HEADER ═══ */}
-      <div className="si-header">
-        <div className="si-header-left">
-          <div className="si-company">PT. SARANA MEGAMEDILAP SEJAHTERA</div>
-          <div className="si-addr">
-            PERUMAHAN TAMAN CIMANGGU<br />
-            BLOK V.1 NO. 32 RT. 01 / RW. 012<br />
-            BOGOR - NPWP 66.500.624.3-404.000
+      {/* ═══ TOP SECTION ═══ */}
+      <div className="si-top-section">
+        <div className="si-top-left">
+          <div className="si-company-box">
+            <div className="si-company">PT. SARANA MEGAMEDILAB SEJAHTERA</div>
+            <div className="si-addr">
+              PERUMAHAN TAMAN CIMANGGU<br />
+              BLOK V 1 NO. 32 RT. 01 / RW. 012<br />
+              BOGOR - NPWP 66.500.624.3-404.000
+            </div>
           </div>
-        </div>
-        <div className="si-header-right">
-          <div className="si-title">Sales Invoice</div>
-          <table className="si-meta-table">
+          
+          <table className="si-customer-table">
             <tbody>
-              <tr><td>Invoice Date</td><td>{dateStr}</td></tr>
-              <tr><td>Invoice No.</td><td>{invNo}</td></tr>
-              <tr><td>PO No.</td><td></td></tr>
-              <tr><td>Terms</td><td>Net 30</td></tr>
+              <tr>
+                <td className="si-col-label" rowSpan={2}>Bill To</td>
+                <td className="si-col-colon" rowSpan={2}>:</td>
+                <td className="si-box-cell si-box-name si-radius-top">
+                  {client?.name || request.user_email || '-'}
+                </td>
+              </tr>
+              <tr>
+                <td className="si-box-cell si-box-addr" style={{ borderBottom: '1px solid #d2d2d7' }}>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                    {client?.address || '-'}
+                    {client?.phone ? `\nTelp: ${client.phone}` : ''}
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td className="si-col-label" rowSpan={2} style={{ paddingTop: '2.5mm' }}>Ship To</td>
+                <td className="si-col-colon" rowSpan={2} style={{ paddingTop: '2.5mm' }}>:</td>
+                <td className="si-box-cell si-box-name">
+                  {client?.name || request.user_email || '-'}
+                </td>
+              </tr>
+              <tr>
+                <td className="si-box-cell si-box-addr si-radius-bot">
+                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                    {client?.address || '-'}
+                    {client?.phone ? `\nTelp: ${client.phone}` : ''}
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* ═══ CUSTOMER ═══ */}
-      <div className="si-customer">
-        <div className="si-customer-block">
-          <div className="si-customer-label">Bill To :</div>
-          <div><strong>{client?.name || request.user_email || '-'}</strong></div>
-          {client?.phone && <div>Phone: {client.phone}</div>}
-        </div>
-        <div className="si-customer-block">
-          <div className="si-customer-label">Ship To :</div>
-          <div><strong>{client?.name || request.user_email || '-'}</strong></div>
-          {client?.phone && <div>Phone: {client.phone}</div>}
+        <div className="si-top-right">
+          <div className="si-title">Sales Invoice</div>
+          <table className="si-meta-table">
+            <tbody>
+              <tr>
+                <td>
+                  <div className="si-meta-label">Invoice Date</div>
+                  <div className="si-meta-value">{dateStr}</div>
+                </td>
+                <td>
+                  <div className="si-meta-label">Invoice No.</div>
+                  <div className="si-meta-value">{invNo}</div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div className="si-meta-label">PO. No.</div>
+                  <div className="si-meta-value"></div>
+                </td>
+                <td>
+                  <div className="si-meta-label">Terms</div>
+                  <div className="si-meta-value">Net 30</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -315,7 +442,7 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
                 <td>{item.products?.name || item.product_id}</td>
                 <td className="right">{unitPrice.toLocaleString('id-ID')}</td>
                 <td className="num">{item.quantity}</td>
-                <td className="num">PCS</td>
+                <td className="num">{item.products?.unit?.toUpperCase() || '-'}</td>
                 <td className="num">{disc > 0 ? disc : 0}</td>
                 <td className="right">{Math.round(lineTotal).toLocaleString('id-ID')}</td>
               </tr>

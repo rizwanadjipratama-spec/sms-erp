@@ -12,7 +12,7 @@ interface DeliveryOrderPrintProps {
 
 export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request, client, deliveryNo }) => {
   const items = request.request_items || [];
-  const MAX_ROWS = 20;
+  const MAX_ROWS = 35;
 
   const dateStr = formatDateTime(request.created_at).split(' ')[0];
   const doNo = deliveryNo || request.id.slice(0, 6).toUpperCase();
@@ -25,121 +25,192 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
         .do-page {
           width: 210mm;
           height: 297mm;
-          padding: 8mm 10mm 6mm 10mm;
+          padding: 10mm 12mm 8mm 12mm;
           box-sizing: border-box;
-          font-family: 'Courier New', Courier, monospace;
-          font-size: 9pt;
-          color: #000;
+          font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+          font-size: 8.5pt;
+          color: #1d1d1f;
           background: #fff;
           position: relative;
           display: flex;
           flex-direction: column;
         }
 
-        /* ── HEADER ── */
-        .do-header {
+        /* ── TOP SECTION ── */
+        .do-top-section {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          border-bottom: 2px solid #000;
-          padding-bottom: 2mm;
-          margin-bottom: 2mm;
+          margin-bottom: 4mm;
         }
-        .do-header-left {
-          max-width: 55%;
+        .do-top-left {
+          flex: 1;
+          padding-right: 4mm;
         }
         .do-company {
-          font-weight: bold;
-          font-size: 11pt;
-          letter-spacing: 0.5px;
+          font-weight: 600;
+          font-size: 10.5pt;
+          letter-spacing: -0.2px;
+          color: #1d1d1f;
         }
         .do-addr {
-          font-size: 8pt;
-          line-height: 1.4;
-          margin-top: 1mm;
+          font-size: 7.5pt;
+          line-height: 1.5;
+          margin-top: 1.5mm;
+          margin-bottom: 4mm;
+          color: #515154;
         }
-        .do-header-right {
+        .do-top-right {
           text-align: right;
+          width: 65mm;
         }
         .do-title {
-          font-size: 18pt;
-          font-weight: bold;
-          letter-spacing: 1px;
+          font-size: 20pt;
+          font-weight: 700;
+          letter-spacing: -0.5px;
+          margin-bottom: 3mm;
+          color: #1d1d1f;
         }
         .do-meta-table {
-          margin-top: 2mm;
-          border-collapse: collapse;
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          border: 1px solid #d2d2d7;
+          border-radius: 8px;
           font-size: 8pt;
-          margin-left: auto;
+          overflow: hidden;
         }
         .do-meta-table td {
-          padding: 0.5mm 2mm;
-          border: 1px solid #000;
-          white-space: nowrap;
+          border-bottom: 1px solid #d2d2d7;
+          border-right: 1px solid #d2d2d7;
+          padding: 1.5mm 2mm;
+          vertical-align: top;
+          height: 9mm;
+          width: 50%;
         }
-        .do-meta-table td:first-child {
-          font-weight: bold;
-          text-align: left;
+        .do-meta-table tr:last-child td {
+          border-bottom: none;
         }
         .do-meta-table td:last-child {
-          min-width: 22mm;
+          border-right: none;
+        }
+        .do-meta-label {
+          font-size: 6.5pt;
           text-align: left;
+          color: #86868b;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-weight: 600;
+        }
+        .do-meta-value {
+          text-align: right;
+          margin-top: 0.5mm;
+          font-weight: 500;
+          color: #1d1d1f;
         }
 
         /* ── CUSTOMER ── */
-        .do-customer {
-          display: flex;
-          gap: 6mm;
-          margin-bottom: 2mm;
-          font-size: 8pt;
-          line-height: 1.4;
+        .do-customer-table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          margin-bottom: 4mm;
+          font-size: 8.5pt;
         }
-        .do-customer-block {
-          flex: 1;
+        .do-customer-table td {
+          vertical-align: top;
         }
-        .do-customer-label {
-          font-weight: bold;
-          font-size: 8pt;
-          margin-bottom: 0.5mm;
+        .do-col-label {
+          width: 14mm;
+          font-weight: 600;
+          color: #515154;
+          padding: 1.5mm 0;
+        }
+        .do-col-colon {
+          width: 3mm;
+          color: #86868b;
+          padding: 1.5mm 0;
+        }
+        .do-box-cell {
+          border-left: 1px solid #d2d2d7;
+          border-right: 1px solid #d2d2d7;
+          border-bottom: 1px solid #e5e5ea;
+          padding: 1.5mm 3mm;
+        }
+        .do-box-name {
+          font-weight: 600;
+          color: #1d1d1f;
+          background: #fafafa;
+        }
+        .do-box-addr {
+          color: #515154;
+          line-height: 1.5;
+        }
+        .do-radius-top {
+          border-top: 1px solid #d2d2d7;
+          border-top-left-radius: 8px;
+          border-top-right-radius: 8px;
+        }
+        .do-radius-bot {
+          border-bottom: 1px solid #d2d2d7;
+          border-bottom-left-radius: 8px;
+          border-bottom-right-radius: 8px;
         }
 
         /* ── ITEM TABLE ── */
         .do-items-table {
           width: 100%;
-          border-collapse: collapse;
+          border-collapse: separate;
+          border-spacing: 0;
+          border: 1px solid #e5e5ea;
+          border-radius: 8px;
           font-size: 8pt;
           flex: 1;
+          overflow: hidden;
         }
         .do-items-table th,
         .do-items-table td {
-          border: 1px solid #000;
-          padding: 1mm 1.5mm;
+          padding: 0.5mm 2mm;
           vertical-align: top;
+          border-bottom: 1px solid #e5e5ea;
+          border-right: 1px solid #e5e5ea;
+        }
+        .do-items-table th:last-child,
+        .do-items-table td:last-child {
+          border-right: none;
+        }
+        .do-items-table tr:last-child td {
+          border-bottom: none;
         }
         .do-items-table th {
-          background: transparent;
-          font-weight: bold;
+          background: #fafafa;
+          font-weight: 600;
           text-align: center;
-          font-size: 8pt;
+          color: #515154;
           white-space: nowrap;
+          border-bottom: 1px solid #d2d2d7;
         }
         .do-items-table td.num {
           text-align: center;
         }
         .do-items-table .empty-row td {
-          height: 6mm;
+          height: 5mm;
+          border-bottom: 1px dashed #f5f5f7;
+        }
+        .do-items-table tr.empty-row:last-child td {
+          border-bottom: none;
         }
 
         /* Column widths */
         .do-col-no { width: 7mm; }
         .do-col-item { width: auto; }
-        .do-col-qty { width: 12mm; }
+        .do-col-qty { width: 14mm; }
         .do-col-nie { width: 36mm; }
-        .do-col-lot { width: 48mm; }
+        .do-col-lot { width: 44mm; }
 
         /* ── FOOTER ── */
         .do-footer {
-          margin-top: 2mm;
+          margin-top: 3mm;
           display: flex;
           justify-content: space-between;
           align-items: flex-end;
@@ -147,81 +218,125 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
         }
         .do-signatures {
           display: flex;
-          gap: 2mm;
+          gap: 4mm;
           width: 100%;
         }
         .do-sig-block {
           flex: 1;
           text-align: center;
-          border: 1px solid #000;
-          padding: 1mm 1mm 2mm 1mm;
+          border: 1px solid #d2d2d7;
+          border-radius: 8px;
+          padding: 2mm;
           font-size: 7.5pt;
+          background: #fafafa;
         }
         .do-sig-title {
-          font-weight: bold;
+          font-weight: 600;
           font-size: 7.5pt;
-          border-bottom: 1px solid #000;
-          padding-bottom: 1mm;
-          margin-bottom: 1mm;
+          border-bottom: 1px solid #d2d2d7;
+          padding-bottom: 1.5mm;
+          margin-bottom: 1.5mm;
+          color: #1d1d1f;
         }
         .do-sig-space {
-          height: 16mm;
+          height: 14mm;
         }
         .do-sig-date {
           font-size: 7pt;
-          border-top: 1px solid #000;
+          border-top: 1px solid #d2d2d7;
           padding-top: 1mm;
           margin-top: 1mm;
+          color: #86868b;
         }
 
         .do-desc-box {
-          border: 1px solid #000;
+          border: 1px solid #d2d2d7;
+          border-radius: 8px;
           min-width: 42mm;
-          padding: 1mm 2mm;
+          padding: 1.5mm 3mm;
           font-size: 7.5pt;
           align-self: stretch;
+          background: #fafafa;
         }
         .do-desc-title {
-          font-weight: bold;
+          font-weight: 600;
           font-size: 7.5pt;
           margin-bottom: 1mm;
+          color: #1d1d1f;
         }
       `}</style>
 
-      {/* ═══ HEADER ═══ */}
-      <div className="do-header">
-        <div className="do-header-left">
-          <div className="do-company">PT. SARANA MEGAMEDILAP SEJAHTERA</div>
+      {/* ═══ TOP SECTION ═══ */}
+      <div className="do-top-section">
+        <div className="do-top-left">
+          <div className="do-company">PT. SARANA MEGAMEDILAB SEJAHTERA</div>
           <div className="do-addr">
             PERUMAHAN TAMAN CIMANGGU<br />
-            BLOK V.1 NO. 32 RT. 01 / RW. 012<br />
+            BLOK V 1 NO. 32 RT. 01 / RW. 012<br />
             BOGOR - NPWP 66.500.624.3-404.000
           </div>
-        </div>
-        <div className="do-header-right">
-          <div className="do-title">Delivery Order</div>
-          <table className="do-meta-table">
+          
+          <table className="do-customer-table">
             <tbody>
-              <tr><td>Delivery Date</td><td>{dateStr}</td></tr>
-              <tr><td>Delivery No.</td><td>{doNo}</td></tr>
-              <tr><td>Ship Via</td><td></td></tr>
-              <tr><td>PO No.</td><td></td></tr>
+              <tr>
+                <td className="do-col-label" rowSpan={2}>Bill To</td>
+                <td className="do-col-colon" rowSpan={2}>:</td>
+                <td className="do-box-cell do-box-name do-radius-top">
+                  {client?.name || request.user_email || '-'}
+                </td>
+              </tr>
+              <tr>
+                <td className="do-box-cell do-box-addr" style={{ borderBottom: '1px solid #d2d2d7' }}>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                    {client?.address || '-'}
+                    {client?.phone ? `\nTelp: ${client.phone}` : ''}
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td className="do-col-label" rowSpan={2} style={{ paddingTop: '2.5mm' }}>Ship To</td>
+                <td className="do-col-colon" rowSpan={2} style={{ paddingTop: '2.5mm' }}>:</td>
+                <td className="do-box-cell do-box-name">
+                  {client?.name || request.user_email || '-'}
+                </td>
+              </tr>
+              <tr>
+                <td className="do-box-cell do-box-addr do-radius-bot">
+                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                    {client?.address || '-'}
+                    {client?.phone ? `\nTelp: ${client.phone}` : ''}
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* ═══ CUSTOMER ═══ */}
-      <div className="do-customer">
-        <div className="do-customer-block">
-          <div className="do-customer-label">Bill To :</div>
-          <div><strong>{client?.name || request.user_email || '-'}</strong></div>
-          {client?.phone && <div>Phone: {client.phone}</div>}
-        </div>
-        <div className="do-customer-block">
-          <div className="do-customer-label">Ship To :</div>
-          <div><strong>{client?.name || request.user_email || '-'}</strong></div>
-          {client?.phone && <div>Phone: {client.phone}</div>}
+        <div className="do-top-right">
+          <div className="do-title">Delivery Order</div>
+          <table className="do-meta-table">
+            <tbody>
+              <tr>
+                <td>
+                  <div className="do-meta-label">Delivery Date</div>
+                  <div className="do-meta-value">{dateStr}</div>
+                </td>
+                <td>
+                  <div className="do-meta-label">Delivery No.</div>
+                  <div className="do-meta-value">{doNo}</div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div className="do-meta-label">Ship Via</div>
+                  <div className="do-meta-value"></div>
+                </td>
+                <td>
+                  <div className="do-meta-label">Terms</div>
+                  <div className="do-meta-value">Net 30</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -241,9 +356,9 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
             <tr key={idx}>
               <td className="num">{idx + 1}</td>
               <td>{item.products?.name || item.product_id}</td>
-              <td className="num">{item.quantity}</td>
-              <td></td>
-              <td></td>
+              <td className="num">{item.quantity} {item.products?.unit?.toUpperCase() || '-'}</td>
+              <td>-</td>
+              <td>-</td>
             </tr>
           ))}
           {/* Fill empty rows */}
