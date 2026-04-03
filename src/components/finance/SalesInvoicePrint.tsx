@@ -12,7 +12,7 @@ interface SalesInvoicePrintProps {
 
 export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, client, invoiceNo }) => {
   const items = request.request_items || [];
-  const MAX_ROWS = 28;
+  const MAX_ROWS = 30;
 
   // Calculate totals
   const subTotal = items.reduce((sum, item) => {
@@ -250,14 +250,16 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
 
         /* ── FOOTER ── */
         .si-footer {
-          margin-top: 3mm;
+          margin-top: 2mm;
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
+          align-items: stretch;
           gap: 4mm;
         }
         .si-footer-left {
           flex: 1;
+          display: flex;
+          flex-direction: column;
           font-size: 8pt;
         }
         .si-say-box {
@@ -265,7 +267,7 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
           border-radius: 8px;
           padding: 1.5mm 3mm;
           margin-bottom: 1mm;
-          min-height: 7mm;
+          min-height: 5mm;
           font-size: 8pt;
           font-style: italic;
           background: #fafafa;
@@ -285,7 +287,7 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
         .si-signatures {
           display: flex;
           gap: 14mm;
-          margin-top: 8mm;
+          margin-top: auto;
           font-size: 8pt;
         }
         .si-sig-block {
@@ -294,8 +296,8 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
         .si-sig-line {
           width: 28mm;
           border-bottom: 1px solid #86868b;
-          margin-bottom: 1.5mm;
-          height: 14mm;
+          margin-bottom: 1mm;
+          height: 9mm;
         }
         .si-sig-label {
           font-weight: 600;
@@ -366,7 +368,6 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
                 <td className="si-box-cell si-box-addr" style={{ borderBottom: '1px solid #d2d2d7' }}>
                   <div style={{ whiteSpace: 'pre-wrap' }}>
                     {client?.address || '-'}
-                    {client?.phone ? `\nTelp: ${client.phone}` : ''}
                   </div>
                 </td>
               </tr>
@@ -381,7 +382,6 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
                 <td className="si-box-cell si-box-addr si-radius-bot">
                   <div style={{ whiteSpace: 'pre-wrap' }}>
                     {client?.address || '-'}
-                    {client?.phone ? `\nTelp: ${client.phone}` : ''}
                   </div>
                 </td>
               </tr>

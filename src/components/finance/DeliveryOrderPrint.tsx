@@ -12,7 +12,7 @@ interface DeliveryOrderPrintProps {
 
 export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request, client, deliveryNo }) => {
   const items = request.request_items || [];
-  const MAX_ROWS = 35;
+  const MAX_ROWS = 30;
 
   const dateStr = formatDateTime(request.created_at).split(' ')[0];
   const doNo = deliveryNo || request.id.slice(0, 6).toUpperCase();
@@ -41,11 +41,19 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 4mm;
+          margin-bottom: 2mm;
         }
         .do-top-left {
           flex: 1;
           padding-right: 4mm;
+        }
+        .do-company-box {
+          border: 1px solid #d2d2d7;
+          border-radius: 8px;
+          padding: 1.5mm 3mm;
+          margin-bottom: 2mm;
+          width: fit-content;
+          background: #fafafa;
         }
         .do-company {
           font-weight: 600;
@@ -114,7 +122,7 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
           width: 100%;
           border-collapse: separate;
           border-spacing: 0;
-          margin-bottom: 4mm;
+          margin-bottom: 2mm;
           font-size: 8.5pt;
         }
         .do-customer-table td {
@@ -239,7 +247,7 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
           color: #1d1d1f;
         }
         .do-sig-space {
-          height: 14mm;
+          height: 10mm;
         }
         .do-sig-date {
           font-size: 7pt;
@@ -269,11 +277,13 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
       {/* ═══ TOP SECTION ═══ */}
       <div className="do-top-section">
         <div className="do-top-left">
-          <div className="do-company">PT. SARANA MEGAMEDILAB SEJAHTERA</div>
-          <div className="do-addr">
-            PERUMAHAN TAMAN CIMANGGU<br />
-            BLOK V 1 NO. 32 RT. 01 / RW. 012<br />
-            BOGOR - NPWP 66.500.624.3-404.000
+          <div className="do-company-box">
+            <div className="do-company">PT. SARANA MEGAMEDILAB SEJAHTERA</div>
+            <div className="do-addr">
+              PERUMAHAN TAMAN CIMANGGU<br />
+              BLOK V 1 NO. 32 RT. 01 / RW. 012<br />
+              BOGOR - NPWP 66.500.624.3-404.000
+            </div>
           </div>
           
           <table className="do-customer-table">
@@ -289,7 +299,6 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
                 <td className="do-box-cell do-box-addr" style={{ borderBottom: '1px solid #d2d2d7' }}>
                   <div style={{ whiteSpace: 'pre-wrap' }}>
                     {client?.address || '-'}
-                    {client?.phone ? `\nTelp: ${client.phone}` : ''}
                   </div>
                 </td>
               </tr>
@@ -304,7 +313,6 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
                 <td className="do-box-cell do-box-addr do-radius-bot">
                   <div style={{ whiteSpace: 'pre-wrap' }}>
                     {client?.address || '-'}
-                    {client?.phone ? `\nTelp: ${client.phone}` : ''}
                   </div>
                 </td>
               </tr>
