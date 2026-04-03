@@ -45,7 +45,9 @@ export const SalesInvoicePrint: React.FC<SalesInvoicePrintProps> = ({ request, c
     return numToWords(Math.floor(n / 1000000000)) + ' milyar ' + numToWords(n % 1000000000);
   };
 
-  const sayAmount = numToWords(Math.round(totalInvoice)).trim().replace(/\s+/g, ' ');
+  const sayAmount = totalInvoice > 0
+    ? (numToWords(Math.round(totalInvoice)).trim().replace(/\s+/g, ' ') + ' rupiah').replace(/^./, c => c.toUpperCase())
+    : 'Nol rupiah';
   const dateStr = formatDateTime(request.created_at).split(' ')[0];
   const invNo = invoiceNo || request.id.slice(0, 6).toUpperCase();
 

@@ -43,7 +43,26 @@ export default function FinanceDashboard() {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentRef, setPaymentRef] = useState('');
   const [printRequest, setPrintRequest] = useState<DbRequest | null>(null);
+  const [printMode, setPrintMode] = useState<'invoice' | 'do'>('invoice');
   const printTriggerRef = useRef(false);
+  const originalTitleRef = useRef('');
+
+  // Build PDF filename from request data
+  const buildPdfTitle = useCallback((request: DbRequest, mode: 'invoice' | 'do') => {
+    const clientProfile = clients.find(c => c.email === request.user_email);
+    const clientName = (clientProfile?.name || request.user_email || 'Unknown').replace(/[^a-zA-Z0-9\s]/g, '').trim();
+    const docNo = request.id.slice(0, 6).toUpperCase();
+    const now = new Date(request.created_at);
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const dateStr = `${dd}-${mm}-${yyyy}`;
+
+    if (mode === 'invoice') {
+      return `Invoice - ${clientName} - INV-${docNo} - ${dateStr}`;
+    }
+    return `DO - ${clientName} - DO-${docNo} - ${dateStr}`;
+  }, [clients]);
 
   // Auto-trigger print after render
   useEffect(() => {
@@ -54,11 +73,27 @@ export default function FinanceDashboard() {
       }, 400);
       return () => clearTimeout(timer);
     }
-  }, [printRequest]);
+  }, [printRequest, printMode]);
 
-  const handlePrintDocs = useCallback((request: DbRequest) => {
+  const handlePrintInvoice = useCallback((request: DbRequest) => {
+    originalTitleRef.current = document.title;
+    document.title = buildPdfTitle(request, 'invoice');
+    setPrintMode('invoice');
     setPrintRequest(request);
     printTriggerRef.current = true;
+  }, [buildPdfTitle]);
+
+  const handlePrintDO = useCallback((request: DbRequest) => {
+    originalTitleRef.current = document.title;
+    document.title = buildPdfTitle(request, 'do');
+    setPrintMode('do');
+    setPrintRequest(request);
+    printTriggerRef.current = true;
+  }, [buildPdfTitle]);
+
+  const handleClosePrint = useCallback(() => {
+    setPrintRequest(null);
+    document.title = originalTitleRef.current || 'SMS Laboratory Systems';
   }, []);
 
   // ---------- Auth guard ----------
@@ -349,20 +384,29 @@ export default function FinanceDashboard() {
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => handlePrintDocs(request)}
-                      className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                      onClick={() => handlePrintInvoice(request)}
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                     >
                       <span className="flex items-center gap-1.5">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                        Print Invoice &amp; DO
+                        Print Invoice
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => handlePrintDO(request)}
+                      className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Print DO
                       </span>
                     </button>
                     <button
                       onClick={() => handleGenerateInvoice(request)}
                       disabled={processingId === request.id}
-                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                      className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                     >
                       {processingId === request.id ? 'Generating...' : 'Generate Invoice'}
                     </button>
@@ -550,18 +594,20 @@ export default function FinanceDashboard() {
       {/* ===== Print Overlay ===== */}
       {printRequest && (
         <div className="print-overlay fixed inset-0 z-[9999] bg-gray-400 overflow-auto">
-          {/* Close button + toolbar - hidden during print */}
+          {/* Toolbar - hidden during print */}
           <div className="no-print sticky top-0 z-10 flex items-center justify-between bg-gray-900 px-6 py-3 shadow-lg">
-            <p className="text-white text-sm font-semibold">🖨️ Print Preview — Sales Invoice & Delivery Order</p>
+            <p className="text-white text-sm font-semibold">
+              🖨️ Print Preview — {printMode === 'invoice' ? 'Sales Invoice' : 'Delivery Order'}
+            </p>
             <div className="flex gap-3">
               <button
                 onClick={() => window.print()}
                 className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
               >
-                🖨️ Print
+                🖨️ Print / Download PDF
               </button>
               <button
-                onClick={() => setPrintRequest(null)}
+                onClick={() => handleClosePrint()}
                 className="rounded-lg bg-white/10 px-4 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition-colors"
               >
                 ✕ Close
@@ -569,20 +615,19 @@ export default function FinanceDashboard() {
             </div>
           </div>
 
-          {/* Page 1: Sales Invoice */}
+          {/* Single document based on printMode */}
           <div className="print-page print-preview-page">
-            <SalesInvoicePrint
-              request={printRequest}
-              client={clients.find(c => c.email === printRequest.user_email)}
-            />
-          </div>
-
-          {/* Page 2: Delivery Order */}
-          <div className="print-page print-preview-page">
-            <DeliveryOrderPrint
-              request={printRequest}
-              client={clients.find(c => c.email === printRequest.user_email)}
-            />
+            {printMode === 'invoice' ? (
+              <SalesInvoicePrint
+                request={printRequest}
+                client={clients.find(c => c.email === printRequest.user_email)}
+              />
+            ) : (
+              <DeliveryOrderPrint
+                request={printRequest}
+                client={clients.find(c => c.email === printRequest.user_email)}
+              />
+            )}
           </div>
         </div>
       )}
@@ -590,36 +635,61 @@ export default function FinanceDashboard() {
       {/* Print Styles */}
       <style jsx global>{`
         @media print {
-          /* Hide EVERYTHING */
+          /* Reset page */
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
-          }
-          body > * { display: none !important; }
-          
-          /* Show only the print overlay */
-          .print-overlay {
-            display: block !important;
-            position: static !important;
             overflow: visible !important;
-            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
-          .print-overlay > .no-print { display: none !important; }
-          
-          /* Each page is exactly A4 */
+
+          /* Hide ALL elements by default */
+          body * {
+            visibility: hidden !important;
+          }
+
+          /* Show print overlay and ALL its children */
+          .print-overlay,
+          .print-overlay * {
+            visibility: visible !important;
+          }
+
+          /* But hide the toolbar inside print overlay */
+          .no-print,
+          .no-print * {
+            display: none !important;
+            visibility: hidden !important;
+          }
+
+          /* Position print overlay to fill the page */
+          .print-overlay {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 210mm !important;
+            background: white !important;
+            overflow: visible !important;
+            z-index: 99999 !important;
+          }
+
+          /* Each print-page = one A4 page */
           .print-page {
             page-break-after: always;
             break-after: page;
-            width: 210mm;
-            height: 297mm;
-            overflow: hidden;
+            width: 210mm !important;
+            height: 297mm !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
           }
           .print-page:last-child {
             page-break-after: avoid;
           }
 
-          /* Zero margin — documents have their own padding */
+          /* Zero margin — documents have their own internal padding */
           @page {
             size: A4;
             margin: 0;
