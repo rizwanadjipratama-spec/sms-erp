@@ -280,7 +280,7 @@ export const requestsDb = {
   async getById(id: string): Promise<DbRequest | null> {
     const { data } = await supabase
       .from('requests')
-      .select('*, request_items(*, products(name, image_url, unit)), branch:branches(name, code)')
+      .select('*, request_items(*, products(name, image_url, unit, sku, nie, lot_number, expiry_date)), branch:branches(name, code)')
       .eq('id', id)
       .single();
     return data;
@@ -289,7 +289,7 @@ export const requestsDb = {
   async getByUser(userId: string, pagination?: PaginationParams): Promise<{ data: DbRequest[]; count: number }> {
     let query = supabase
       .from('requests')
-      .select('*, request_items(*, products(name, image_url, unit)), branch:branches(name, code)', { count: 'exact' })
+      .select('*, request_items(*, products(name, image_url, unit, sku, nie, lot_number, expiry_date)), branch:branches(name, code)', { count: 'exact' })
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (pagination) query = paginate(query, pagination) as typeof query;
@@ -301,7 +301,7 @@ export const requestsDb = {
     const statuses = Array.isArray(status) ? status : [status];
     let query = supabase
       .from('requests')
-      .select('*, request_items(*, products(name, image_url, unit)), branch:branches(name, code)', { count: 'exact' })
+      .select('*, request_items(*, products(name, image_url, unit, sku, nie, lot_number, expiry_date)), branch:branches(name, code)', { count: 'exact' })
       .in('status', statuses)
       .order('created_at', { ascending: false });
     if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
@@ -313,7 +313,7 @@ export const requestsDb = {
   async getAll(pagination?: PaginationParams, branchId?: string): Promise<{ data: DbRequest[]; count: number }> {
     let query = supabase
       .from('requests')
-      .select('*, request_items(*, products(name, image_url, unit)), branch:branches(name, code)', { count: 'exact' })
+      .select('*, request_items(*, products(name, image_url, unit, sku, nie, lot_number, expiry_date)), branch:branches(name, code)', { count: 'exact' })
       .order('created_at', { ascending: false });
     if (branchId && branchId !== 'ALL') query = query.eq('branch_id', branchId);
     if (pagination) query = paginate(query, pagination) as typeof query;

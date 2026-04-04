@@ -144,7 +144,9 @@ export default function MarketingDashboard() {
       return items.reduce((sum, item) => {
         const price = priceMap.get(item.product_id);
         if (!price) return sum;
-        const unitPrice = clientType === 'kso' ? price.price_kso : price.price_regular;
+        const unitPrice = clientType === 'kso' ? price.price_kso
+          : clientType === 'cost_per_test' ? price.price_cost_per_test
+          : price.price_regular;
         
         const discPct = itemDiscMap[item.id] || 0;
         const discountedUnitPrice = unitPrice * (1 - discPct / 100);
@@ -188,7 +190,11 @@ export default function MarketingDashboard() {
           const { supabase } = await import('@/lib/db/client');
           for (const item of request.request_items) {
             const price = priceMap.get(item.product_id);
-            const unitPrice = price ? (selectedType === 'kso' ? price.price_kso : price.price_regular) : 0;
+            const unitPrice = price
+              ? (selectedType === 'kso' ? price.price_kso
+                : selectedType === 'cost_per_test' ? price.price_cost_per_test
+                : price.price_regular)
+              : 0;
             const pct = itemDiscMap[item.id] || 0;
             await supabase.from('request_items').update({
               price_at_order: unitPrice,

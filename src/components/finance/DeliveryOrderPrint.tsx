@@ -360,15 +360,24 @@ export const DeliveryOrderPrint: React.FC<DeliveryOrderPrintProps> = ({ request,
           </tr>
         </thead>
         <tbody>
-          {items.map((item, idx) => (
-            <tr key={idx}>
-              <td className="num">{idx + 1}</td>
-              <td>{item.products?.name || item.product_id}</td>
-              <td className="num">{item.quantity} {item.products?.unit?.toUpperCase() || '-'}</td>
-              <td>-</td>
-              <td>-</td>
-            </tr>
-          ))}
+          {items.map((item, idx) => {
+            const nie = item.products?.nie || item.products?.sku || '-';
+            const lot = item.products?.lot_number || '-';
+            const ed = item.products?.expiry_date
+              ? new Date(item.products.expiry_date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+              : '-';
+            const kemasan = item.products?.unit?.toUpperCase() || '-';
+
+            return (
+              <tr key={idx}>
+                <td className="num">{idx + 1}</td>
+                <td>{item.products?.name || item.product_id}</td>
+                <td className="num">{item.quantity} {kemasan}</td>
+                <td>{nie}</td>
+                <td>{lot} / {ed} / {kemasan}</td>
+              </tr>
+            );
+          })}
           {/* Fill empty rows */}
           {Array.from({ length: emptyRows }).map((_, i) => (
             <tr key={`empty-${i}`} className="empty-row">

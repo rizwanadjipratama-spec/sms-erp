@@ -27,6 +27,9 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
     unit: 'pcs',
     stock: 0,
     min_stock: 5,
+    nie: '',
+    lot_number: '',
+    expiry_date: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | undefined>();
@@ -75,6 +78,9 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
           unit: formData.unit,
           stock: formData.stock,
           min_stock: formData.min_stock,
+          nie: formData.nie.trim() || undefined,
+          lot_number: formData.lot_number.trim() || undefined,
+          expiry_date: formData.expiry_date || undefined,
         },
         imageFile
       );
@@ -222,6 +228,56 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
               className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium resize-none placeholder:text-apple-text-secondary/40"
               placeholder="Technical specifications or product details..."
             />
+          </div>
+        </div>
+
+        {/* Regulatory & Tracking Card */}
+        <div className="bg-white rounded-2xl border border-apple-gray-border shadow-sm p-6 sm:p-8 space-y-6">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-apple-text-secondary">
+            Regulatory & Batch Tracking
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* NIE / AKL */}
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-2 ml-1">
+                NIE / AKL
+              </label>
+              <input
+                type="text"
+                value={formData.nie}
+                onChange={(e) => updateField('nie', e.target.value)}
+                className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium placeholder:text-apple-text-secondary/40"
+                placeholder="e.g. AKL 20101234567"
+              />
+            </div>
+
+            {/* LOT Number */}
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-2 ml-1">
+                LOT Number
+              </label>
+              <input
+                type="text"
+                value={formData.lot_number}
+                onChange={(e) => updateField('lot_number', e.target.value)}
+                className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium placeholder:text-apple-text-secondary/40"
+                placeholder="e.g. LOT-2026-A1"
+              />
+            </div>
+
+            {/* Expiry Date */}
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-2 ml-1">
+                Expiry Date
+              </label>
+              <input
+                type="date"
+                value={formData.expiry_date}
+                onChange={(e) => updateField('expiry_date', e.target.value)}
+                className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium"
+              />
+            </div>
           </div>
         </div>
 

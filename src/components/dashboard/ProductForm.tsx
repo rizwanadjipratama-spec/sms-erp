@@ -29,6 +29,9 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
     stock: product?.stock ?? 0,
     min_stock: product?.min_stock ?? 5,
     is_active: product?.is_active ?? true,
+    nie: product?.nie || '',
+    lot_number: product?.lot_number || '',
+    expiry_date: product?.expiry_date || '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | undefined>();
@@ -78,6 +81,9 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
           stock: formData.stock,
           min_stock: formData.min_stock,
           is_active: formData.is_active,
+          nie: formData.nie.trim() || undefined,
+          lot_number: formData.lot_number.trim() || undefined,
+          expiry_date: formData.expiry_date || undefined,
         },
         imageFile
       );
@@ -217,6 +223,45 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
                 className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium resize-none placeholder:text-apple-text-secondary/40"
                 placeholder="Technical specs or details..."
               />
+            </div>
+
+            {/* NIE / AKL + LOT + Expiry Date */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
+                  NIE / AKL
+                </label>
+                <input
+                  type="text"
+                  value={formData.nie}
+                  onChange={(e) => updateField('nie', e.target.value)}
+                  className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium placeholder:text-apple-text-secondary/40"
+                  placeholder="AKL number"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
+                  LOT Number
+                </label>
+                <input
+                  type="text"
+                  value={formData.lot_number}
+                  onChange={(e) => updateField('lot_number', e.target.value)}
+                  className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium placeholder:text-apple-text-secondary/40"
+                  placeholder="LOT-2026-A1"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
+                  Expiry Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.expiry_date}
+                  onChange={(e) => updateField('expiry_date', e.target.value)}
+                  className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium"
+                />
+              </div>
             </div>
 
             {/* Unit + Stock + Min Stock */}

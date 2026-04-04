@@ -242,6 +242,9 @@ export interface Product {
   stock: number;
   min_stock: number;
   unit: string;
+  nie?: string;
+  lot_number?: string;
+  expiry_date?: string;
   branch_id?: string;
   is_active: boolean;
   is_priced: boolean;
@@ -320,7 +323,7 @@ export interface RequestItem {
 }
 
 export interface RequestItemWithProduct extends RequestItem {
-  products?: Pick<Product, 'name' | 'image_url' | 'unit'>;
+  products?: Pick<Product, 'name' | 'image_url' | 'unit' | 'sku' | 'nie' | 'lot_number' | 'expiry_date'>;
 }
 
 export interface Invoice {
