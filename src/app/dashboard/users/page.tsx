@@ -381,7 +381,19 @@ export default function UsersManagementPage() {
                         >Centang Semua</button>
                         <span className="text-gray-300">|</span>
                         <button
-                          onClick={() => handleBulkToggle(user.id, [], false)}
+                          onClick={async () => {
+                            const defaults = DEFAULT_FEATURES_BY_ROLE[user.role] || [];
+                            setSaving(user.id);
+                            try {
+                              const { error } = await supabase.from('profiles').update({ features: defaults }).eq('id', user.id);
+                              if (error) throw error;
+                              setUsers(prev => prev.map(u => u.id === user.id ? { ...u, features: defaults } : u));
+                            } catch (err) {
+                              alert(err instanceof Error ? err.message : 'Failed to reset features');
+                            } finally {
+                              setSaving(null);
+                            }
+                          }}
                           disabled={saving === user.id}
                           className="text-[10px] font-bold text-red-500 hover:underline disabled:opacity-50"
                         >Reset ke Default</button>
