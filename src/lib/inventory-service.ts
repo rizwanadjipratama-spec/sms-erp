@@ -63,12 +63,13 @@ async function hasPreparationLogs(orderId: string) {
   return false;
 }
 
-async function insertInventoryLog(log: Omit<InventoryLog, 'id' | 'created_at'>) {
+async function insertInventoryLog(log: Omit<InventoryLog, 'id' | 'created_at' | 'product'>) {
   const { error } = await supabase.from('inventory_logs').insert({
     product_id: log.product_id,
     change: log.change,
     balance: log.balance,
     reason: log.reason,
+    movement_type: log.movement_type,
     created_by: log.created_by || null,
   });
 
@@ -216,6 +217,7 @@ export const inventoryService = {
             product_id: item.product_id,
             change: -item.quantity,
             balance: 0,
+            movement_type: 'SALES_OUT',
             reason: 'request_preparing',
             created_by: actor.id,
           });
@@ -326,6 +328,7 @@ export const inventoryService = {
           product_id: product.id,
           change,
           balance: 0,
+          movement_type: 'ADJUSTMENT',
           reason,
           created_by: actor.id,
         });

@@ -33,6 +33,20 @@ export const financeService = {
     };
   },
 
+  async getDashboardRequests(branchId?: string) {
+    const res = await requestsDb.getByStatus(['approved', 'invoice_ready'], undefined, branchId);
+    return res.data;
+  },
+
+  async getDashboardInvoices(branchId?: string) {
+    const res = await invoicesDb.getAll({ branchId });
+    return res.data;
+  },
+
+  async getDashboardClosings() {
+    return monthlyClosingDb.getAll();
+  },
+
   async createInvoice(orderId: string, actor: Actor): Promise<Invoice> {
     // Check if invoice already exists
     const existing = await invoicesDb.getByOrderId(orderId);

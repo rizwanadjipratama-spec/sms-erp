@@ -21,7 +21,7 @@ export function PaymentMethodsManager({ profileId }: { profileId: string }) {
   }, [profileId]);
 
   const fetchMethods = async () => {
-    if (!profileId) return;
+    if (!profileId) { setLoading(false); return; }
     try {
       const { data, error } = await supabase
         .from('user_payment_methods')
@@ -29,10 +29,10 @@ export function PaymentMethodsManager({ profileId }: { profileId: string }) {
         .eq('user_id', profileId)
         .order('created_at', { ascending: false });
         
-      if (error) throw error;
+      if (error) throw new Error(error.message || 'Failed to load payment methods');
       setMethods(data || []);
-    } catch (err: any) {
-      console.error(err);
+    } catch (err: unknown) {
+      // Silently handle — payment methods are optional
     } finally {
       setLoading(false);
     }

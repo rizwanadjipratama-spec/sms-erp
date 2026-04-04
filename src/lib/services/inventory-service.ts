@@ -22,7 +22,6 @@ export const inventoryService = {
 
   async consumeStockForPreparing(request: DbRequest, actor: Actor): Promise<void> {
     if (!request.request_items?.length) {
-      // Fetch items if not included
       const full = await requestsDb.getById(request.id);
       if (!full?.request_items?.length) {
         throw new Error('No items found for this request');
@@ -30,19 +29,24 @@ export const inventoryService = {
       request = full;
     }
 
-    for (const item of request.request_items!) {
-      const newBalance = await productsDb.decrementStock(item.product_id, item.quantity);
+    // Decrement stock for all items concurrently (each RPC uses SELECT FOR UPDATE internally)
+    const balances = await Promise.all(
+      request.request_items!.map(item =>
+        productsDb.decrementStock(item.product_id, item.quantity)
+      )
+    );
 
-      await inventoryLogsDb.create({
-        product_id: item.product_id,
-        order_id: request.id,
-        change: -item.quantity,
-        balance: newBalance,
-        movement_type: 'SALES_OUT',
-        reason: `Stock consumed for order ${request.id}`,
-        created_by: actor.id,
-      });
-    }
+    // Batch-insert all inventory logs in a single query
+    const logs = request.request_items!.map((item, idx) => ({
+      product_id: item.product_id,
+      order_id: request.id,
+      change: -item.quantity,
+      balance: balances[idx],
+      movement_type: 'SALES_OUT' as const,
+      reason: `Stock consumed for order ${request.id}`,
+      created_by: actor.id,
+    }));
+    await inventoryLogsDb.createMany(logs);
 
     await activityLogsDb.create({
       user_id: actor.id,

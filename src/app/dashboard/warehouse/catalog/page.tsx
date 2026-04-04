@@ -114,7 +114,7 @@ export default function CatalogDashboard() {
       try {
         const actor = await getActor();
         if (editingProduct) {
-          await productService.update(editingProduct.id, data, imageFile, actor);
+          await productService.update(editingProduct.id, data as any, imageFile, actor);
         } else {
           await productService.create(
             { ...data, branch_id: activeBranchId } as any,

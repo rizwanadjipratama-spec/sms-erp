@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
@@ -28,20 +29,60 @@ export default function FinanceDashboard() {
   const { activeBranchId } = useBranch();
   const router = useRouter();
 
-  const [requests, setRequests] = useState<DbRequest[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [closings, setClosings] = useState<MonthlyClosing[]>([]);
-  const [fakturTasks, setFakturTasks] = useState<FakturTask[]>([]);
-  const [fakturUsers, setFakturUsers] = useState<Profile[]>([]);
-  const [clients, setClients] = useState<Profile[]>([]);
   const [tab, setTab] = useState<TabKey>('queue');
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [closingNotes, setClosingNotes] = useState('');
   const [paymentModal, setPaymentModal] = useState<Invoice | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentRef, setPaymentRef] = useState('');
+
+
+  // ---------- Auth guard ----------
+  useEffect(() => {
+    if (!loading && !profile) router.push('/login');
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/finance')) {
+      router.replace(authService.getRoleRedirect(profile.role));
+    }
+  }, [loading, profile, router]);
+
+  // ---------- Data fetching (SWR) ----------
+  const fetchProfiles = async () => {
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('role', ['faktur', 'client'])
+      .eq('is_active', true);
+    return profilesData || [];
+  };
+
+  const { data: requests = [], mutate: refreshRequests, error: errorReq } = useSWR(
+    profile ? ['finance_requests', activeBranchId] : null,
+    () => financeService.getDashboardRequests(activeBranchId)
+  );
+
+  const { data: invoices = [], mutate: refreshInvoices, error: errorInv } = useSWR(
+    profile ? ['finance_invoices', activeBranchId] : null,
+    () => financeService.getDashboardInvoices(activeBranchId)
+  );
+
+  const { data: closings = [], mutate: refreshClosings, error: errorClose } = useSWR(
+    profile ? ['finance_closings', activeBranchId] : null,
+    () => financeService.getDashboardClosings()
+  );
+
+  const { data: fakturTasks = [], mutate: refreshFakturTasks } = useSWR(
+    profile ? ['finance_faktur_tasks'] : null,
+    () => fakturService.getAllTasks()
+  );
+
+  const { data: profilesData = [] } = useSWR(
+    profile ? ['finance_profiles'] : null,
+    fetchProfiles
+  );
+
+  const fakturUsers = useMemo(() => profilesData.filter(p => p.role === 'faktur'), [profilesData]);
+  const clients = useMemo(() => profilesData.filter(p => p.role === 'client'), [profilesData]);
+
   const [printRequest, setPrintRequest] = useState<DbRequest | null>(null);
   const [printMode, setPrintMode] = useState<'invoice' | 'do'>('invoice');
   const printTriggerRef = useRef(false);
@@ -96,68 +137,35 @@ export default function FinanceDashboard() {
     document.title = originalTitleRef.current || 'SMS Laboratory Systems';
   }, []);
 
-  // ---------- Auth guard ----------
-  useEffect(() => {
-    if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile, '/dashboard/finance')) {
-      router.replace(authService.getRoleRedirect(profile.role));
-    }
-  }, [loading, profile, router]);
+  const fetching = !requests.length && !invoices.length && !closings.length && !errorReq && !errorInv;
+  const error = errorReq || errorInv || errorClose;
 
-  // ---------- Data fetching ----------
   const refreshAll = useCallback(async () => {
-    if (!profile) return;
-    setFetching(true);
-    setError(null);
-    try {
-      const [dashboard, fTasks] = await Promise.all([
-        financeService.getDashboard(activeBranchId),
-        fakturService.getAllTasks()
-      ]);
-      setRequests(dashboard.requests);
-      setInvoices(dashboard.invoices);
-      setClosings(dashboard.closings);
-      setFakturTasks(fTasks);
-
-      // Lazily fetch staff/clients for the dispatch assigner to prevent heavy load if they don't open it
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('role', ['faktur', 'client'])
-        .eq('is_active', true);
-      
-      if (profilesData) {
-        setFakturUsers(profilesData.filter(p => p.role === 'faktur'));
-        setClients(profilesData.filter(p => p.role === 'client'));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load finance data');
-    } finally {
-      setFetching(false);
-    }
-  }, [profile, activeBranchId]);
-
-  useEffect(() => {
-    if (profile) refreshAll();
-  }, [profile, refreshAll, activeBranchId]);
+    await Promise.all([
+      refreshRequests(),
+      refreshInvoices(),
+      refreshClosings(),
+      refreshFakturTasks()
+    ]);
+  }, [refreshRequests, refreshInvoices, refreshClosings, refreshFakturTasks]);
 
   // ---------- Realtime subscriptions ----------
-  useRealtimeTable('requests', undefined, refreshAll, {
+  useRealtimeTable('requests', undefined, () => { refreshRequests(); }, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
 
-  useRealtimeTable('invoices', undefined, refreshAll, {
+  useRealtimeTable('invoices', undefined, () => { refreshInvoices(); }, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
 
-  useRealtimeTable('monthly_closing', undefined, refreshAll, {
+  useRealtimeTable('monthly_closing', undefined, () => { refreshClosings(); }, {
     enabled: Boolean(profile),
     debounceMs: 300,
   });
 
-  useRealtimeTable('faktur_tasks', undefined, refreshAll, {
+  useRealtimeTable('faktur_tasks', undefined, () => { refreshFakturTasks(); }, {
     enabled: Boolean(profile),
     debounceMs: 300,
   });
@@ -249,6 +257,7 @@ export default function FinanceDashboard() {
       await financeService.runMonthlyClosing(
         now.getMonth() + 1,
         now.getFullYear(),
+        activeBranchId,
         { id: profile.id, email: profile.email, role }
       );
       setClosingNotes('');

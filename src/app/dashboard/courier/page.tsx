@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
 import { deliveryService, authService } from '@/lib/services';
-import { requireAuthUser } from '@/lib/db';
+import { requireAuthUser, requestsDb, deliveryLogsDb } from '@/lib/db';
 import { formatDateTime, formatRelative, formatOrderId } from '@/lib/format-utils';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -84,35 +84,55 @@ export default function CourierDashboard() {
     return { id: user.id, email: user.email ?? profile?.email, role };
   }, [profile, role]);
 
-  // Fetch data
+  const refreshOrders = useCallback(async () => {
+    if (!profile) return;
+    try {
+      const activeOrders = await requestsDb.getByStatus(['ready', 'on_delivery', 'delivered']);
+      const courierOrders = activeOrders.data.filter(
+        (r: DbRequest) => r.assigned_courier_id === profile.id || (!r.assigned_courier_id && !r.assigned_technician_id && r.status === 'ready')
+      );
+      setOrders(courierOrders);
+    } catch (err) {
+      console.error('Failed to load courier orders', err);
+    }
+  }, [profile]);
+
+  const refreshLogs = useCallback(async () => {
+    if (!profile) return;
+    try {
+      const logs = await deliveryLogsDb.getByCourier(profile.id);
+      setDeliveryLogs(logs);
+    } catch (err) {
+      console.error('Failed to load delivery logs', err);
+    }
+  }, [profile]);
+
   const refresh = useCallback(async () => {
     if (!profile) return;
     setFetching(true);
     setError(null);
     try {
-      const data = await deliveryService.getCourierDashboard(profile.id);
-      setOrders(data.orders);
-      setDeliveryLogs(data.deliveryLogs);
+      await Promise.all([refreshOrders(), refreshLogs()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard');
     } finally {
       setFetching(false);
     }
-  }, [profile]);
+  }, [profile, refreshOrders, refreshLogs]);
 
   useEffect(() => {
     if (profile) refresh();
   }, [profile, refresh]);
 
   // Realtime
-  useRealtimeTable('requests', undefined, refresh, {
+  useRealtimeTable('requests', undefined, refreshOrders, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
   useRealtimeTable(
     'delivery_logs',
     profile?.id ? `courier_id=eq.${profile.id}` : undefined,
-    refresh,
+    refreshLogs,
     { enabled: Boolean(profile?.id), debounceMs: 250 },
   );
 

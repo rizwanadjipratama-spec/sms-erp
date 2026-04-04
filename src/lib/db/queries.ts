@@ -68,6 +68,15 @@ export const profilesDb = {
     return data;
   },
 
+  async getByEmails(emails: string[]): Promise<Profile[]> {
+    if (!emails.length) return [];
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('email', emails);
+    return data ?? [];
+  },
+
   async getByRole(role: UserRole): Promise<Profile[]> {
     const { data } = await supabase
       .from('profiles')
@@ -501,6 +510,12 @@ export const inventoryLogsDb = {
     return throwOnError(
       await supabase.from('inventory_logs').insert(log).select('*').single()
     );
+  },
+
+  async createMany(logs: Omit<InventoryLog, 'id' | 'created_at' | 'product'>[]): Promise<void> {
+    if (!logs.length) return;
+    const { error } = await supabase.from('inventory_logs').insert(logs);
+    if (error) throw new Error(error.message);
   },
 
   async getRecent(limit: number = 50, branchId?: string): Promise<InventoryLog[]> {
@@ -986,6 +1001,29 @@ export const analyticsDb = {
   async getTechnicianPerformance(): Promise<{ technician_id: string; technician_name: string; total_deliveries: number; successful_deliveries: number; avg_delivery_hours: number }[]> {
     const { data } = await supabase
       .from('v_technician_performance')
+      .select('*');
+    return data ?? [];
+  },
+
+  async getDashboardStats(): Promise<any> {
+    const { data } = await supabase
+      .from('v_dashboard_stats')
+      .select('*')
+      .limit(1)
+      .single();
+    return data ?? null;
+  },
+
+  async getEmployeePerformance(): Promise<any[]> {
+    const { data } = await supabase
+      .from('v_employee_performance')
+      .select('*');
+    return data ?? [];
+  },
+
+  async getDepartmentStats(): Promise<any[]> {
+    const { data } = await supabase
+      .from('v_department_stats')
       .select('*');
     return data ?? [];
   },

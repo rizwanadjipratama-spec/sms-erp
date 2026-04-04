@@ -77,11 +77,7 @@ export default function MarketingDashboard() {
       const uniqueEmails = [...new Set(emails)];
 
       if (uniqueEmails.length > 0) {
-        const profiles: Profile[] = [];
-        for (const email of uniqueEmails) {
-          const p = await profilesDb.getByEmail(email);
-          if (p) profiles.push(p);
-        }
+        const profiles = await profilesDb.getByEmails(uniqueEmails);
 
         const nextProfiles = profiles.reduce<Record<string, Profile>>((acc, p) => {
           acc[p.email] = p;
@@ -115,17 +111,68 @@ export default function MarketingDashboard() {
     }
   }, [profile, activeBranchId]);
 
+  const refreshRequests = useCallback(async () => {
+    if (!profile) return;
+    try {
+      const requestsRes = await requestsDb.getByStatus(['submitted'], undefined, activeBranchId);
+      const orders = requestsRes.data;
+      setRequests(orders);
+
+      const emails = orders.map((r) => r.user_email).filter((e): e is string => Boolean(e));
+      const uniqueEmails = [...new Set(emails)];
+
+      if (uniqueEmails.length > 0) {
+        const ObjectProfiles = await profilesDb.getByEmails(uniqueEmails);
+        const nextProfiles = ObjectProfiles.reduce<Record<string, Profile>>((acc, p) => {
+          acc[p.email] = p;
+          return acc;
+        }, {});
+        setClientProfiles(nextProfiles);
+
+        setPricingModes(orders.reduce<Record<string, ClientType>>((acc, r) => {
+          acc[r.id] = r.user_email ? nextProfiles[r.user_email]?.client_type || 'regular' : 'regular';
+          return acc;
+        }, {}));
+      } else {
+        setClientProfiles({});
+        setPricingModes(orders.reduce<Record<string, ClientType>>((acc, r) => {
+          acc[r.id] = 'regular';
+          return acc;
+        }, {}));
+      }
+
+      setNotes(orders.reduce<Record<string, string>>((acc, r) => {
+        acc[r.id] = r.note || '';
+        return acc;
+      }, {}));
+    } catch (err) {
+      console.error('Failed to refresh requests', err);
+    }
+  }, [profile, activeBranchId]);
+
+  const refreshPrices = useCallback(async () => {
+    if (!profile) return;
+    try {
+      const allPrices = await priceListDb.getAll();
+      const nextPriceMap = new Map<string, PriceList>();
+      allPrices.forEach((p: PriceList) => nextPriceMap.set(p.product_id, p));
+      setPriceMap(nextPriceMap);
+    } catch (err) {
+      console.error('Failed to refresh prices', err);
+    }
+  }, [profile, activeBranchId]);
+
   useEffect(() => {
     if (profile) refresh();
   }, [profile, refresh, activeBranchId]);
 
   // ---------- Realtime ----------
-  useRealtimeTable('requests', 'status=eq.submitted', refresh, {
+  useRealtimeTable('requests', 'status=eq.submitted', refreshRequests, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
 
-  useRealtimeTable('price_list', undefined, refresh, {
+  useRealtimeTable('price_list', undefined, refreshPrices, {
     enabled: Boolean(profile),
     debounceMs: 400,
   });
@@ -185,10 +232,10 @@ export default function MarketingDashboard() {
         const disc = discounts[request.id];
         const itemDiscMap = itemDiscounts[request.id] || {};
 
-        // Save per-item discounts and prices to request_items
+        // Save per-item discounts and prices to request_items (batch)
         if (request.request_items?.length) {
           const { supabase } = await import('@/lib/db/client');
-          for (const item of request.request_items) {
+          await Promise.all(request.request_items.map(item => {
             const price = priceMap.get(item.product_id);
             const unitPrice = price
               ? (selectedType === 'kso' ? price.price_kso
@@ -196,11 +243,11 @@ export default function MarketingDashboard() {
                 : price.price_regular)
               : 0;
             const pct = itemDiscMap[item.id] || 0;
-            await supabase.from('request_items').update({
+            return supabase.from('request_items').update({
               price_at_order: unitPrice,
               discount_percentage: pct
             }).eq('id', item.id);
-          }
+          }));
         }
 
         await workflowEngine.transition({

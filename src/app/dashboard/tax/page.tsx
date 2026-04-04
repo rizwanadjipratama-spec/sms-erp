@@ -37,16 +37,36 @@ export default function TaxDashboard() {
     }
   }, [profile?.id]);
 
+  const refreshInvoices = useCallback(async () => {
+    if (!profile?.id) return;
+    try {
+      const res = await invoicesDb.getAll();
+      setInvoices(res.data);
+    } catch (err) {
+      console.error('Failed to refresh invoices', err);
+    }
+  }, [profile?.id]);
+
+  const refreshClosings = useCallback(async () => {
+    if (!profile?.id) return;
+    try {
+      const res = await monthlyClosingDb.getAll();
+      setClosings(res);
+    } catch (err) {
+      console.error('Failed to refresh closings', err);
+    }
+  }, [profile?.id]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  useRealtimeTable('invoices', undefined, fetchData, {
+  useRealtimeTable('invoices', undefined, refreshInvoices, {
     enabled: Boolean(profile?.id),
     debounceMs: 500,
   });
 
-  useRealtimeTable('monthly_closing', undefined, fetchData, {
+  useRealtimeTable('monthly_closing', undefined, refreshClosings, {
     enabled: Boolean(profile?.id),
     debounceMs: 500,
   });
@@ -263,7 +283,7 @@ export default function TaxDashboard() {
                       className="transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
                     >
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                        {new Date(closing.year, closing.month - 1).toLocaleDateString('id-ID', {
+                        {new Date(Number(closing.year), Number(closing.month) - 1).toLocaleDateString('id-ID', {
                           month: 'long',
                           year: 'numeric',
                         })}

@@ -13,39 +13,34 @@ export const analyticsService = {
       orderPipeline,
       productPerformance,
       technicianPerformance,
-      allRequests,
-      allInvoices,
-      allProducts,
-      allIssues,
+      stats
     ] = await Promise.all([
       analyticsDb.getMonthlyRevenue(),
       analyticsDb.getOrderPipeline(),
       analyticsDb.getProductPerformance(10),
       analyticsDb.getTechnicianPerformance(),
-      requestsDb.getAll({ page: 1, pageSize: 1 }), // just for count
-      invoicesDb.getAll(),
-      productsDb.getAll(),
-      issuesDb.getAll(),
+      analyticsDb.getDashboardStats()
     ]);
-
-    const totalRevenue = allInvoices.data
-      .filter(i => i.status === 'paid')
-      .reduce((sum, i) => sum + i.total, 0);
-
-    const openIssues = allIssues.filter(i => i.status !== 'resolved');
 
     return {
       monthlyRevenue,
       orderPipeline,
       productPerformance,
       technicianPerformance,
-      stats: {
-        totalOrders: allRequests.count,
-        totalRevenue,
-        totalProducts: allProducts.count,
-        openIssues: openIssues.length,
-        paidInvoices: allInvoices.data.filter(i => i.status === 'paid').length,
-        unpaidInvoices: allInvoices.data.filter(i => ['issued', 'overdue'].includes(i.status)).length,
+      stats: stats ? {
+        totalOrders: stats.total_orders,
+        totalRevenue: Number(stats.total_revenue),
+        totalProducts: stats.total_products,
+        openIssues: stats.open_issues,
+        paidInvoices: stats.paid_invoices,
+        unpaidInvoices: stats.unpaid_invoices,
+      } : {
+        totalOrders: 0,
+        totalRevenue: 0,
+        totalProducts: 0,
+        openIssues: 0,
+        paidInvoices: 0,
+        unpaidInvoices: 0,
       },
     };
   },
@@ -83,77 +78,48 @@ export const analyticsService = {
 
   async getEmployeePerformance() {
     const [
-      allProfiles,
+      employees,
+      departmentStatsData,
       techPerformance,
-      allActivityLogs,
-      allDeliveryLogs,
     ] = await Promise.all([
-      profilesDb.getAll(),
+      analyticsDb.getEmployeePerformance(),
+      analyticsDb.getDepartmentStats(),
       analyticsDb.getTechnicianPerformance(),
-      activityLogsDb.getAll(1000),
-      deliveryLogsDb.getAll(),
     ]);
 
-    const staffProfiles = allProfiles.data.filter(p => p.role !== 'client');
-
-    // Count actions per user from activity logs
-    const actionsByUser: Record<string, number> = {};
-    const loginsByUser: Record<string, number> = {};
-    for (const log of allActivityLogs) {
-      if (!log.user_id) continue;
-      actionsByUser[log.user_id] = (actionsByUser[log.user_id] ?? 0) + 1;
-      if (log.action === 'sign_in') {
-        loginsByUser[log.user_id] = (loginsByUser[log.user_id] ?? 0) + 1;
-      }
-    }
-
-    // Courier delivery counts
-    const courierDeliveries: Record<string, number> = {};
-    for (const log of allDeliveryLogs.data) {
-      if (log.courier_id) {
-        courierDeliveries[log.courier_id] = (courierDeliveries[log.courier_id] ?? 0) + 1;
-      }
-    }
-
-    // Build per-employee performance data
-    const employees = staffProfiles.map((p: Profile) => {
-      const techData = techPerformance.find(t => t.technician_id === p.id);
+    // Build per-employee performance data combining tech stats if available
+    const mappedEmployees = employees.map(emp => {
+      const techData = techPerformance.find(t => t.technician_id === emp.id);
       return {
-        id: p.id,
-        name: p.name || p.email,
-        email: p.email,
-        role: p.role,
-        lastLogin: p.last_login,
-        totalActions: actionsByUser[p.id] ?? 0,
-        totalLogins: loginsByUser[p.id] ?? 0,
-        // Role-specific metrics
-        deliveries: techData?.total_deliveries ?? courierDeliveries[p.id] ?? 0,
+        id: emp.id,
+        name: emp.name || emp.email,
+        email: emp.email,
+        role: emp.role,
+        lastLogin: emp.last_login,
+        totalActions: emp.total_actions ?? 0,
+        totalLogins: emp.total_logins ?? 0,
+        // Tech deliveries override generic courier deliveries if present
+        deliveries: techData?.total_deliveries ?? emp.delivery_count ?? 0,
         avgDeliveryHours: techData?.avg_delivery_hours ?? 0,
-        avgRating: p.avg_rating ?? 0,
+        avgRating: emp.avg_rating ?? 0,
       };
     });
 
-    // Sort by total actions descending
-    employees.sort((a, b) => b.totalActions - a.totalActions);
-
-    // Department summary
+    // Format department stats
     const departmentStats: Record<string, { count: number; totalActions: number; avgActions: number }> = {};
-    for (const emp of employees) {
-      if (!departmentStats[emp.role]) {
-        departmentStats[emp.role] = { count: 0, totalActions: 0, avgActions: 0 };
-      }
-      departmentStats[emp.role].count++;
-      departmentStats[emp.role].totalActions += emp.totalActions;
-    }
-    for (const dept of Object.values(departmentStats)) {
-      dept.avgActions = dept.count > 0 ? Math.round(dept.totalActions / dept.count) : 0;
+    for (const stat of departmentStatsData) {
+      departmentStats[stat.role] = {
+        count: stat.staff_count,
+        totalActions: stat.total_actions,
+        avgActions: stat.avg_actions,
+      };
     }
 
     return {
-      employees,
+      employees: mappedEmployees,
       departmentStats,
       techPerformance,
-      totalStaff: staffProfiles.length,
+      totalStaff: mappedEmployees.length,
     };
   },
 
@@ -161,35 +127,23 @@ export const analyticsService = {
     const [
       monthlyRevenue,
       orderPipeline,
-      allRequests,
-      allInvoices,
-      allDeliveryLogs,
-      allProfiles,
+      stats,
       cmsSettings,
       cmsNews,
       cmsEvents,
     ] = await Promise.all([
       analyticsDb.getMonthlyRevenue(),
       analyticsDb.getOrderPipeline(),
-      requestsDb.getAll({ page: 1, pageSize: 1 }, branchId),
-      invoicesDb.getAll({ branchId }),
-      deliveryLogsDb.getAll(),
-      profilesDb.getAll(),
+      analyticsDb.getDashboardStats(),
       cmsService.getSettings(),
       cmsService.getNews(true),
       cmsService.getEvents(),
     ]);
 
-    const paidInvoices = allInvoices.data.filter(i => i.status === 'paid');
-    const totalRevenue = paidInvoices.reduce((sum, i) => sum + i.total, 0);
-
     // Current month revenue
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const currentMonthData = monthlyRevenue.find(m => m.month?.startsWith(currentMonthKey));
-
-    // Active staff (non-client roles)
-    const staffProfiles = allProfiles.data.filter(p => p.role !== 'client');
 
     // Order stats by status
     const ordersByStatus: Record<string, number> = {};
@@ -198,15 +152,24 @@ export const analyticsService = {
     }
 
     return {
-      stats: {
-        totalOrders: allRequests.count,
-        totalRevenue,
+      stats: stats ? {
+        totalOrders: stats.total_orders,
+        totalRevenue: Number(stats.total_revenue),
         monthRevenue: currentMonthData?.total_revenue ?? 0,
-        totalDeliveries: allDeliveryLogs.count,
-        totalStaff: staffProfiles.length,
-        totalClients: allProfiles.data.filter(p => p.role === 'client').length,
-        paidInvoices: paidInvoices.length,
-        unpaidInvoices: allInvoices.data.filter(i => ['issued', 'overdue'].includes(i.status)).length,
+        totalDeliveries: stats.total_deliveries,
+        totalStaff: stats.total_staff,
+        totalClients: stats.total_clients,
+        paidInvoices: stats.paid_invoices,
+        unpaidInvoices: stats.unpaid_invoices,
+      } : {
+        totalOrders: 0,
+        totalRevenue: 0,
+        monthRevenue: 0,
+        totalDeliveries: 0,
+        totalStaff: 0,
+        totalClients: 0,
+        paidInvoices: 0,
+        unpaidInvoices: 0,
       },
       monthlyRevenue,
       ordersByStatus,

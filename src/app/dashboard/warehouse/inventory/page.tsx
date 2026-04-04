@@ -44,47 +44,62 @@ export default function InventoryDashboard() {
     };
   }, [profile, role]);
 
-  const refresh = useCallback(async () => {
-    setFetching(true);
-    setError(null);
+  const refreshProducts = useCallback(async () => {
     try {
       let query = supabase.from('products').select('*').order('name');
       if (activeBranchId && activeBranchId !== 'ALL') {
         query = query.eq('branch_id', activeBranchId);
       }
-      
-      const [productsResult, logsResult] = await Promise.all([
-        query,
-        inventoryLogsDb.getRecent(30, activeBranchId)
-      ]);
-        
+      const productsResult = await query;
       if (productsResult.error) throw productsResult.error;
-      
-      setProducts(productsResult.data as Product[]);
-      setInventoryLogs(logsResult);
+      const productsData = productsResult.data as Product[];
+      setProducts(productsData);
       setStockInputs(
-        (productsResult.data as Product[]).reduce<Record<string, number>>((acc, product) => {
-          acc[product.id] = product.stock;
+        productsData.reduce<Record<string, number>>((acc, product) => {
+          if (stockInputs[product.id] === undefined) {
+            acc[product.id] = product.stock;
+          } else {
+            acc[product.id] = stockInputs[product.id];
+          }
           return acc;
-        }, {})
+        }, { ...stockInputs })
       );
+    } catch (err) {
+      console.error('Failed to refresh products', err);
+    }
+  }, [activeBranchId, stockInputs]);
+
+  const refreshLogs = useCallback(async () => {
+    try {
+      const logsResult = await inventoryLogsDb.getRecent(30, activeBranchId);
+      setInventoryLogs(logsResult);
+    } catch (err) {
+      console.error('Failed to refresh logs', err);
+    }
+  }, [activeBranchId]);
+
+  const refresh = useCallback(async () => {
+    setFetching(true);
+    setError(null);
+    try {
+      await Promise.all([refreshProducts(), refreshLogs()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load inventory');
     } finally {
       setFetching(false);
     }
-  }, [activeBranchId]);
+  }, [refreshProducts, refreshLogs]);
 
   useEffect(() => {
     if (profile) refresh();
   }, [profile, refresh, activeBranchId]);
 
-  useRealtimeTable('products', undefined, refresh, {
+  useRealtimeTable('products', undefined, refreshProducts, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
 
-  useRealtimeTable('inventory_logs', undefined, refresh, {
+  useRealtimeTable('inventory_logs', undefined, refreshLogs, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
