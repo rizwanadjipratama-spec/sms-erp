@@ -18,3 +18,4 @@ export { pmService } from './preventive-maintenance-service';
 export { fakturService } from './faktur-service';
 export { leaveService } from './leave-service';
 export { attendanceService } from './attendance-service';
+export { claimService } from './claim-service';

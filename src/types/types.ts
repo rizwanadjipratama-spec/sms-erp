@@ -67,7 +67,10 @@ export type ProductCategory =
   | 'Consumables'
   | 'Service & Support'
   | 'Reagents'
-  | 'Service';
+  | 'Service'
+  | 'Spare Parts'
+  | 'Tools'
+  | 'Filters';
 
 export type DiscountType = 'percent' | 'fixed';
 
@@ -95,6 +98,22 @@ export type StockTransferStatus =
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type ApprovalType = 'expense_claim' | 'purchase_request' | 'cash_advance' | 'discount' | 'stock_transfer' | 'branch_override' | 'maintenance_cost' | 'large_purchase';
 export type PurchaseRequestStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'ordered' | 'partial_received' | 'received' | 'cancelled';
+
+// ============================================================================
+// COMPANY REQUESTS (Claims & Requisitions) ENUMS
+// ============================================================================
+
+export type CompanyRequestType = 'CLAIM' | 'REQUISITION';
+
+export type CompanyRequestStatus = 
+  | 'SUBMITTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'PENDING'
+  | 'READY_FOR_CASH'
+  | 'COMPLETED';
+
+export type PaymentPreferenceType = 'CASH' | 'TRANSFER' | 'OTHERS';
 export type PurchaseOrderStatus = 'draft' | 'sent' | 'confirmed' | 'partial_received' | 'received' | 'cancelled';
 export type ExpenseClaimStatus = 'draft' | 'submitted' | 'approved' | 'paid' | 'partial_paid' | 'rejected' | 'cancelled';
 export type ExpenseCategory = 'fuel' | 'toll' | 'parking' | 'small_tools' | 'sparepart' | 'hotel' | 'meals' | 'vehicle_service' | 'operational' | 'other';
@@ -245,6 +264,10 @@ export interface Product {
   nie?: string;
   lot_number?: string;
   expiry_date?: string;
+  serial_number?: string | null;
+  location?: string | null;
+  equipment_type?: string | null;
+  technician_id?: string | null;
   branch_id?: string;
   is_active: boolean;
   is_priced: boolean;
@@ -1258,6 +1281,64 @@ export interface ClaimPayment {
   notes?: string;
   created_at: string;
   payer?: Partial<Profile>;
+}
+
+// ============================================================================
+// COMPANY REQUESTS (Claims & Requisitions)
+// ============================================================================
+
+export interface CompanyRequestItem {
+  id: string;
+  request_id: string;
+  description: string;
+  unit?: string;
+  quantity: number;
+  price_per_unit: number;
+  total_price: number;
+  receipt_url?: string;
+  created_at: string;
+}
+
+export interface CompanyRequestHistory {
+  id: string;
+  request_id: string;
+  actor_id: string;
+  action: string;
+  note?: string;
+  created_at: string;
+  actor?: Pick<Profile, 'name' | 'role' | 'avatar_url'>;
+}
+
+export interface CompanyRequest {
+  id: string;
+  created_by: string;
+  branch_id: string;
+  type: CompanyRequestType;
+  status: CompanyRequestStatus;
+  payment_preference: PaymentPreferenceType;
+  payment_preference_details?: string;
+  
+  total_amount: number;
+  paid_amount: number;
+  
+  approved_by?: string;
+  approval_date?: string;
+  approval_note?: string;
+  reject_reason?: string;
+  
+  pending_reason?: string;
+  payment_method_offered?: PaymentPreferenceType;
+  post_claim_issue?: string;
+  
+  created_at: string;
+  updated_at: string;
+  
+  // Joined relations
+  creator?: Pick<Profile, 'name' | 'email' | 'avatar_url' | 'role'>;
+  approver?: Pick<Profile, 'name' | 'email' | 'avatar_url' | 'role'>;
+  branch?: Pick<Branch, 'name'>;
+  items?: CompanyRequestItem[];
+  history?: CompanyRequestHistory[];
 }
 
 export type SupplierInvoiceStatus = 'unpaid' | 'partial' | 'paid' | 'cancelled';

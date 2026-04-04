@@ -17,7 +17,16 @@ import { AddProductPanel } from '@/components/dashboard/AddProductPanel';
 import { ProductForm } from '@/components/dashboard/ProductForm';
 import { ProductList } from '@/components/dashboard/ProductList';
 
-export default function CatalogDashboard() {
+const TECHNICIAN_CATEGORIES = [
+  'Equipment',
+  'Spare Parts',
+  'Tools',
+  'Filters',
+  'Service & Support',
+  'Service'
+];
+
+export default function TechnicianInventoryDashboard() {
   const { profile, role, loading } = useAuth();
   const { activeBranchId } = useBranch();
   const router = useRouter();
@@ -39,7 +48,7 @@ export default function CatalogDashboard() {
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/warehouse/catalog')) {
+    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/technician/inventory')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
@@ -60,7 +69,8 @@ export default function CatalogDashboard() {
       let query = supabase
         .from('products')
         .select('*')
-        .is('technician_id', null)
+        .in('category', TECHNICIAN_CATEGORIES)
+        .eq('technician_id', profile?.id)
         .order('name');
       
       if (activeBranchId && activeBranchId !== 'ALL') {
@@ -70,8 +80,8 @@ export default function CatalogDashboard() {
       const { data, error: dbError } = await query;
       if (dbError) throw dbError;
       setProducts(data as Product[]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load catalog');
+    } catch (err: any) {
+      setError(err?.message || (typeof err === 'object' ? JSON.stringify(err) : 'Failed to load technician inventory'));
     } finally {
       setFetching(false);
     }
@@ -93,7 +103,7 @@ export default function CatalogDashboard() {
 
   const handleDeleteProduct = useCallback(
     async (id: string) => {
-      if (!confirm('Delete this product?')) return;
+      if (!confirm('Delete this item?')) return;
       try {
         const actor = await getActor();
         await productService.delete(id, actor);
@@ -108,7 +118,7 @@ export default function CatalogDashboard() {
   const handleSaveProduct = useCallback(
     async (data: Partial<Product>, imageFile?: File) => {
       if (!editingProduct && activeBranchId === 'ALL') {
-        alert('Mohon pilih spesifik cabang (contoh: Bogor, Cirebon) di kanan atas sebelum menambah produk agar data gudang tidak tumpang tindih.');
+        alert('Mohon pilih spesifik cabang (contoh: Bogor, Cirebon) di kanan atas sebelum menambah item agars tidak tumpang tindih.');
         return;
       }
       try {
@@ -117,7 +127,7 @@ export default function CatalogDashboard() {
           await productService.update(editingProduct.id, data, imageFile, actor);
         } else {
           await productService.create(
-            { ...data, branch_id: activeBranchId } as any,
+            { ...data, branch_id: activeBranchId, technician_id: profile?.id } as any,
             imageFile,
             actor
           );
@@ -125,14 +135,14 @@ export default function CatalogDashboard() {
         setIsEditModalOpen(false);
         setEditingProduct(undefined);
         setCatalogView('catalog');
-        router.push('/dashboard/warehouse/catalog');
+        router.push('/dashboard/technician/inventory');
         await refresh();
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Save failed');
         throw err;
       }
     },
-    [editingProduct, getActor, refresh, router]
+    [editingProduct, getActor, refresh, router, activeBranchId]
   );
 
   if (loading || (fetching && products.length === 0)) {
@@ -159,25 +169,25 @@ export default function CatalogDashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
               <div>
                 <h1 className="text-3xl font-black text-apple-text-primary tracking-tight">
-                  Catalog Items
+                  Technician Inventory
                 </h1>
                 <p className="text-apple-text-secondary text-sm font-medium mt-1">
-                  Manage products, specifications, and central definitions.
+                  Manage your parts, filters, tools and technical equipment.
                 </p>
               </div>
               <button
                 disabled={activeBranchId === 'ALL'}
                 onClick={() => {
                   setCatalogView('add-product');
-                  router.push('/dashboard/warehouse/catalog?view=add-product');
+                  router.push('/dashboard/technician/inventory?view=add-product');
                 }}
-                title={activeBranchId === 'ALL' ? "Pilih cabang spesifik di atas untuk menambah produk" : ""}
+                title={activeBranchId === 'ALL' ? "Pilih cabang spesifik di atas untuk menambah item" : ""}
                 className="flex items-center gap-2 bg-apple-blue hover:bg-apple-blue-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-bold px-5 py-3 rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-apple-blue/20"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                ADD PRODUCT
+                ADD ITEM
               </button>
             </div>
           </div>
@@ -191,10 +201,11 @@ export default function CatalogDashboard() {
       ) : (
         <div className="animate-in slide-in-from-right-4 fade-in duration-500">
           <AddProductPanel
+            isTechnicianView={true}
             onSave={handleSaveProduct}
             onCancel={() => {
               setCatalogView('catalog');
-              router.push('/dashboard/warehouse/catalog');
+              router.push('/dashboard/technician/inventory');
             }}
           />
         </div>
@@ -203,6 +214,7 @@ export default function CatalogDashboard() {
       {/* Edit Modal */}
       {isEditModalOpen && (
         <ProductForm
+          isTechnicianView={true}
           product={editingProduct}
           onClose={() => setIsEditModalOpen(false)}
           onSave={handleSaveProduct}

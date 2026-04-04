@@ -44,6 +44,10 @@ export const productService = {
     min_stock?: number;
     unit?: string;
     branch_id?: string;
+    technician_id?: string;
+    serial_number?: string;
+    location?: string;
+    equipment_type?: string;
   }, imageFile?: File, actor?: Actor): Promise<Product> {
     if (imageFile) validateImageFile(imageFile);
 
@@ -64,6 +68,10 @@ export const productService = {
       min_stock: product.min_stock ?? 5,
       unit: product.unit ?? 'pcs',
       branch_id: product.branch_id,
+      technician_id: product.technician_id,
+      serial_number: product.serial_number,
+      location: product.location,
+      equipment_type: product.equipment_type,
       is_active: true,
       created_by: actor?.id,
     });
@@ -91,6 +99,10 @@ export const productService = {
     min_stock?: number;
     unit?: string;
     is_active?: boolean;
+    technician_id?: string;
+    serial_number?: string;
+    location?: string;
+    equipment_type?: string;
   }, imageFile?: File, actor?: Actor): Promise<Product> {
     if (imageFile) validateImageFile(imageFile);
 

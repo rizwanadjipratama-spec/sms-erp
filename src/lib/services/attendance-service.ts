@@ -209,8 +209,10 @@ export const attendanceService = {
   },
 
   async getMyMonthlyRecords(userId: string, yearMonth: string): Promise<AttendanceRecord[]> {
+    const [year, month] = yearMonth.split('-');
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
     const startDate = `${yearMonth}-01`;
-    const endDate = `${yearMonth}-31`;
+    const endDate = `${yearMonth}-${lastDay}`;
     const { data, error } = await supabase
       .from('attendance_records')
       .select('*')
@@ -343,8 +345,10 @@ export const attendanceService = {
       attendanceRate: number;
     }[];
   }> {
+    const [y, m] = yearMonth.split('-');
+    const lastDayStr = new Date(parseInt(y), parseInt(m), 0).getDate();
     const startDate = `${yearMonth}-01`;
-    const endDate = `${yearMonth}-31`;
+    const endDate = `${yearMonth}-${lastDayStr}`;
     const { data, error } = await supabase
       .from('attendance_records')
       .select(`

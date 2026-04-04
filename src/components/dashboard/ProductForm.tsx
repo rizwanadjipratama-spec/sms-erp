@@ -9,6 +9,9 @@ const CATEGORIES: ProductCategory[] = [
   'Reagents',
   'Service & Support',
   'Service',
+  'Spare Parts',
+  'Tools',
+  'Filters',
 ];
 
 const UNITS = ['pcs', 'box', 'kit', 'unit', 'set', 'bottle', 'pack', 'roll', 'pair', 'tube'];
@@ -17,9 +20,10 @@ interface ProductFormProps {
   product?: Product;
   onSave: (data: Partial<Product>, imageFile?: File) => Promise<void>;
   onClose: () => void;
+  isTechnicianView?: boolean;
 }
 
-export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
+export function ProductForm({ product, onSave, onClose, isTechnicianView = false }: ProductFormProps) {
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
@@ -32,7 +36,27 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
     nie: product?.nie || '',
     lot_number: product?.lot_number || '',
     expiry_date: product?.expiry_date || '',
+    serial_number: product?.serial_number || '',
   });
+
+  const [locationSelect, setLocationSelect] = useState<'Workshop' | 'Kantor' | 'Others' | ''>(() => {
+    if (!product?.location) return '';
+    if (['Workshop', 'Kantor'].includes(product.location)) return product.location as any;
+    return 'Others';
+  });
+  const [customLocation, setCustomLocation] = useState(() => 
+    !['Workshop', 'Kantor', ''].includes(product?.location || '') ? product?.location || '' : ''
+  );
+
+  const [typeSelect, setTypeSelect] = useState<'Electrical' | 'Mechanical' | 'Software' | 'Others' | ''>(() => {
+    if (!product?.equipment_type) return '';
+    if (['Electrical', 'Mechanical', 'Software'].includes(product.equipment_type)) return product.equipment_type as any;
+    return 'Others';
+  });
+  const [customType, setCustomType] = useState(() => 
+    !['Electrical', 'Mechanical', 'Software', ''].includes(product?.equipment_type || '') ? product?.equipment_type || '' : ''
+  );
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | undefined>();
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(product?.image_url);
@@ -84,6 +108,9 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
           nie: formData.nie.trim() || undefined,
           lot_number: formData.lot_number.trim() || undefined,
           expiry_date: formData.expiry_date || undefined,
+          serial_number: formData.serial_number.trim() || undefined,
+          location: locationSelect === 'Others' ? customLocation.trim() || undefined : locationSelect || undefined,
+          equipment_type: typeSelect === 'Others' ? customType.trim() || undefined : typeSelect || undefined,
         },
         imageFile
       );
@@ -211,12 +238,87 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
               </div>
             </div>
 
+            {/* Technician Specific Fields */}
+            {isTechnicianView && (
+              <>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
+                    Serial Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.serial_number}
+                    onChange={(e) => updateField('serial_number', e.target.value)}
+                    className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium placeholder:text-apple-text-secondary/40"
+                    placeholder="S/N 123456789"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
+                      Location *
+                    </label>
+                    <select
+                      required
+                      value={locationSelect}
+                      onChange={(e) => setLocationSelect(e.target.value as any)}
+                      className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium appearance-none"
+                    >
+                      <option value="">Select Location</option>
+                      <option value="Workshop">Workshop</option>
+                      <option value="Kantor">Kantor</option>
+                      <option value="Others">Others (Specify)</option>
+                    </select>
+                    {locationSelect === 'Others' && (
+                      <input
+                        type="text"
+                        required
+                        value={customLocation}
+                        onChange={(e) => setCustomLocation(e.target.value)}
+                        className="mt-2 w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium"
+                        placeholder="Type location manually..."
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
+                      Equipment Type
+                    </label>
+                    <select
+                      value={typeSelect}
+                      onChange={(e) => setTypeSelect(e.target.value as any)}
+                      className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium appearance-none"
+                    >
+                      <option value="">Select Type</option>
+                      <option value="Electrical">Electrical</option>
+                      <option value="Mechanical">Mechanical</option>
+                      <option value="Software">Software</option>
+                      <option value="Others">Others (Specify)</option>
+                    </select>
+                    {typeSelect === 'Others' && (
+                      <input
+                        type="text"
+                        required
+                        value={customType}
+                        onChange={(e) => setCustomType(e.target.value)}
+                        className="mt-2 w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium"
+                        placeholder="Type equipment manually..."
+                      />
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Description */}
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
-                Description
+                Description {isTechnicianView && '*'}
               </label>
               <textarea
+                required={isTechnicianView}
                 value={formData.description}
                 onChange={(e) => updateField('description', e.target.value)}
                 rows={2}
@@ -225,8 +327,9 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
               />
             </div>
 
-            {/* NIE / AKL + LOT + Expiry Date */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* NIE / AKL + LOT + Expiry Date - HIDDEN IN TECHNICIAN VIEW */}
+            {!isTechnicianView && (
+              <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
                   NIE / AKL
@@ -261,11 +364,13 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
                   onChange={(e) => updateField('expiry_date', e.target.value)}
                   className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium"
                 />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Unit + Stock + Min Stock */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Unit + Stock + Min Stock - HIDDEN IN TECHNICIAN VIEW */}
+            {!isTechnicianView && (
+              <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
                   Unit
@@ -305,6 +410,7 @@ export function ProductForm({ product, onSave, onClose }: ProductFormProps) {
                 />
               </div>
             </div>
+            )}
 
             {/* Active Toggle */}
             {product && (

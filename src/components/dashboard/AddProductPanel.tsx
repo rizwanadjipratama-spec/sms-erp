@@ -9,6 +9,9 @@ const CATEGORIES: ProductCategory[] = [
   'Reagents',
   'Service & Support',
   'Service',
+  'Spare Parts',
+  'Tools',
+  'Filters',
 ];
 
 const UNITS = ['pcs', 'box', 'kit', 'unit', 'set', 'bottle', 'pack', 'roll', 'pair', 'tube'];
@@ -16,9 +19,10 @@ const UNITS = ['pcs', 'box', 'kit', 'unit', 'set', 'bottle', 'pack', 'roll', 'pa
 interface AddProductPanelProps {
   onSave: (data: Partial<Product>, imageFile?: File) => Promise<void>;
   onCancel: () => void;
+  isTechnicianView?: boolean;
 }
 
-export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
+export function AddProductPanel({ onSave, onCancel, isTechnicianView = false }: AddProductPanelProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -30,7 +34,15 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
     nie: '',
     lot_number: '',
     expiry_date: '',
+    serial_number: '',
   });
+
+  const [locationSelect, setLocationSelect] = useState<'Workshop' | 'Kantor' | 'Others' | ''>('');
+  const [customLocation, setCustomLocation] = useState('');
+
+  const [typeSelect, setTypeSelect] = useState<'Electrical' | 'Mechanical' | 'Software' | 'Others' | ''>('');
+  const [customType, setCustomType] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | undefined>();
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
@@ -81,6 +93,9 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
           nie: formData.nie.trim() || undefined,
           lot_number: formData.lot_number.trim() || undefined,
           expiry_date: formData.expiry_date || undefined,
+          serial_number: formData.serial_number.trim() || undefined,
+          location: locationSelect === 'Others' ? customLocation.trim() || undefined : locationSelect || undefined,
+          equipment_type: typeSelect === 'Others' ? customType.trim() || undefined : typeSelect || undefined,
         },
         imageFile
       );
@@ -216,12 +231,87 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
             </div>
           </div>
 
+          {/* Technician Specific Fields */}
+          {isTechnicianView && (
+            <>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
+                  Serial Number *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.serial_number}
+                  onChange={(e) => updateField('serial_number', e.target.value)}
+                  className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-semibold placeholder:font-normal placeholder:text-apple-text-secondary/40"
+                  placeholder="S/N 123456789"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
+                    Location *
+                  </label>
+                  <select
+                    required
+                    value={locationSelect}
+                    onChange={(e) => setLocationSelect(e.target.value as any)}
+                    className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium appearance-none"
+                  >
+                    <option value="">Select Location</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Kantor">Kantor</option>
+                    <option value="Others">Others (Specify)</option>
+                  </select>
+                  {locationSelect === 'Others' && (
+                    <input
+                      type="text"
+                      required
+                      value={customLocation}
+                      onChange={(e) => setCustomLocation(e.target.value)}
+                      className="mt-2 w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium"
+                      placeholder="Type location manually..."
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-1.5 ml-1">
+                    Equipment Type
+                  </label>
+                  <select
+                    value={typeSelect}
+                    onChange={(e) => setTypeSelect(e.target.value as any)}
+                    className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium appearance-none"
+                  >
+                    <option value="">Select Type</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Mechanical">Mechanical</option>
+                    <option value="Software">Software</option>
+                    <option value="Others">Others (Specify)</option>
+                  </select>
+                  {typeSelect === 'Others' && (
+                    <input
+                      type="text"
+                      required
+                      value={customType}
+                      onChange={(e) => setCustomType(e.target.value)}
+                      className="mt-2 w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium"
+                      placeholder="Type equipment manually..."
+                    />
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Description */}
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-apple-text-secondary mb-2 ml-1">
-              Description
+              Description {isTechnicianView && '*'}
             </label>
             <textarea
+              required={isTechnicianView}
               value={formData.description}
               onChange={(e) => updateField('description', e.target.value)}
               rows={3}
@@ -231,8 +321,9 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
           </div>
         </div>
 
-        {/* Regulatory & Tracking Card */}
-        <div className="bg-white rounded-2xl border border-apple-gray-border shadow-sm p-6 sm:p-8 space-y-6">
+        {/* Regulatory & Tracking Card - HIDDEN FOR TECHNICIANS */}
+        {!isTechnicianView && (
+          <div className="bg-white rounded-2xl border border-apple-gray-border shadow-sm p-6 sm:p-8 space-y-6">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-apple-text-secondary">
             Regulatory & Batch Tracking
           </h3>
@@ -278,11 +369,13 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
                 className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all font-medium"
               />
             </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Stock & Unit Card */}
-        <div className="bg-white rounded-2xl border border-apple-gray-border shadow-sm p-6 sm:p-8 space-y-6">
+        {/* Stock & Unit Card - HIDDEN FOR TECHNICIANS */}
+        {!isTechnicianView && (
+          <div className="bg-white rounded-2xl border border-apple-gray-border shadow-sm p-6 sm:p-8 space-y-6">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-apple-text-secondary">
             Inventory Settings
           </h3>
@@ -344,6 +437,7 @@ export function AddProductPanel({ onSave, onCancel }: AddProductPanelProps) {
             </div>
           )}
         </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-4">
