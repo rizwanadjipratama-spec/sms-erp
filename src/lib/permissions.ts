@@ -154,7 +154,7 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
   },
 };
 
-import { getFeatureByRoute } from './features';
+import { getFeatureByRoute, DEFAULT_FEATURES_BY_ROLE } from './features';
 import type { Profile } from '@/types/types';
 
 export function getRolePermissions(role?: UserRole | null): RolePermission | null {
@@ -180,7 +180,12 @@ export function canAccessRoute(profile: Profile | undefined | null, route: strin
     return false;
   }
 
-  return (profile.features || []).includes(feature.id);
+  let userFeatures = profile.features || [];
+  if (userFeatures.length === 0) {
+    userFeatures = DEFAULT_FEATURES_BY_ROLE[profile.role] || [];
+  }
+
+  return userFeatures.includes(feature.id);
 }
 
 export function canReadEntity(role: UserRole | undefined | null, entity: EntityScope): boolean {

@@ -78,11 +78,25 @@ export const FEATURE_DEFINITIONS: FeatureDefinition[] = [
 
 export function getFeatureByRoute(route: string): FeatureDefinition | undefined {
   return FEATURE_DEFINITIONS.find(f => {
-    // exact match
     if (f.route === route) return true;
-    
-    // Sub-route match (e.g. /dashboard/users/123 -> matches /dashboard/users)
-    // but be careful not to match /dashboard/claims against /dashboard/claims/approvals
     return route.startsWith(f.route + '/');
   });
 }
+
+export const DEFAULT_FEATURES_BY_ROLE: Record<string, AppFeature[]> = {
+  client: ['CLIENT_ORDERS', 'CLIENT_PRODUCTS', 'CLIENT_ISSUES'],
+  marketing: ['COMPANY', 'MARKETING', 'MARKETING_CLIENTS', 'PRICE_LIST', 'CLAIMS', 'MY_PROFILE'],
+  boss: ['COMPANY', 'APPROVALS', 'PR_APPROVALS', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+  finance: ['COMPANY', 'FINANCE', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+  warehouse: ['COMPANY', 'WAREHOUSE', 'INVENTORY', 'CATALOG', 'CREATE_PR', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+  technician: ['COMPANY', 'DELIVERY', 'MY_INVENTORY', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
+  courier: ['COMPANY', 'COURIER', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
+  faktur: ['COMPANY', 'FINANCE', 'CATALOG', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+  admin: ['COMPANY', 'ADMIN_PANEL', 'USERS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+  owner: FEATURE_DEFINITIONS.filter(f => !f.clientOnly).map(f => f.id),
+  director: ['COMPANY', 'DIRECTOR_OVERVIEW', 'APPROVALS', 'PR_APPROVALS', 'CLAIM_APPROVALS', 'ANALYTICS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+  tax: ['COMPANY', 'TAX_REPORTS', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+  manager: ['COMPANY', 'APPROVALS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+  purchasing: ['COMPANY', 'CREATE_PR', 'CATALOG', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+  claim_officer: ['COMPANY', 'DISBURSEMENTS', 'CLAIMS', 'TIME_OFF', 'MY_PROFILE'],
+};

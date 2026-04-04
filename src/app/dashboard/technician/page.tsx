@@ -293,7 +293,7 @@ export default function TechnicianDashboard() {
     setProcessingId(issueId);
     try {
       const actor = await getActor();
-      await technicianService.completeIssue(issueId, note, [], actor);
+      await technicianService.completeIssue(issueId, actor, note);
       setNotes(prev => { const n = { ...prev }; delete n[issueId]; return n; });
       refreshAll();
     } catch (err) {

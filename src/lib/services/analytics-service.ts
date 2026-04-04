@@ -46,17 +46,17 @@ export const analyticsService = {
   },
 
   async getAdminDashboard(branchId?: string) {
-    const [profiles, issues, allRequests] = await Promise.all([
-      profilesDb.getAll(),
+    const [issues, { count: totalUsers }, { count: totalRequests }] = await Promise.all([
       issuesDb.getByStatus(['open', 'in_progress'], branchId),
-      requestsDb.getAll({ page: 1, pageSize: 1 }, branchId),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('requests').select('*', { count: 'exact', head: true }),
     ]);
 
     return {
-      users: profiles.data,
-      totalUsers: profiles.count,
+      users: [],
+      totalUsers: totalUsers || 0,
       openIssues: issues,
-      totalRequests: allRequests.count,
+      totalRequests: totalRequests || 0,
     };
   },
 

@@ -11,7 +11,7 @@ import { formatCurrency } from '@/lib/format-utils';
 import { DashboardSkeleton, EmptyState, ErrorState } from '@/components/ui';
 import type { Profile, UserRole } from '@/types/types';
 import { supabase } from '@/lib/db/client';
-import { FEATURE_DEFINITIONS } from '@/lib/features';
+import { FEATURE_DEFINITIONS, DEFAULT_FEATURES_BY_ROLE } from '@/lib/features';
 import type { AppFeature } from '@/lib/features';
 
 const ALL_ROLES: UserRole[] = ['client', 'marketing', 'boss', 'finance', 'warehouse', 'technician', 'admin', 'owner', 'tax', 'director', 'manager', 'purchasing', 'claim_officer', 'faktur'];
@@ -366,7 +366,8 @@ export default function UsersManagementPage() {
 
                 {/* Feature Management Panel */}
                 {expandedFeatureUserId === user.id && (() => {
-                  const userFeatures = (user.features || []) as AppFeature[];
+                  const rawFeatures = (user.features || []) as AppFeature[];
+                  const userFeatures = rawFeatures.length > 0 ? rawFeatures : (DEFAULT_FEATURES_BY_ROLE[user.role] || []);
                   const featureLookup = new Map(FEATURE_DEFINITIONS.map(f => [f.id, f]));
                   return (
                   <div className="mt-4 border-t border-gray-100 pt-4 animate-in slide-in-from-top-2">
@@ -380,10 +381,10 @@ export default function UsersManagementPage() {
                         >Centang Semua</button>
                         <span className="text-gray-300">|</span>
                         <button
-                          onClick={() => handleBulkToggle(user.id, FEATURE_DEFINITIONS.map(f => f.id), false)}
+                          onClick={() => handleBulkToggle(user.id, [], false)}
                           disabled={saving === user.id}
                           className="text-[10px] font-bold text-red-500 hover:underline disabled:opacity-50"
-                        >Hapus Semua</button>
+                        >Reset ke Default</button>
                       </div>
                     </div>
 
