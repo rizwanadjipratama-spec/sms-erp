@@ -154,15 +154,33 @@ export const PERMISSIONS: Record<UserRole, RolePermission> = {
   },
 };
 
+import { getFeatureByRoute } from './features';
+import type { Profile } from '@/types/types';
+
 export function getRolePermissions(role?: UserRole | null): RolePermission | null {
   if (!role) return null;
   return PERMISSIONS[role] ?? null;
 }
 
-export function canAccessRoute(role: UserRole | undefined | null, route: string): boolean {
-  const p = getRolePermissions(role);
-  if (!p) return false;
-  return p.routes.includes(route as AppRoute);
+/**
+ * Validates if a Profile has access to a specific route.
+ * Instead of checking hardcoded route lists by role, it maps the route to its Feature
+ *, and validates if the Profile's features array includes it.
+ */
+export function canAccessRoute(profile: Profile | undefined | null, route: string): boolean {
+  if (!profile) return false;
+
+  const feature = getFeatureByRoute(route);
+  
+  // If the route doesn't map to a feature flag, check fallback (for things like /dashboard which is default)
+  // or default to false to be strictly secure.
+  if (!feature) {
+    // Basic shared routes that don't need a feature flag
+    if (route === '/dashboard' || route === '/dashboard/settings' || route === '/dashboard/notifications') return true;
+    return false;
+  }
+
+  return (profile.features || []).includes(feature.id);
 }
 
 export function canReadEntity(role: UserRole | undefined | null, entity: EntityScope): boolean {

@@ -27,7 +27,7 @@ export default function DirectorDashboard() {
   // ---------- Auth guard ----------
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/director')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/director')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

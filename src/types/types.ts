@@ -3,6 +3,8 @@
 // All types match the database schema exactly
 // ============================================================================
 
+import type { AppFeature } from '@/lib/features';
+
 // ============================================================================
 // ENUMS (match PostgreSQL enums)
 // ============================================================================
@@ -121,6 +123,20 @@ export type CashAdvanceStatus = 'requested' | 'approved' | 'disbursed' | 'settle
 export type FinancialTransactionType = 'invoice_payment' | 'supplier_payment' | 'expense_claim_payment' | 'cash_advance_disbursement' | 'cash_advance_settlement' | 'refund' | 'adjustment' | 'other';
 export type FinancialDirection = 'inflow' | 'outflow';
 
+export type UserPaymentMethodType = 'BANK' | 'EWALLET';
+
+export interface UserPaymentMethod {
+  id: string;
+  user_id: string;
+  type: UserPaymentMethodType;
+  provider: string;
+  account_number: string;
+  account_name: string;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // ORION Delivery & Issue Enums
 export type DeliveryStatus = 'created' | 'assigned' | 'picking' | 'picked' | 'on_delivery' | 'delivered' | 'confirmed' | 'cancelled';
 export type DeliveryTeamRole = 'driver' | 'courier' | 'technician' | 'marketing' | 'finance' | 'faktur' | 'warehouse' | 'purchasing' | 'claim_officer' | 'other';
@@ -172,6 +188,7 @@ export interface Profile {
   email: string;
   role: UserRole;
   name?: string;
+  features?: AppFeature[];
   phone?: string;
   address?: string;
   bio?: string;
@@ -1320,6 +1337,7 @@ export interface CompanyRequest {
   
   total_amount: number;
   paid_amount: number;
+  proposed_amount?: number;
   
   approved_by?: string;
   approval_date?: string;

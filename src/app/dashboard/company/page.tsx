@@ -64,7 +64,7 @@ export default function CompanyDashboard() {
   // Auth guard
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/company')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/company')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

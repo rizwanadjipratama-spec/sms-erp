@@ -28,7 +28,7 @@ export default function WarehouseDashboard() {
   // Auth guard
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/warehouse')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/warehouse')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

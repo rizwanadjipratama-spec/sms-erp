@@ -11,6 +11,8 @@ import { formatCurrency } from '@/lib/format-utils';
 import { DashboardSkeleton, EmptyState, ErrorState } from '@/components/ui';
 import type { Profile, UserRole } from '@/types/types';
 import { supabase } from '@/lib/db/client';
+import { FEATURE_DEFINITIONS } from '@/lib/features';
+import type { AppFeature } from '@/lib/features';
 
 const ALL_ROLES: UserRole[] = ['client', 'marketing', 'boss', 'finance', 'warehouse', 'technician', 'admin', 'owner', 'tax', 'director', 'manager', 'purchasing', 'claim_officer', 'faktur'];
 const PAGE_SIZE = 25;
@@ -27,11 +29,13 @@ export default function UsersManagementPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedFeatureUserId, setExpandedFeatureUserId] = useState<string | null>(null);
+  const [dragState, setDragState] = useState<{ userId: string; dragIdx: number; overIdx: number } | null>(null);
 
   // ---------- Auth guard ----------
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/users')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/users')) {
       router.replace('/dashboard');
     }
   }, [loading, profile, router]);
@@ -126,6 +130,66 @@ export default function UsersManagementPage() {
       setSaving(null);
     }
   }, []);
+
+  // ---------- Feature toggle ----------
+  const handleToggleFeature = useCallback(async (userId: string, feature: AppFeature, currentFeatures: AppFeature[]) => {
+    const has = currentFeatures.includes(feature);
+    const updated = has ? currentFeatures.filter(f => f !== feature) : [...currentFeatures, feature];
+    
+    setSaving(userId);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ features: updated })
+        .eq('id', userId);
+      if (error) throw error;
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, features: updated } : u));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update features');
+    } finally {
+      setSaving(null);
+    }
+  }, []);
+
+  const handleBulkToggle = useCallback(async (userId: string, features: AppFeature[], enable: boolean) => {
+    const currentUser = users.find(u => u.id === userId);
+    if (!currentUser) return;
+    const currentFeatures = currentUser.features || [];
+    let updated: AppFeature[];
+    if (enable) {
+      updated = [...new Set([...currentFeatures, ...features])];
+    } else {
+      updated = currentFeatures.filter(f => !features.includes(f));
+    }
+    setSaving(userId);
+    try {
+      const { error } = await supabase.from('profiles').update({ features: updated }).eq('id', userId);
+      if (error) throw error;
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, features: updated } : u));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update features');
+    } finally {
+      setSaving(null);
+    }
+  }, [users]);
+
+  const handleDragReorder = useCallback(async (userId: string, fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    const currentUser = users.find(u => u.id === userId);
+    if (!currentUser) return;
+    const features = [...(currentUser.features || [])] as AppFeature[];
+    const [moved] = features.splice(fromIdx, 1);
+    features.splice(toIdx, 0, moved);
+    
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, features } : u));
+    try {
+      const { error } = await supabase.from('profiles').update({ features }).eq('id', userId);
+      if (error) throw error;
+    } catch (err) {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, features: currentUser.features } : u));
+      alert(err instanceof Error ? err.message : 'Failed to reorder');
+    }
+  }, [users]);
 
   // ---------- Computed ----------
   const filteredUsers = useMemo(
@@ -282,7 +346,7 @@ export default function UsersManagementPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-wider text-gray-500 border-t border-gray-50 pt-3">
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-gray-500 border-t border-gray-50 pt-3">
                   <span className="rounded-full bg-gray-100 flex items-center px-2.5 py-1">
                     Debt: <span className="text-gray-900 ml-1">{formatCurrency(user.debt_amount)}</span>
                   </span>
@@ -292,7 +356,131 @@ export default function UsersManagementPage() {
                   <span className="rounded-full bg-gray-100 flex items-center px-2.5 py-1">
                     Phone: <span className="text-gray-900 ml-1 capitalize">{user.phone || 'N/A'}</span>
                   </span>
+                  <button
+                    onClick={() => setExpandedFeatureUserId(prev => prev === user.id ? null : user.id)}
+                    className="ml-auto rounded-lg bg-blue-50 px-3 py-1.5 text-[10px] font-bold text-blue-600 uppercase tracking-wider hover:bg-blue-100 transition-colors normal-case"
+                  >
+                    {expandedFeatureUserId === user.id ? '▲ Tutup Fitur' : '⚙️ Kelola Fitur Sidebar'}
+                  </button>
                 </div>
+
+                {/* Feature Management Panel */}
+                {expandedFeatureUserId === user.id && (() => {
+                  const userFeatures = (user.features || []) as AppFeature[];
+                  const featureLookup = new Map(FEATURE_DEFINITIONS.map(f => [f.id, f]));
+                  return (
+                  <div className="mt-4 border-t border-gray-100 pt-4 animate-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest">Fitur Sidebar yang Diizinkan</h4>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleBulkToggle(user.id, FEATURE_DEFINITIONS.filter(f => !f.clientOnly).map(f => f.id), true)}
+                          disabled={saving === user.id}
+                          className="text-[10px] font-bold text-green-600 hover:underline disabled:opacity-50"
+                        >Centang Semua</button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={() => handleBulkToggle(user.id, FEATURE_DEFINITIONS.map(f => f.id), false)}
+                          disabled={saving === user.id}
+                          className="text-[10px] font-bold text-red-500 hover:underline disabled:opacity-50"
+                        >Hapus Semua</button>
+                      </div>
+                    </div>
+
+                    {/* Checkbox grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {FEATURE_DEFINITIONS.filter(f => !f.clientOnly).map(feat => {
+                        const isActive = userFeatures.includes(feat.id);
+                        return (
+                          <label
+                            key={feat.id}
+                            className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-all text-xs font-medium ${
+                              isActive
+                                ? 'bg-blue-50 border-blue-200 text-blue-800'
+                                : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                            } ${saving === user.id ? 'opacity-50 pointer-events-none' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isActive}
+                              onChange={() => handleToggleFeature(user.id, feat.id, userFeatures)}
+                              disabled={saving === user.id}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                            />
+                            <span className="text-sm">{feat.icon}</span>
+                            <span className="truncate">{feat.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {/* Ordered active list — drag to reorder */}
+                    {userFeatures.length > 0 && (
+                      <div className="mt-5 border-t border-gray-100 pt-4">
+                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-3">📋 Urutan Sidebar (Drag untuk pindahkan)</h4>
+                        <div className="space-y-1 max-h-80 overflow-y-auto">
+                          {userFeatures.map((fId, idx) => {
+                            const def = featureLookup.get(fId);
+                            if (!def) return null;
+                            const isDragging = dragState?.userId === user.id && dragState.dragIdx === idx;
+                            const isDragOver = dragState?.userId === user.id && dragState.overIdx === idx && dragState.dragIdx !== idx;
+                            return (
+                              <div
+                                key={fId}
+                                draggable
+                                onDragStart={(e) => {
+                                  setDragState({ userId: user.id, dragIdx: idx, overIdx: idx });
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  // Make the drag image slightly transparent
+                                  if (e.currentTarget instanceof HTMLElement) {
+                                    e.dataTransfer.setDragImage(e.currentTarget, 20, 20);
+                                  }
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  e.dataTransfer.dropEffect = 'move';
+                                  if (dragState && dragState.userId === user.id) {
+                                    setDragState(prev => prev ? { ...prev, overIdx: idx } : null);
+                                  }
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  if (dragState && dragState.userId === user.id) {
+                                    handleDragReorder(user.id, dragState.dragIdx, idx);
+                                  }
+                                  setDragState(null);
+                                }}
+                                onDragEnd={() => setDragState(null)}
+                                className={`flex items-center gap-2 rounded-xl px-3 py-2.5 transition-all select-none ${
+                                  isDragging
+                                    ? 'opacity-40 bg-gray-100 border border-dashed border-gray-300'
+                                    : isDragOver
+                                    ? 'bg-blue-50 border-2 border-blue-400 shadow-sm'
+                                    : 'bg-white border border-gray-200 hover:bg-gray-50'
+                                }`}
+                              >
+                                {/* Drag handle */}
+                                <span className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0" title="Drag untuk pindahkan">
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
+                                    <circle cx="9" cy="10" r="1.5" /><circle cx="15" cy="10" r="1.5" />
+                                    <circle cx="9" cy="15" r="1.5" /><circle cx="15" cy="15" r="1.5" />
+                                    <circle cx="9" cy="20" r="1.5" /><circle cx="15" cy="20" r="1.5" />
+                                  </svg>
+                                </span>
+                                <span className="text-[10px] font-black text-gray-300 w-5 text-center">{idx + 1}</span>
+                                <span className="text-sm">{def.icon}</span>
+                                <span className="flex-1 text-xs font-semibold text-gray-800 truncate">{def.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-2 text-[10px] text-gray-400 italic">Seret ⠿ handle di kiri untuk mengubah urutan sidebar user.</p>
+                      </div>
+                    )}
+                  </div>
+                  );
+                })()}
               </div>
             ))}
 

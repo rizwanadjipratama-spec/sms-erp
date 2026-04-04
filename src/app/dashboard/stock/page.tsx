@@ -25,7 +25,7 @@ export default function StockDashboard() {
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/stock')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/stock')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

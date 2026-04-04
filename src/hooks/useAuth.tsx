@@ -12,6 +12,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setProfile: (profile: Profile | null) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -78,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     logout,
     refreshProfile: loadProfile,
+    setProfile,
   }), [profile, role, loading, signIn, logout, loadProfile]);
 
   return (

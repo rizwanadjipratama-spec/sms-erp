@@ -52,7 +52,7 @@ export default function DisbursementsDashboard() {
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/claims/disbursements')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/claims/disbursements')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
@@ -284,6 +284,9 @@ export default function DisbursementsDashboard() {
                   {req.paid_amount > 0 && (
                     <p className="text-[10px] font-bold text-green-600">Dibayar: {fmt(req.paid_amount)}</p>
                   )}
+                  {req.proposed_amount && req.proposed_amount > 0 ? (
+                    <p className="text-[10px] font-bold text-amber-600">Menawarkan: {fmt(req.proposed_amount)}</p>
+                  ) : null}
                   {balance > 0 && req.paid_amount > 0 && (
                     <p className="text-[10px] font-bold text-orange-600">Sisa: {fmt(balance)}</p>
                   )}
@@ -325,7 +328,7 @@ export default function DisbursementsDashboard() {
                 </button>
 
                 {/* Disburse (for APPROVED or PENDING with balance) */}
-                {(req.status === 'APPROVED' || (req.status === 'PENDING' && balance > 0)) && (
+                {(req.status === 'APPROVED' || (req.status === 'PENDING' && balance > 0 && !(req.proposed_amount && req.proposed_amount > 0))) && (
                   <button
                     onClick={() => {
                       setSelectedReq(req);

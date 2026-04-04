@@ -23,7 +23,7 @@ export default function OwnerDashboard() {
   // ---------- Auth guard ----------
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/owner')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/owner')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

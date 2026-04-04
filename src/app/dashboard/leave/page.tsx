@@ -41,7 +41,7 @@ export default function LeaveDashboard() {
   // Auth Guard
   useEffect(() => {
     if (!authLoading && !profile) router.push('/login');
-    if (!authLoading && profile && !canAccessRoute(profile.role, '/dashboard/leave')) {
+    if (!authLoading && profile && !canAccessRoute(profile, '/dashboard/leave')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [authLoading, profile, router]);

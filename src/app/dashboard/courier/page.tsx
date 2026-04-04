@@ -73,7 +73,7 @@ export default function CourierDashboard() {
   // Auth guard
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/courier')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/courier')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

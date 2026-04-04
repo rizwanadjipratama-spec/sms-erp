@@ -22,7 +22,7 @@ export default function ProcurementApprovalsPage() {
 
   useEffect(() => {
     if (!authLoading && !profile) router.push('/login');
-    if (!authLoading && profile && !canAccessRoute(profile.role, '/dashboard/procurement-approvals')) {
+    if (!authLoading && profile && !canAccessRoute(profile, '/dashboard/procurement-approvals')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [authLoading, profile, router]);

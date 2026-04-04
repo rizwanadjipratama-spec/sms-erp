@@ -30,7 +30,7 @@ export default function ClaimApprovalsDashboard() {
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/claims/approvals')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/claims/approvals')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

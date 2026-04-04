@@ -22,7 +22,7 @@ export default function CmsDashboard() {
   // Strict Auth Guard
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/cms')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/cms')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
@@ -36,7 +36,7 @@ export default function CmsDashboard() {
   }
 
   // Double check in render to prevent flashes
-  if (!canAccessRoute(profile.role, '/dashboard/cms')) return null;
+  if (!canAccessRoute(profile, '/dashboard/cms')) return null;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">

@@ -29,7 +29,7 @@ export default function ApprovalsDashboard() {
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/approvals')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/approvals')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

@@ -18,6 +18,7 @@ export const claimService = {
       payment_preference: PaymentPreferenceType;
       payment_preference_details?: string;
       items: Omit<CompanyRequestItem, 'id' | 'request_id' | 'created_at'>[];
+      note?: string;
     },
     actor: Actor
   ): Promise<string> {
@@ -70,7 +71,7 @@ export const claimService = {
       request_id: requestId,
       actor_id: actor.id,
       action: 'CREATED',
-      note: `Requested ${data.type} for ${total_amount.toLocaleString()}`
+      note: data.note ? `Catatan dari pembuat klaim: ${data.note}` : `Requested ${data.type} for ${total_amount.toLocaleString()}`
     } as any);
 
     return requestId;
@@ -171,20 +172,23 @@ export const claimService = {
   ): Promise<void> {
     const { pay_amount, payment_method_used, pending_reason } = actionData;
     const previousPaid = currentRequest.paid_amount || 0;
-    const newPaidAmount = previousPaid + pay_amount;
-    const balance = currentRequest.total_amount - newPaidAmount;
+    const balance = currentRequest.total_amount - previousPaid;
 
     let newStatus: CompanyRequestStatus = 'PENDING';
     let historyAction = 'FUNDS_PROCESSED';
+    let newPaidAmount = previousPaid;
+    let proposedAmount: number | null = null;
 
     // Conflict Check
     const methodConflict = payment_method_used !== currentRequest.payment_preference;
     
-    if (balance > 0) {
+    if (pay_amount < balance) {
       newStatus = 'PENDING';
-      historyAction = 'PARTIAL_PAYMENT';
+      historyAction = 'PARTIAL_PAYMENT_PROPOSED';
+      proposedAmount = pay_amount;
     } else {
       // Full Payment
+      newPaidAmount = previousPaid + pay_amount;
       if (methodConflict) {
         // Need user negotiation
         newStatus = 'PENDING';
@@ -203,8 +207,9 @@ export const claimService = {
       .update({
         status: newStatus,
         paid_amount: newPaidAmount,
+        proposed_amount: proposedAmount,
         payment_method_offered: methodConflict ? payment_method_used : null,
-        pending_reason: pending_reason || (balance > 0 ? `Waiting to pay remaining ${balance}` : null)
+        pending_reason: pending_reason || (pay_amount < balance ? `Waiting to pay remaining ${balance - pay_amount}` : null)
       } as any)
       .eq('id', id);
 
@@ -238,12 +243,60 @@ export const claimService = {
     } as any);
   },
 
+  // EMPLOYEE LOGIC: Accept Partial Proposal
+  async acceptPartialProposal(id: string, currentRequest: CompanyRequest, actor: Actor): Promise<void> {
+    const proposed = currentRequest.proposed_amount;
+    if (!proposed || proposed <= 0) throw new Error('No partial payment proposed.');
+    const newPaidAmount = (currentRequest.paid_amount || 0) + proposed;
+    
+    const { error } = await supabase
+      .from('company_requests')
+      .update({
+        paid_amount: newPaidAmount,
+        proposed_amount: null,
+        status: 'PENDING',
+        pending_reason: `Waiting to pay remaining ${currentRequest.total_amount - newPaidAmount}`
+      } as any)
+      .eq('id', id);
+
+    if (error) throw new Error(`Accept Partial failed: ${error.message}`);
+
+    await supabase.from('company_request_history').insert({
+      request_id: id,
+      actor_id: actor.id,
+      action: 'PARTIAL_PAYMENT_ACCEPTED',
+      note: `Employee accepted partial payment of ${proposed}`
+    } as any);
+  },
+
+  // EMPLOYEE LOGIC: Reject Partial Proposal
+  async rejectPartialProposal(id: string, reason: string, actor: Actor): Promise<void> {
+    const { error } = await supabase
+      .from('company_requests')
+      .update({
+        proposed_amount: null,
+        status: 'PENDING',
+        pending_reason: `Employee rejected partial payment: ${reason}`
+      } as any)
+      .eq('id', id);
+
+    if (error) throw new Error(`Reject Partial failed: ${error.message}`);
+
+    await supabase.from('company_request_history').insert({
+      request_id: id,
+      actor_id: actor.id,
+      action: 'PARTIAL_PAYMENT_REJECTED',
+      note: reason
+    } as any);
+  },
+
   // EMPLOYEE/OFFICER LOGIC: Accept Negotiation or Ready Cash (Complete Claim)
   async completeClaim(id: string, actor: Actor): Promise<void> {
     const { error } = await supabase
       .from('company_requests')
       .update({
         status: 'COMPLETED',
+        payment_method_offered: null,
         pending_reason: null
       } as any)
       .eq('id', id);

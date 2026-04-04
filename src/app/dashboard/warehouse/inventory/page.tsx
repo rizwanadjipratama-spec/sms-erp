@@ -30,7 +30,7 @@ export default function InventoryDashboard() {
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/warehouse/inventory')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/warehouse/inventory')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

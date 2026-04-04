@@ -29,7 +29,7 @@ export default function PurchasingDashboard() {
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/purchasing')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/purchasing')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

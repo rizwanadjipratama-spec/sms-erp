@@ -33,7 +33,7 @@ function RequestPurchaseContent() {
 
   useEffect(() => {
     if (!authLoading && !profile) router.push('/login');
-    if (!authLoading && profile && !canAccessRoute(profile.role, '/dashboard/warehouse/request-purchase')) {
+    if (!authLoading && profile && !canAccessRoute(profile, '/dashboard/warehouse/request-purchase')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [authLoading, profile, router]);

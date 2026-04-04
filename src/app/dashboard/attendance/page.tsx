@@ -53,7 +53,7 @@ export default function AttendanceDashboard() {
   // Auth guard
   useEffect(() => {
     if (!authLoading && !profile) router.push('/login');
-    if (!authLoading && profile && !canAccessRoute(profile.role, '/dashboard/attendance')) {
+    if (!authLoading && profile && !canAccessRoute(profile, '/dashboard/attendance')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [authLoading, profile, router]);

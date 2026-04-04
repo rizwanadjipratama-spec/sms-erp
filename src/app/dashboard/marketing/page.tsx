@@ -37,7 +37,7 @@ export default function MarketingDashboard() {
   // ---------- Auth guard ----------
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/marketing')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/marketing')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

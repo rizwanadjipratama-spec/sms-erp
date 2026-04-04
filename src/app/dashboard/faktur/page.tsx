@@ -34,7 +34,7 @@ export default function FakturDashboard() {
   // Auth guard
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/faktur')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/faktur')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

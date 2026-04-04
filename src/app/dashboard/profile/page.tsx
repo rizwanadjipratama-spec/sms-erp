@@ -11,6 +11,7 @@ import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 
 import { ClientProfileForm } from '@/components/profile/ClientProfileForm';
 import { StaffProfileForm } from '@/components/profile/StaffProfileForm';
+import { PaymentMethodsManager } from '@/components/profile/PaymentMethodsManager';
 
 export default function MyProfilePage() {
   const { profile: authProfile, loading: authLoading, refreshProfile } = useAuth();
@@ -21,7 +22,7 @@ export default function MyProfilePage() {
 
   useEffect(() => {
     if (!authLoading && !authProfile) router.push('/login');
-    if (!authLoading && authProfile && !canAccessRoute(authProfile.role, '/dashboard/profile')) {
+    if (!authLoading && authProfile && !canAccessRoute(authProfile, '/dashboard/profile')) {
       router.replace(authService.getRoleRedirect(authProfile.role));
     }
   }, [authLoading, authProfile, router]);
@@ -120,6 +121,7 @@ export default function MyProfilePage() {
             ) : (
               <StaffProfileForm initialProfile={fullProfile} onUpdate={handleProfileUpdate} />
             )}
+            <PaymentMethodsManager profileId={fullProfile.id} />
           </div>
         </div>
 

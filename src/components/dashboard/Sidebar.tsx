@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SidebarButton } from './SidebarButton';
 import { useAuth } from '@/hooks/useAuth';
-import { canAccessRoute } from '@/lib/permissions';
-import { NAV_ITEMS } from '@/lib/navigation';
+import { getNavigationForProfile } from '@/lib/navigation';
+import { supabase } from '@/lib/db/client';
+import type { AppFeature } from '@/lib/features';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,13 +15,30 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { profile, logout, role } = useAuth();
+  const { profile, logout, role, setProfile } = useAuth();
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+
+  const handleDrop = useCallback(async (fromIdx: number, toIdx: number) => {
+    if (!profile || fromIdx === toIdx) return;
+    const features = [...(profile.features || [])] as AppFeature[];
+    const [moved] = features.splice(fromIdx, 1);
+    features.splice(toIdx, 0, moved);
+
+    // Optimistic: update local profile
+    setProfile?.({ ...profile, features });
+    try {
+      await supabase.from('profiles').update({ features }).eq('id', profile.id);
+    } catch {
+      // Revert on failure
+      setProfile?.(profile);
+    }
+  }, [profile, setProfile]);
 
   if (!profile) return null;
 
-  const visibleNav = NAV_ITEMS.filter(item => canAccessRoute(role, item.href));
+  const visibleNav = getNavigationForProfile(profile);
 
-  // Find the most specific active route explicitly (longest matching prefix)
   const activeItem = React.useMemo(() => {
     return [...visibleNav]
       .sort((a, b) => b.href.length - a.href.length)
@@ -66,18 +83,70 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto p-3">
-        {visibleNav.map(item => (
-          <SidebarButton
-            key={item.href}
-            label={item.label}
-            href={item.href}
-            icon={item.icon}
-            isActive={activeItem?.href === item.href}
-            onClick={onClose}
-          />
-        ))}
+      {/* Navigation — draggable */}
+      <nav className="custom-scrollbar flex-1 overflow-y-auto p-3">
+        <div className="space-y-1">
+          {visibleNav.map((item, idx) => {
+            const isActive = activeItem?.href === item.href;
+            const isDragging = dragIdx === idx;
+            const isDragOver = overIdx === idx && dragIdx !== idx;
+            return (
+              <div
+                key={item.href}
+                draggable
+                onDragStart={(e) => {
+                  setDragIdx(idx);
+                  setOverIdx(idx);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  setOverIdx(idx);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIdx !== null) handleDrop(dragIdx, idx);
+                  setDragIdx(null);
+                  setOverIdx(null);
+                }}
+                onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+                className={`flex items-center rounded-apple text-sm font-medium transition-all duration-200 select-none ${
+                  isDragging
+                    ? 'opacity-30'
+                    : isDragOver
+                    ? 'ring-2 ring-blue-400 ring-offset-1'
+                    : ''
+                }`}
+              >
+                {/* Drag handle */}
+                <span
+                  className="flex-shrink-0 cursor-grab active:cursor-grabbing px-1.5 py-2.5 text-gray-300 hover:text-gray-500 transition-colors"
+                  title="Seret untuk pindahkan"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="9" cy="6" r="1.8" /><circle cx="15" cy="6" r="1.8" />
+                    <circle cx="9" cy="12" r="1.8" /><circle cx="15" cy="12" r="1.8" />
+                    <circle cx="9" cy="18" r="1.8" /><circle cx="15" cy="18" r="1.8" />
+                  </svg>
+                </span>
+
+                {/* Nav link */}
+                <Link
+                  href={item.href}
+                  onClick={onClose}
+                  className={`flex-1 py-2.5 pr-3 rounded-apple transition-colors ${
+                    isActive
+                      ? 'text-[var(--apple-blue)] font-bold'
+                      : 'text-apple-text-secondary hover:text-apple-blue'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              </div>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Sign out */}

@@ -36,7 +36,7 @@ export default function AdminDashboard() {
   // ---------- Auth guard ----------
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/admin')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/admin')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

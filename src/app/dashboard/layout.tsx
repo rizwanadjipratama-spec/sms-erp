@@ -13,7 +13,7 @@ import { Sidebar } from '@/components/dashboard/Sidebar';
 import { NotificationBell } from '@/components/ui/NotificationBell';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import BranchIndicator from '@/components/layout/BranchIndicator';
-import { NAV_ITEMS } from '@/lib/navigation';
+import { getNavigationForProfile } from '@/lib/navigation';
 import { PageSpinner } from '@/components/ui/LoadingSkeleton';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (isChatAnimating) return;
     setIsChatAnimating(true);
     setChatOpen(prev => !prev);
-    setTimeout(() => setIsChatAnimating(false), 350); // Matches the maximum CSS transition duration
+    setTimeout(() => setIsChatAnimating(false), 350);
   }, [isChatAnimating]);
 
   // Auth redirect
@@ -39,19 +39,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [loading, profile, router]);
 
-  // Profile completion guard removed — clients can browse freely.
-  // They are blocked from creating requests until profile is complete (enforced on request pages).
-
-  // Route guard
+  // Route guard — now feature-based
   useEffect(() => {
     if (loading || !profile) return;
     if (pathname === '/dashboard') return;
-    // Don't redirect away from setup page
     if (pathname === '/dashboard/profile') return;
 
-    const hasDirectAccess = canAccessRoute(profile.role, pathname);
-    const hasNestedAccess = NAV_ITEMS.some(
-      item => pathname.startsWith(item.href + '/') && canAccessRoute(profile.role, item.href)
+    const hasDirectAccess = canAccessRoute(profile, pathname);
+    const visibleNav = getNavigationForProfile(profile);
+    const hasNestedAccess = visibleNav.some(
+      item => pathname.startsWith(item.href + '/') && canAccessRoute(profile, item.href)
     );
 
     if (!hasDirectAccess && !hasNestedAccess) {
@@ -66,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const canChat = profile?.role ? chatService.canUseChat(profile.role) : false;
 
-  const visibleNav = NAV_ITEMS.filter(item => canAccessRoute(role, item.href));
+  const visibleNav = getNavigationForProfile(profile);
   const activeNavItem = [...visibleNav]
     .sort((a, b) => b.href.length - a.href.length)
     .find(

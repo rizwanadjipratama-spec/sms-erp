@@ -10,7 +10,7 @@ import { requireAuthUser } from '@/lib/db';
 import { DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { supabase } from '@/lib/supabase';
-import type { CompanyRequest, CompanyRequestItem, CompanyRequestType, PaymentPreferenceType } from '@/types/types';
+import type { CompanyRequest, CompanyRequestItem, CompanyRequestType, PaymentPreferenceType, UserPaymentMethod } from '@/types/types';
 
 // Format currency
 const fmt = (n: number) => 'Rp ' + n.toLocaleString('id-ID');
@@ -60,14 +60,16 @@ export default function ClaimsDashboard() {
   const [paymentPref, setPaymentPref] = useState<PaymentPreferenceType>('CASH');
   const [paymentPrefDetails, setPaymentPrefDetails] = useState('');
   const [items, setItems] = useState<Omit<CompanyRequestItem, 'id' | 'request_id' | 'created_at'>[]>([emptyItem()]);
+  const [submissionNote, setSubmissionNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<UserPaymentMethod[]>([]);
 
   // Expanded request detail
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile.role, '/dashboard/claims')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/claims')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
@@ -83,6 +85,11 @@ export default function ClaimsDashboard() {
     try {
       const data = await claimService.getRequests({ created_by: profile?.id });
       setRequests(data);
+      
+      if (profile?.id) {
+        const { data: methods } = await supabase.from('user_payment_methods').select('*').eq('user_id', profile.id);
+        if (methods) setPaymentMethods(methods as UserPaymentMethod[]);
+      }
     } catch (err: any) {
       setError(err?.message || 'Failed to load requests');
     } finally {
@@ -131,6 +138,8 @@ export default function ClaimsDashboard() {
     if (activeBranchId === 'ALL') return alert('Pilih cabang spesifik sebelum submit.');
     if (items.some(i => !i.description.trim())) return alert('Semua item harus ada deskripsi.');
     if (items.some(i => i.total_price <= 0)) return alert('Harga item harus lebih dari 0.');
+    if (paymentPref === 'TRANSFER' && (!paymentPrefDetails || paymentPrefDetails.trim() === '')) return alert('Pilih rekening transfer Anda.');
+    if (paymentPref === 'OTHERS' && (!paymentPrefDetails || paymentPrefDetails.trim() === '')) return alert('Pilih atau isi e-wallet/metode Anda.');
 
     setSubmitting(true);
     try {
@@ -140,13 +149,15 @@ export default function ClaimsDashboard() {
           type: formType,
           branch_id: activeBranchId,
           payment_preference: paymentPref,
-          payment_preference_details: paymentPref === 'OTHERS' ? paymentPrefDetails : undefined,
+          payment_preference_details: paymentPrefDetails,
           items: items as any,
+          note: submissionNote,
         },
         actor as any
       );
       setShowForm(false);
       setItems([emptyItem()]);
+      setSubmissionNote('');
       await refresh();
     } catch (err: any) {
       alert(err?.message || 'Submit failed');
@@ -184,6 +195,30 @@ export default function ClaimsDashboard() {
     try {
       const actor = await getActor();
       await claimService.rejectNegotiation(requestId, reason, actor as any);
+      await refresh();
+    } catch (err: any) {
+      alert(err?.message || 'Reject failed');
+    }
+  };
+
+  // Accept Partial Proposal
+  const handleAcceptPartial = async (requestId: string, req: CompanyRequest) => {
+    try {
+      const actor = await getActor();
+      await claimService.acceptPartialProposal(requestId, req, actor as any);
+      await refresh();
+    } catch (err: any) {
+      alert(err?.message || 'Accept failed');
+    }
+  };
+
+  // Reject Partial Proposal
+  const handleRejectPartial = async (requestId: string) => {
+    const reason = prompt('Alasan menolak pencairan sebagian? (misal: mau tunggu full aja)');
+    if (!reason) return;
+    try {
+      const actor = await getActor();
+      await claimService.rejectPartialProposal(requestId, reason, actor as any);
       await refresh();
     } catch (err: any) {
       alert(err?.message || 'Reject failed');
@@ -246,18 +281,60 @@ export default function ClaimsDashboard() {
                   onClick={() => setPaymentPref(p)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${paymentPref === p ? 'bg-apple-blue text-white border-apple-blue' : 'bg-apple-gray-bg text-apple-text-secondary border-apple-gray-border hover:border-apple-blue/40'}`}
                 >
-                  {p === 'CASH' ? '💵 Cash' : p === 'TRANSFER' ? '🏦 Transfer' : '📝 Lainnya'}
+                  {p === 'CASH' ? '💵 Cash' : p === 'TRANSFER' ? '🏦 Transfer' : '📝 E-Wallet / Lainnya'}
                 </button>
               ))}
             </div>
+
+            {paymentPref === 'TRANSFER' && (
+              <div className="mt-3">
+                {paymentMethods.filter(m => m.type === 'BANK').length > 0 ? (
+                  <select 
+                    value={paymentMethods.some(m => m.type === 'BANK' && `${m.provider} - ${m.account_number} a/n ${m.account_name}` === paymentPrefDetails) ? paymentPrefDetails : ''}
+                    onChange={e => setPaymentPrefDetails(e.target.value)}
+                    className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all"
+                  >
+                    <option value="" disabled>Pilih Rekening Bank...</option>
+                    {paymentMethods.filter(m => m.type === 'BANK').map(m => (
+                      <option key={m.id} value={`${m.provider} - ${m.account_number} a/n ${m.account_name}`}>
+                        {m.provider} - {m.account_number} ({m.account_name})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs border border-red-100 flex items-center justify-between">
+                    <span>Belum ada Rekening Bank tersimpan.</span>
+                    <a href="/dashboard/profile" className="font-bold underline">Tambah di Profile</a>
+                  </div>
+                )}
+              </div>
+            )}
+
             {paymentPref === 'OTHERS' && (
-              <input
-                type="text"
-                placeholder="Jelaskan metode lainnya..."
-                value={paymentPrefDetails}
-                onChange={e => setPaymentPrefDetails(e.target.value)}
-                className="mt-3 w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all"
-              />
+              <div className="mt-3 space-y-2">
+                {paymentMethods.filter(m => m.type === 'EWALLET').length > 0 && (
+                  <select 
+                    value={paymentMethods.some(m => m.type === 'EWALLET' && `${m.provider} - ${m.account_number} a/n ${m.account_name}` === paymentPrefDetails) ? paymentPrefDetails : ''}
+                    onChange={e => setPaymentPrefDetails(e.target.value)}
+                    className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all"
+                  >
+                    <option value="" disabled>Pilih E-Wallet Tersimpan...</option>
+                    {paymentMethods.filter(m => m.type === 'EWALLET').map(m => (
+                      <option key={m.id} value={`${m.provider} - ${m.account_number} a/n ${m.account_name}`}>
+                        {m.provider} - {m.account_number} ({m.account_name})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                
+                <input
+                  type="text"
+                  placeholder="Atau isi manual (e.g. Dana 081234... / Kasir Toko)..."
+                  value={(!paymentMethods.some(m => m.type === 'EWALLET' && `${m.provider} - ${m.account_number} a/n ${m.account_name}` === paymentPrefDetails)) ? paymentPrefDetails : ''}
+                  onChange={e => setPaymentPrefDetails(e.target.value)}
+                  className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all"
+                />
+              </div>
             )}
           </div>
 
@@ -342,6 +419,17 @@ export default function ClaimsDashboard() {
             ))}
           </div>
 
+          {/* Submission Note */}
+          <div>
+            <label className="text-[9px] font-bold uppercase text-apple-text-secondary mb-1 block">Catatan untuk Claim Officer (Opsional)</label>
+            <textarea
+              placeholder="Contoh: Tolong proses cepet ya bro, uangnya dipake besok."
+              value={submissionNote}
+              onChange={e => setSubmissionNote(e.target.value)}
+              className="w-full bg-apple-gray-bg border border-apple-gray-border rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-apple-blue/10 focus:border-apple-blue outline-none transition-all resize-y min-h-[80px]"
+            />
+          </div>
+
           {/* Total */}
           <div className="flex items-center justify-between bg-gradient-to-r from-apple-blue/5 to-apple-blue/10 rounded-xl px-6 py-4 border border-apple-blue/20">
             <span className="text-sm font-bold text-apple-text-secondary">GRAND TOTAL</span>
@@ -392,7 +480,10 @@ export default function ClaimsDashboard() {
               <div className="text-right shrink-0">
                 <p className="text-lg font-black text-apple-text-primary">{fmt(req.total_amount)}</p>
                 {req.paid_amount > 0 && req.paid_amount < req.total_amount && (
-                  <p className="text-[10px] font-bold text-orange-600">Dibayar: {fmt(req.paid_amount)}</p>
+                  <>
+                    <p className="text-[10px] font-bold text-green-600">Dibayar: {fmt(req.paid_amount)}</p>
+                    <p className="text-[10px] font-bold text-orange-600 mt-1">Sisa: {fmt(req.total_amount - req.paid_amount)}</p>
+                  </>
                 )}
               </div>
               <svg className={`w-4 h-4 text-apple-text-secondary transition-transform ${expandedId === req.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -441,7 +532,20 @@ export default function ClaimsDashboard() {
                   </div>
                 )}
 
-                {/* Negotiation */}
+                {/* Partial Proposal Negotiation */}
+                {req.status === 'PENDING' && (req.proposed_amount || 0) > 0 && (
+                  <div className="bg-amber-50 rounded-xl px-4 py-4 border border-amber-200 space-y-3">
+                    <p className="text-sm font-bold text-amber-700">
+                      ⚠️ Claim Officer menawarkan pencairan sebagian sebesar <span className="font-black">{fmt(req.proposed_amount || 0)}</span>. Ambil sekarang atau tunggu uang komplit?
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleAcceptPartial(req.id, req)} className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-green-600 hover:bg-green-700 transition-all">Ambil Sebagian</button>
+                      <button onClick={() => handleRejectPartial(req.id)} className="px-4 py-2 rounded-lg text-xs font-bold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-all">Tolak (Tunggu Full)</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Method Negotiation */}
                 {req.status === 'PENDING' && req.payment_method_offered && req.payment_method_offered !== req.payment_preference && (
                   <div className="bg-amber-50 rounded-xl px-4 py-4 border border-amber-200 space-y-3">
                     <p className="text-sm font-bold text-amber-700">
