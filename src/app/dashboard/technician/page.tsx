@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
@@ -199,14 +200,10 @@ export default function TechnicianDashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>('area-issues');
 
-  const [dashData, setDashData] = useState<Awaited<ReturnType<typeof technicianService.getTechnicianDashboard>> | null>(null);
-  const [pmSchedules, setPmSchedules] = useState<Awaited<ReturnType<typeof pmService.getUpcomingPms>>>([]);
   const [knowledgeResults, setKnowledgeResults] = useState<ServiceIssue[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Auth guard
   useEffect(() => {
@@ -222,31 +219,30 @@ export default function TechnicianDashboard() {
   }, [profile, role]);
 
   // Fetch dashboard
-  const refresh = useCallback(async () => {
-    if (!profile) return;
-    setFetching(true);
-    setError(null);
-    try {
-      const data = await technicianService.getTechnicianDashboard(profile.id);
-      setDashData(data);
-      
-      const areaIds = data.stats?.totalAreas ? data.myAreas?.map((a: any) => a.id) || [] : [];
-      const pms = await pmService.getUpcomingPms(profile.id, areaIds);
-      setPmSchedules(pms);
-    } catch (err) {
-      console.error('Technician dashboard fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-    } finally {
-      setFetching(false);
-    }
-  }, [profile]);
+  const { data: dashData, mutate: refreshDashData, error: errorDash } = useSWR(
+    profile ? ['technician_dash', profile.id] : null,
+    () => technicianService.getTechnicianDashboard(profile!.id)
+  );
 
-  useEffect(() => {
-    if (profile) refresh();
-  }, [profile, refresh]);
+  const { data: pmSchedules = [], mutate: refreshPmData, error: errorPm } = useSWR(
+    profile && dashData ? ['technician_pm', profile.id] : null,
+    async () => {
+      const areaIds = dashData?.stats?.totalAreas ? dashData.myAreas?.map((a: any) => a.id) || [] : [];
+      return await pmService.getUpcomingPms(profile!.id, areaIds);
+    }
+  );
+
+  const refreshAll = useCallback(() => {
+    refreshDashData();
+    refreshPmData();
+  }, [refreshDashData, refreshPmData]);
+
+  const fetching = !dashData && !pmSchedules.length && !errorDash && !errorPm;
+  const errorObj = errorDash || errorPm;
+  const error = errorObj ? (errorObj.message || String(errorObj)) : null;
 
   // Realtime
-  useRealtimeTable('service_issues', undefined, refresh, { enabled: Boolean(profile), debounceMs: 300 });
+  useRealtimeTable('service_issues', undefined, refreshAll, { enabled: Boolean(profile), debounceMs: 300 });
 
   // Knowledge base search
   const searchKnowledgeBase = useCallback(async (query: string) => {
@@ -270,26 +266,26 @@ export default function TechnicianDashboard() {
     try {
       const actor = await getActor();
       await technicianService.takeIssue(issueId, actor);
-      await refresh();
+      refreshAll();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to take issue');
     } finally {
       setProcessingId(null);
     }
-  }, [getActor, refresh]);
+  }, [getActor, refreshAll]);
 
   const handleAdvance = useCallback(async (issueId: string, nextStatus: ServiceIssueStatus) => {
     setProcessingId(issueId);
     try {
       const actor = await getActor();
       await technicianService.updateIssueStatus(issueId, nextStatus, actor);
-      await refresh();
+      refreshAll();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to update status');
     } finally {
       setProcessingId(null);
     }
-  }, [getActor, refresh]);
+  }, [getActor, refreshAll]);
 
   const handleComplete = useCallback(async (issueId: string) => {
     const note = notes[issueId]?.trim();
@@ -297,28 +293,28 @@ export default function TechnicianDashboard() {
     setProcessingId(issueId);
     try {
       const actor = await getActor();
-      await technicianService.completeIssue(issueId, actor, note);
+      await technicianService.completeIssue(issueId, note, [], actor);
       setNotes(prev => { const n = { ...prev }; delete n[issueId]; return n; });
-      await refresh();
+      refreshAll();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to complete issue');
     } finally {
       setProcessingId(null);
     }
-  }, [getActor, refresh, notes]);
+  }, [getActor, refreshAll, notes]);
 
   const handleTransferRespond = useCallback(async (transferId: string, accept: boolean) => {
     setProcessingId(transferId);
     try {
       const actor = await getActor();
       await technicianService.respondToTransfer(transferId, accept, actor);
-      await refresh();
+      refreshAll();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to respond');
     } finally {
       setProcessingId(null);
     }
-  }, [getActor, refresh]);
+  }, [getActor, refreshAll]);
 
   // ── Render ────────────────────────────────────────────────────────────
   if (loading || (fetching && !dashData)) {
@@ -326,7 +322,7 @@ export default function TechnicianDashboard() {
   }
 
   if (error && !dashData) {
-    return <div className="max-w-6xl mx-auto p-4"><ErrorState message={error} onRetry={refresh} /></div>;
+    return <div className="max-w-6xl mx-auto p-4"><ErrorState message={error} onRetry={refreshAll} /></div>;
   }
 
   const stats = dashData?.stats;
@@ -427,7 +423,7 @@ export default function TechnicianDashboard() {
                         try {
                           const actor = await getActor();
                           await pmService.claimPm(pm.id, actor);
-                          await refresh();
+                          refreshAll();
                         } catch(err) { alert(err instanceof Error ? err.message : 'Error claiming PM'); }
                         finally { setProcessingId(null); }
                       }}
@@ -443,7 +439,7 @@ export default function TechnicianDashboard() {
                         try {
                           const actor = await getActor();
                           await pmService.updatePmStatus(pm.id, 'in_progress', actor);
-                          await refresh();
+                          refreshAll();
                         } catch(err) { alert(err instanceof Error ? err.message : 'Error updating PM'); }
                         finally { setProcessingId(null); }
                       }}
@@ -470,7 +466,7 @@ export default function TechnicianDashboard() {
                             const actor = await getActor();
                             await pmService.completePm(pm.id, note, [], actor);
                             setNotes(prev => { const n = { ...prev }; delete n[pm.id]; return n; });
-                            await refresh();
+                            refreshAll();
                           } catch(err) { alert(err instanceof Error ? err.message : 'Error completing PM'); }
                           finally { setProcessingId(null); }
                         }}

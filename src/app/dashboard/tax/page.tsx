@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { invoicesDb, monthlyClosingDb } from '@/lib/db';
@@ -10,63 +11,35 @@ import type { Invoice, MonthlyClosing } from '@/types/types';
 
 export default function TaxDashboard() {
   const { profile, loading } = useAuth();
-
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [closings, setClosings] = useState<MonthlyClosing[]>([]);
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [activeTab, setActiveTab] = useState<'invoices' | 'closings'>('invoices');
 
-  const fetchData = useCallback(async () => {
-    if (!profile?.id) return;
-    try {
-      setError(null);
-      setFetching(true);
-      const [invoiceResult, closingResult] = await Promise.all([
-        invoicesDb.getAll(),
-        monthlyClosingDb.getAll(),
-      ]);
-      setInvoices(invoiceResult.data);
-      setClosings(closingResult);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tax data');
-    } finally {
-      setFetching(false);
-    }
-  }, [profile?.id]);
-
-  const refreshInvoices = useCallback(async () => {
-    if (!profile?.id) return;
-    try {
+  const { data: invoiceData = [], mutate: refreshInvoices, error: errorInv } = useSWR(
+    profile?.id ? ['tax_invoices'] : null,
+    async () => {
       const res = await invoicesDb.getAll();
-      setInvoices(res.data);
-    } catch (err) {
-      console.error('Failed to refresh invoices', err);
+      return res.data;
     }
-  }, [profile?.id]);
+  );
 
-  const refreshClosings = useCallback(async () => {
-    if (!profile?.id) return;
-    try {
-      const res = await monthlyClosingDb.getAll();
-      setClosings(res);
-    } catch (err) {
-      console.error('Failed to refresh closings', err);
-    }
-  }, [profile?.id]);
+  const { data: closings = [], mutate: refreshClosings, error: errorClose } = useSWR(
+    profile?.id ? ['tax_closings'] : null,
+    () => monthlyClosingDb.getAll()
+  );
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const invoices = invoiceData;
+  const fetching = !invoices.length && !closings.length && !errorInv && !errorClose;
+  const errorObj = errorInv || errorClose;
+  const error = errorObj ? (errorObj.message || String(errorObj)) : null;
 
-  useRealtimeTable('invoices', undefined, refreshInvoices, {
+  useRealtimeTable('invoices', undefined, () => { refreshInvoices(); }, {
     enabled: Boolean(profile?.id),
     debounceMs: 500,
   });
 
-  useRealtimeTable('monthly_closing', undefined, refreshClosings, {
+  useRealtimeTable('monthly_closing', undefined, () => { refreshClosings(); }, {
     enabled: Boolean(profile?.id),
     debounceMs: 500,
   });
@@ -98,7 +71,7 @@ export default function TaxDashboard() {
   }
 
   if (error) {
-    return <ErrorState message={error} onRetry={fetchData} />;
+    return <ErrorState message={error} onRetry={() => { refreshInvoices(); refreshClosings(); }} />;
   }
 
   return (

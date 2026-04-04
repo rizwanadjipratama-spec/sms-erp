@@ -138,7 +138,8 @@ export default function FinanceDashboard() {
   }, []);
 
   const fetching = !requests.length && !invoices.length && !closings.length && !errorReq && !errorInv;
-  const error = errorReq || errorInv || errorClose;
+  const errorObj = errorReq || errorInv || errorClose;
+  const error = errorObj ? (errorObj.message || String(errorObj)) : null;
 
   const refreshAll = useCallback(async () => {
     await Promise.all([

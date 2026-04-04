@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
@@ -23,16 +24,11 @@ export default function MarketingDashboard() {
   const router = useRouter();
   const { activeBranchId } = useBranch();
 
-  const [requests, setRequests] = useState<DbRequest[]>([]);
-  const [clientProfiles, setClientProfiles] = useState<Record<string, Profile>>({});
-  const [priceMap, setPriceMap] = useState<Map<string, PriceList>>(new Map());
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [pricingModes, setPricingModes] = useState<Record<string, ClientType>>({});
   const [discounts, setDiscounts] = useState<Record<string, { type: DiscountType; value: number; reason: string }>>({});
   const [itemDiscounts, setItemDiscounts] = useState<Record<string, Record<string, number>>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // ---------- Auth guard ----------
   useEffect(() => {
@@ -42,137 +38,90 @@ export default function MarketingDashboard() {
     }
   }, [loading, profile, router]);
 
-  // ---------- Data fetching ----------
-  const refresh = useCallback(async () => {
-    if (!profile) return;
-    setFetching(true);
-    setError(null);
-
-    try {
-      const [requestsResult, allPrices] = await Promise.all([
-        requestsDb.getByStatus(['submitted'], undefined, activeBranchId),
-        priceListDb.getAll(),
-      ]);
-
-      const orders = requestsResult.data;
-      setRequests(orders);
-
-      // Build price lookup map
-      const nextPriceMap = new Map<string, PriceList>();
-      allPrices.forEach((p) => nextPriceMap.set(p.product_id, p));
-      setPriceMap(nextPriceMap);
-
-      // Initialize notes from existing request data
-      setNotes(
-        orders.reduce<Record<string, string>>((acc, r) => {
-          acc[r.id] = r.note || '';
-          return acc;
-        }, {})
-      );
-
-      // Fetch client profiles
-      const emails = orders
-        .map((r) => r.user_email)
-        .filter((e): e is string => Boolean(e));
-      const uniqueEmails = [...new Set(emails)];
-
-      if (uniqueEmails.length > 0) {
-        const profiles = await profilesDb.getByEmails(uniqueEmails);
-
-        const nextProfiles = profiles.reduce<Record<string, Profile>>((acc, p) => {
-          acc[p.email] = p;
-          return acc;
-        }, {});
-        setClientProfiles(nextProfiles);
-
-        // Set pricing modes based on client type
-        setPricingModes(
-          orders.reduce<Record<string, ClientType>>((acc, r) => {
-            const ct = r.user_email
-              ? nextProfiles[r.user_email]?.client_type || 'regular'
-              : 'regular';
-            acc[r.id] = ct;
-            return acc;
-          }, {})
-        );
-      } else {
-        setClientProfiles({});
-        setPricingModes(
-          orders.reduce<Record<string, ClientType>>((acc, r) => {
-            acc[r.id] = 'regular';
-            return acc;
-          }, {})
-        );
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load marketing data');
-    } finally {
-      setFetching(false);
+  // ---------- Data fetching (SWR) ----------
+  const { data: requests = [], mutate: mutateRequests, error: errorReq } = useSWR(
+    profile ? ['marketing_requests', activeBranchId] : null,
+    async () => {
+      const res = await requestsDb.getByStatus(['submitted'], undefined, activeBranchId);
+      return res.data;
     }
-  }, [profile, activeBranchId]);
+  );
 
-  const refreshRequests = useCallback(async () => {
-    if (!profile) return;
-    try {
-      const requestsRes = await requestsDb.getByStatus(['submitted'], undefined, activeBranchId);
-      const orders = requestsRes.data;
-      setRequests(orders);
+  const { data: allPrices = [], mutate: refreshPrices, error: errorPrice } = useSWR(
+    profile ? ['marketing_prices'] : null,
+    () => priceListDb.getAll()
+  );
 
-      const emails = orders.map((r) => r.user_email).filter((e): e is string => Boolean(e));
-      const uniqueEmails = [...new Set(emails)];
+  const priceMap = useMemo(() => {
+    const map = new Map<string, PriceList>();
+    allPrices.forEach((p) => map.set(p.product_id, p));
+    return map;
+  }, [allPrices]);
 
-      if (uniqueEmails.length > 0) {
-        const ObjectProfiles = await profilesDb.getByEmails(uniqueEmails);
-        const nextProfiles = ObjectProfiles.reduce<Record<string, Profile>>((acc, p) => {
-          acc[p.email] = p;
-          return acc;
-        }, {});
-        setClientProfiles(nextProfiles);
+  const emailsKey = useMemo(() => {
+    const emails = requests.map(r => r.user_email).filter(Boolean) as string[];
+    return [...new Set(emails)].sort().join(',');
+  }, [requests]);
 
-        setPricingModes(orders.reduce<Record<string, ClientType>>((acc, r) => {
-          acc[r.id] = r.user_email ? nextProfiles[r.user_email]?.client_type || 'regular' : 'regular';
-          return acc;
-        }, {}));
-      } else {
-        setClientProfiles({});
-        setPricingModes(orders.reduce<Record<string, ClientType>>((acc, r) => {
-          acc[r.id] = 'regular';
-          return acc;
-        }, {}));
-      }
-
-      setNotes(orders.reduce<Record<string, string>>((acc, r) => {
-        acc[r.id] = r.note || '';
-        return acc;
-      }, {}));
-    } catch (err) {
-      console.error('Failed to refresh requests', err);
+  const { data: clientProfilesList = [], error: errorProf } = useSWR(
+    profile && emailsKey ? ['marketing_profiles', emailsKey] : null,
+    async () => {
+      if (!emailsKey) return [];
+      return await profilesDb.getByEmails(emailsKey.split(','));
     }
-  }, [profile, activeBranchId]);
+  );
 
-  const refreshPrices = useCallback(async () => {
-    if (!profile) return;
-    try {
-      const allPrices = await priceListDb.getAll();
-      const nextPriceMap = new Map<string, PriceList>();
-      allPrices.forEach((p: PriceList) => nextPriceMap.set(p.product_id, p));
-      setPriceMap(nextPriceMap);
-    } catch (err) {
-      console.error('Failed to refresh prices', err);
-    }
-  }, [profile, activeBranchId]);
+  const clientProfiles = useMemo(() => {
+    return clientProfilesList.reduce<Record<string, Profile>>((acc, p) => {
+      acc[p.email] = p;
+      return acc;
+    }, {});
+  }, [clientProfilesList]);
 
+  // Synchronize local edit states
   useEffect(() => {
-    if (profile) refresh();
-  }, [profile, refresh, activeBranchId]);
+    if (!requests.length) return;
+
+    setNotes(prev => {
+      const next = { ...prev };
+      let changed = false;
+      requests.forEach(r => {
+        if (next[r.id] === undefined) {
+          next[r.id] = r.note || '';
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+
+    setPricingModes(prev => {
+      const next = { ...prev };
+      let changed = false;
+      requests.forEach(r => {
+        if (next[r.id] === undefined) {
+          next[r.id] = (r.user_email && clientProfiles[r.user_email]) 
+            ? (clientProfiles[r.user_email].client_type || 'regular') 
+            : 'regular';
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [requests, clientProfiles]);
+
+  const fetching = !requests.length && !allPrices.length && !errorReq && !errorPrice;
+  const errorObj = errorReq || errorPrice || errorProf;
+  const error = errorObj ? (errorObj.message || String(errorObj)) : null;
+
+  const refreshRequests = () => { mutateRequests(); };
 
   // ---------- Realtime ----------
-  useRealtimeTable('requests', 'status=eq.submitted', refreshRequests, {
+  useRealtimeTable('requests', 'status=eq.submitted', () => { refreshRequests(); }, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
 
-  useRealtimeTable('price_list', undefined, refreshPrices, {
+  useRealtimeTable('price_list', undefined, () => { refreshPrices(); }, {
     enabled: Boolean(profile),
     debounceMs: 400,
   });
@@ -279,7 +228,7 @@ export default function MarketingDashboard() {
         });
 
         // Remove from local state immediately
-        setRequests((prev) => prev.filter((r) => r.id !== request.id));
+        mutateRequests((prev) => prev?.filter((r) => r.id !== request.id), { revalidate: false });
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Failed to save marketing review');
       } finally {
@@ -302,7 +251,7 @@ export default function MarketingDashboard() {
   if (error) {
     return (
       <div className="mx-auto max-w-6xl p-4 sm:p-6">
-        <ErrorState message={error} onRetry={refresh} />
+        <ErrorState message={error} onRetry={() => { refreshRequests(); refreshPrices(); }} />
       </div>
     );
   }

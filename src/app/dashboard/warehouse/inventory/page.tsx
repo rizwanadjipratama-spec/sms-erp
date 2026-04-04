@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranch } from '@/hooks/useBranch';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
@@ -21,11 +22,7 @@ export default function InventoryDashboard() {
   const router = useRouter();
   const { activeBranchId } = useBranch();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [inventoryLogs, setInventoryLogs] = useState<InventoryLog[]>([]);
   const [stockInputs, setStockInputs] = useState<Record<string, number>>({});
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,62 +41,49 @@ export default function InventoryDashboard() {
     };
   }, [profile, role]);
 
-  const refreshProducts = useCallback(async () => {
-    try {
+  const { data: products = [], mutate: refreshProducts, error: errorProd } = useSWR(
+    profile ? ['inventory_products', activeBranchId] : null,
+    async () => {
       let query = supabase.from('products').select('*').order('name');
       if (activeBranchId && activeBranchId !== 'ALL') {
         query = query.eq('branch_id', activeBranchId);
       }
-      const productsResult = await query;
-      if (productsResult.error) throw productsResult.error;
-      const productsData = productsResult.data as Product[];
-      setProducts(productsData);
-      setStockInputs(
-        productsData.reduce<Record<string, number>>((acc, product) => {
-          if (stockInputs[product.id] === undefined) {
-            acc[product.id] = product.stock;
-          } else {
-            acc[product.id] = stockInputs[product.id];
-          }
-          return acc;
-        }, { ...stockInputs })
-      );
-    } catch (err) {
-      console.error('Failed to refresh products', err);
+      const res = await query;
+      if (res.error) throw res.error;
+      return res.data as Product[];
     }
-  }, [activeBranchId, stockInputs]);
+  );
 
-  const refreshLogs = useCallback(async () => {
-    try {
-      const logsResult = await inventoryLogsDb.getRecent(30, activeBranchId);
-      setInventoryLogs(logsResult);
-    } catch (err) {
-      console.error('Failed to refresh logs', err);
-    }
-  }, [activeBranchId]);
-
-  const refresh = useCallback(async () => {
-    setFetching(true);
-    setError(null);
-    try {
-      await Promise.all([refreshProducts(), refreshLogs()]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load inventory');
-    } finally {
-      setFetching(false);
-    }
-  }, [refreshProducts, refreshLogs]);
+  const { data: inventoryLogs = [], mutate: refreshLogs, error: errorLogs } = useSWR(
+    profile ? ['inventory_logs', activeBranchId] : null,
+    () => inventoryLogsDb.getRecent(30, activeBranchId)
+  );
 
   useEffect(() => {
-    if (profile) refresh();
-  }, [profile, refresh, activeBranchId]);
+    if (!products.length) return;
+    setStockInputs((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      products.forEach((p) => {
+        if (next[p.id] === undefined) {
+          next[p.id] = p.stock;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [products]);
 
-  useRealtimeTable('products', undefined, refreshProducts, {
+  const fetching = !products.length && !inventoryLogs.length && !errorProd && !errorLogs;
+  const errorObj = errorProd || errorLogs;
+  const error = errorObj ? (errorObj.message || String(errorObj)) : null;
+
+  useRealtimeTable('products', undefined, () => { refreshProducts(); }, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
 
-  useRealtimeTable('inventory_logs', undefined, refreshLogs, {
+  useRealtimeTable('inventory_logs', undefined, () => { refreshLogs(); }, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
@@ -121,14 +105,14 @@ export default function InventoryDashboard() {
             actor
           );
         }
-        await refresh();
+        await Promise.all([refreshProducts(), refreshLogs()]);
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Stock update failed');
       } finally {
         setProcessingId(null);
       }
     },
-    [profile, getActor, stockInputs, refresh]
+    [profile, getActor, stockInputs, refreshProducts, refreshLogs]
   );
 
   if (loading || (fetching && products.length === 0)) {
@@ -142,7 +126,7 @@ export default function InventoryDashboard() {
   if (error && products.length === 0) {
     return (
       <div className="max-w-6xl mx-auto pb-24 p-4">
-        <ErrorState message={error} onRetry={refresh} />
+        <ErrorState message={error} onRetry={() => { refreshProducts(); refreshLogs(); }} />
       </div>
     );
   }

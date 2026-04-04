@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
@@ -60,15 +61,11 @@ export default function CourierDashboard() {
   const { profile, role, loading } = useAuth();
   const router = useRouter();
 
-  const [orders, setOrders] = useState<DbRequest[]>([]);
-  const [deliveryLogs, setDeliveryLogs] = useState<DeliveryLog[]>([]);
   const [proofUrls, setProofUrls] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [staffInput, setStaffInput] = useState<Record<string, string>>({});
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Auth guard
   useEffect(() => {
@@ -84,55 +81,34 @@ export default function CourierDashboard() {
     return { id: user.id, email: user.email ?? profile?.email, role };
   }, [profile, role]);
 
-  const refreshOrders = useCallback(async () => {
-    if (!profile) return;
-    try {
+  const { data: orders = [], mutate: refreshOrders, error: errorOrders } = useSWR(
+    profile ? ['courier_orders'] : null,
+    async () => {
       const activeOrders = await requestsDb.getByStatus(['ready', 'on_delivery', 'delivered']);
-      const courierOrders = activeOrders.data.filter(
-        (r: DbRequest) => r.assigned_courier_id === profile.id || (!r.assigned_courier_id && !r.assigned_technician_id && r.status === 'ready')
+      return activeOrders.data.filter(
+        (r: DbRequest) => r.assigned_courier_id === profile!.id || (!r.assigned_courier_id && !r.assigned_technician_id && r.status === 'ready')
       );
-      setOrders(courierOrders);
-    } catch (err) {
-      console.error('Failed to load courier orders', err);
     }
-  }, [profile]);
+  );
 
-  const refreshLogs = useCallback(async () => {
-    if (!profile) return;
-    try {
-      const logs = await deliveryLogsDb.getByCourier(profile.id);
-      setDeliveryLogs(logs);
-    } catch (err) {
-      console.error('Failed to load delivery logs', err);
-    }
-  }, [profile]);
+  const { data: deliveryLogs = [], mutate: refreshLogs, error: errorLogs } = useSWR(
+    profile ? ['courier_logs'] : null,
+    () => deliveryLogsDb.getByCourier(profile!.id)
+  );
 
-  const refresh = useCallback(async () => {
-    if (!profile) return;
-    setFetching(true);
-    setError(null);
-    try {
-      await Promise.all([refreshOrders(), refreshLogs()]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-    } finally {
-      setFetching(false);
-    }
-  }, [profile, refreshOrders, refreshLogs]);
-
-  useEffect(() => {
-    if (profile) refresh();
-  }, [profile, refresh]);
+  const fetching = !orders.length && !deliveryLogs.length && !errorOrders && !errorLogs;
+  const errorObj = errorOrders || errorLogs;
+  const error = errorObj ? (errorObj.message || String(errorObj)) : null;
 
   // Realtime
-  useRealtimeTable('requests', undefined, refreshOrders, {
+  useRealtimeTable('requests', undefined, () => { refreshOrders(); }, {
     enabled: Boolean(profile),
     debounceMs: 250,
   });
   useRealtimeTable(
     'delivery_logs',
     profile?.id ? `courier_id=eq.${profile.id}` : undefined,
-    refreshLogs,
+    () => { refreshLogs(); },
     { enabled: Boolean(profile?.id), debounceMs: 250 },
   );
 
@@ -143,14 +119,15 @@ export default function CourierDashboard() {
       try {
         const actor = await getActor();
         await deliveryService.startDelivery(request, actor, staffInput[request.id]);
-        await refresh();
+        refreshOrders();
+        refreshLogs();
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Failed to claim delivery');
       } finally {
         setProcessingId(null);
       }
     },
-    [getActor, refresh, staffInput],
+    [getActor, refreshOrders, refreshLogs, staffInput],
   );
 
   const advanceSubStatus = useCallback(
@@ -159,14 +136,15 @@ export default function CourierDashboard() {
       try {
         const actor = await getActor();
         await deliveryService.updateDeliverySubStatus(logId, nextStatus, actor);
-        await refresh();
+        refreshOrders();
+        refreshLogs();
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Failed to update status');
       } finally {
         setProcessingId(null);
       }
     },
-    [getActor, refresh],
+    [getActor, refreshOrders, refreshLogs],
   );
 
   const uploadProof = useCallback(
@@ -199,14 +177,15 @@ export default function CourierDashboard() {
           proofUrl: proofUrls[request.id],
           note: notes[request.id],
         });
-        await refresh();
+        refreshOrders();
+        refreshLogs();
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Failed to complete delivery');
       } finally {
         setProcessingId(null);
       }
     },
-    [getActor, refresh, proofUrls, notes],
+    [getActor, refreshOrders, refreshLogs, proofUrls, notes],
   );
 
   // ── Computed ──────────────────────────────────────────────────────────
@@ -247,7 +226,7 @@ export default function CourierDashboard() {
   if (error && orders.length === 0) {
     return (
       <div className="max-w-6xl mx-auto p-4">
-        <ErrorState message={error} onRetry={refresh} />
+        <ErrorState message={error} onRetry={() => { refreshOrders(); refreshLogs(); }} />
       </div>
     );
   }
