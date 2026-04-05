@@ -7,8 +7,7 @@ import { useBranch } from '@/hooks/useBranch';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
 import { requestsDb, profilesDb } from '@/lib/db';
-import { workflowEngine, authService, autoApproveService } from '@/lib/services';
-import type { AutoApproveSettings, AutoApproveResult } from '@/lib/services';
+import { workflowEngine, authService } from '@/lib/services';
 import { formatCurrency, formatDateTime, formatOrderId } from '@/lib/format-utils';
 import { DashboardSkeleton, EmptyState, ErrorState, StatCard, StatusBadge, OrderNotes } from '@/components/ui';
 import type { DbRequest, DiscountType, Profile } from '@/types/types';
@@ -26,16 +25,10 @@ export default function BossDashboard() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-approve state
-  const [autoSettings, setAutoSettings] = useState<AutoApproveSettings | null>(null);
-  const [autoProcessing, setAutoProcessing] = useState(false);
-  const [autoResult, setAutoResult] = useState<AutoApproveResult | null>(null);
-  const [skippedReasons, setSkippedReasons] = useState<Record<string, string>>({});
-
   // ---------- Auth guard ----------
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile, '/dashboard/boss')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/order-approvals')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);
@@ -74,12 +67,6 @@ export default function BossDashboard() {
       setFetching(false);
     }
   }, [profile, activeBranchId]);
-
-  // Fetch auto-approve settings
-  useEffect(() => {
-    if (!activeBranchId) return;
-    autoApproveService.getSettings(activeBranchId).then(setAutoSettings);
-  }, [activeBranchId]);
 
   useEffect(() => {
     if (!profile) return;
@@ -212,42 +199,6 @@ export default function BossDashboard() {
     [getActor, rejectionReason]
   );
 
-  // ---------- Auto Process ----------
-  const runAutoProcess = useCallback(
-    async () => {
-      if (!autoSettings || !profile) return;
-      const actor = getActor();
-      setAutoProcessing(true);
-      setAutoResult(null);
-      try {
-        const result = await autoApproveService.processAutoApproval(
-          requests,
-          clientProfiles,
-          autoSettings,
-          actor,
-        );
-        setAutoResult(result);
-
-        // Build skipped-reason lookup
-        const reasons: Record<string, string> = {};
-        result.skipped.forEach(s => { reasons[s.request.id] = s.reason; });
-        setSkippedReasons(reasons);
-
-        // Remove processed items from the list
-        const processedIds = new Set([
-          ...result.approved.map(r => r.id),
-          ...result.rejected.map(r => r.id),
-        ]);
-        setRequests(prev => prev.filter(r => !processedIds.has(r.id)));
-      } catch (err) {
-        alert(err instanceof Error ? err.message : 'Auto-process failed');
-      } finally {
-        setAutoProcessing(false);
-      }
-    },
-    [autoSettings, profile, requests, clientProfiles, getActor]
-  );
-
   // ---------- Loading / Error states ----------
   if (loading || fetching) {
     return (
@@ -268,48 +219,16 @@ export default function BossDashboard() {
   // ---------- Render ----------
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Auto-result banner */}
-      {autoResult && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-2">
-          <p className="text-sm font-bold text-blue-800">⚡ Auto-proses selesai</p>
-          <div className="flex flex-wrap gap-3 text-xs font-semibold">
-            {autoResult.approved.length > 0 && (
-              <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">✅ {autoResult.approved.length} Approved</span>
-            )}
-            {autoResult.rejected.length > 0 && (
-              <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full">❌ {autoResult.rejected.length} Rejected</span>
-            )}
-            {autoResult.skipped.length > 0 && (
-              <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full">⏭️ {autoResult.skipped.length} Skipped (manual)</span>
-            )}
-          </div>
-          <button onClick={() => setAutoResult(null)} className="text-[10px] text-blue-500 hover:underline">Tutup</button>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-apple-text-primary tracking-tight">
+          <h1 className="text-2xl font-bold text-[var(--apple-text-primary)] tracking-tight">
             Boss Approval Queue
           </h1>
-          <p className="text-apple-text-secondary text-sm mt-1">
+          <p className="text-[var(--apple-text-secondary)] text-sm mt-1">
             {pendingCount} pending request{pendingCount === 1 ? '' : 's'} awaiting a decision.
           </p>
         </div>
-        {pendingCount > 0 && (
-          <button
-            onClick={runAutoProcess}
-            disabled={autoProcessing}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-amber-500/20 disabled:opacity-60"
-          >
-            {autoProcessing ? (
-              <><span className="animate-spin">⏳</span> Processing...</>
-            ) : (
-              <><span>⚡</span> Auto Mode</>
-            )}
-          </button>
-        )}
       </div>
 
       {/* Stats */}
@@ -343,12 +262,11 @@ export default function BossDashboard() {
               clientProfile &&
               (clientProfile.debt_amount || 0) > (clientProfile.debt_limit || 0);
             const isProcessing = processingId === request.id;
-            const skipReason = skippedReasons[request.id];
 
             return (
               <div
                 key={request.id}
-                className={`bg-white border rounded-apple p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow duration-300 ${skipReason ? 'border-amber-300 ring-1 ring-amber-200' : 'border-apple-gray-border'}`}
+                className="bg-white border border-[var(--apple-border)] rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow duration-300"
               >
                 {/* Card header */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
@@ -362,13 +280,6 @@ export default function BossDashboard() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <StatusBadge status="priced" />
-                    {skipReason && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200 uppercase tracking-wider"
-                        title={skipReason}
-                      >
-                        🆕 Manual Review
-                      </span>
-                    )}
                     {request.branch && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-100 uppercase tracking-wider">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>

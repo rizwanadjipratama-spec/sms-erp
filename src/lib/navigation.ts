@@ -31,6 +31,10 @@ export function getNavigationForProfile(profile: Profile | null): NavItem[] {
     userFeatures = DEFAULT_FEATURES_BY_ROLE[profile.role] || [];
   }
 
+  // Ensure persistent utility navigation
+  if (!userFeatures.includes('MY_PROFILE')) userFeatures.push('MY_PROFILE');
+  if (!userFeatures.includes('SETTINGS')) userFeatures.push('SETTINGS');
+
   // Build a lookup for O(1) access
   const navLookup = new Map(NAV_ITEMS.map(item => [item.id, item]));
 

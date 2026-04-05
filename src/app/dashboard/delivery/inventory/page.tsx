@@ -48,7 +48,7 @@ export default function TechnicianInventoryDashboard() {
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile, '/dashboard/technician/inventory')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/delivery/inventory')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

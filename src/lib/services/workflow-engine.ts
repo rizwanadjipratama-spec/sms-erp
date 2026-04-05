@@ -7,6 +7,7 @@ import { requireAuthUser } from '@/lib/db';
 import { requestsDb, invoicesDb, notificationsDb, profilesDb, activityLogsDb, systemLogsDb, requestStatusLogsDb } from '@/lib/db';
 import type { DbRequest, RequestStatus, UserRole, NotificationType } from '@/types/types';
 import { supabase } from '@/lib/supabase';
+import { autoApproveService } from './auto-approve-service';
 
 // ============================================================================
 // STATUS CONFIGURATION
@@ -195,6 +196,15 @@ async function runSideEffects(input: TransitionInput, updatedRequest: DbRequest)
   if (nextStatus === 'preparing') {
     // Delegated to inventory-service to avoid circular imports
     // The caller (warehouse page) handles stock consumption separately
+  }
+
+  // 2a. Run Auto-Approve check in the background for priced requests
+  if (nextStatus === 'priced') {
+    // Fire and forget auto-approval check
+    autoApproveService.processSingleRequest(updatedRequest, {
+      id: actorId,
+      email: actorEmail || 'system@orion.com',
+    }).catch(err => console.error('Workflow side-effect: auto-approve failed', err));
   }
 
   // 3. Send notifications

@@ -21,7 +21,7 @@ export default function AutomationDashboardPage() {
 
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile, '/dashboard/admin')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/admin-panel')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

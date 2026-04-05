@@ -208,7 +208,7 @@ export default function TechnicianDashboard() {
   // Auth guard
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
-    if (!loading && profile && !canAccessRoute(profile, '/dashboard/technician')) {
+    if (!loading && profile && !canAccessRoute(profile, '/dashboard/delivery')) {
       router.replace(authService.getRoleRedirect(profile.role));
     }
   }, [loading, profile, router]);

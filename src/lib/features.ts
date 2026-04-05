@@ -29,7 +29,8 @@ export type AppFeature =
   | 'CLIENT_ORDERS'
   | 'CLIENT_PRODUCTS'
   | 'CLIENT_ISSUES'
-  | 'CLIENT_NEW_REQUEST';
+  | 'CLIENT_NEW_REQUEST'
+  | 'SETTINGS';
 
 export interface FeatureDefinition {
   id: AppFeature;
@@ -45,21 +46,21 @@ export const FEATURE_DEFINITIONS: FeatureDefinition[] = [
   { id: 'MARKETING', label: 'Marketing', icon: '📣', route: '/dashboard/marketing' },
   { id: 'MARKETING_CLIENTS', label: 'My Clients', icon: '👥', route: '/dashboard/marketing/clients' },
   { id: 'PRICE_LIST', label: 'Price List', icon: '💰', route: '/dashboard/marketing/prices' },
-  { id: 'APPROVALS', label: 'Approvals', icon: '✅', route: '/dashboard/boss' },
+  { id: 'APPROVALS', label: 'Order Approvals', icon: '✅', route: '/dashboard/order-approvals' },
   { id: 'FINANCE', label: 'Finance', icon: '💵', route: '/dashboard/finance' },
   { id: 'WAREHOUSE', label: 'Warehouse', icon: '🏭', route: '/dashboard/warehouse' },
   { id: 'INVENTORY', label: 'Inventory', icon: '📦', route: '/dashboard/warehouse/inventory' },
   { id: 'CATALOG', label: 'Catalog', icon: '📖', route: '/dashboard/warehouse/catalog' },
   { id: 'CREATE_PR', label: 'Create Purchase Request', icon: '🛒', route: '/dashboard/warehouse/request-purchase' },
   { id: 'PR_APPROVALS', label: 'PR Approvals', icon: '📝', route: '/dashboard/procurement-approvals' },
-  { id: 'DELIVERY', label: 'Delivery & Logistic', icon: '🚚', route: '/dashboard/technician' },
-  { id: 'MY_INVENTORY', label: 'My Tech Inventory', icon: '🔧', route: '/dashboard/technician/inventory' },
-  { id: 'COURIER', label: 'Courier Portal', icon: '🛵', route: '/dashboard/courier' },
-  { id: 'TAX_REPORTS', label: 'Tax Reports', icon: '📊', route: '/dashboard/tax' },
+  { id: 'DELIVERY', label: 'Delivery & Logistic', icon: '🚚', route: '/dashboard/delivery' },
+  { id: 'MY_INVENTORY', label: 'My Tech Inventory', icon: '🔧', route: '/dashboard/delivery/inventory' },
+  { id: 'COURIER', label: 'Courier Portal', icon: '🛵', route: '/dashboard/courier-portal' },
+  { id: 'TAX_REPORTS', label: 'Tax Reports', icon: '📊', route: '/dashboard/tax-reports' },
   { id: 'ANALYTICS', label: 'Analytics', icon: '📈', route: '/dashboard/owner' },
   { id: 'REPORTS', label: 'Reports', icon: '📋', route: '/dashboard/owner/reports' },
-  { id: 'DIRECTOR_OVERVIEW', label: 'Director Overview', icon: '👁️', route: '/dashboard/director' },
-  { id: 'ADMIN_PANEL', label: 'Admin Panel', icon: '⚙️', route: '/dashboard/admin' },
+  { id: 'DIRECTOR_OVERVIEW', label: 'Director Overview', icon: '👁️', route: '/dashboard/director-overview' },
+  { id: 'ADMIN_PANEL', label: 'Admin Panel', icon: '⚙️', route: '/dashboard/admin-panel' },
   { id: 'CLAIMS', label: 'Claims & Requests', icon: '🧾', route: '/dashboard/claims' },
   { id: 'CLAIM_APPROVALS', label: 'Claim Approvals', icon: '👍', route: '/dashboard/claims/approvals' },
   { id: 'DISBURSEMENTS', label: 'Disbursements', icon: '💸', route: '/dashboard/claims/disbursements' },
@@ -68,6 +69,7 @@ export const FEATURE_DEFINITIONS: FeatureDefinition[] = [
   { id: 'CMS', label: 'CMS System', icon: '🌐', route: '/dashboard/cms' },
   { id: 'USERS', label: 'Users Management', icon: '🧑‍💼', route: '/dashboard/users' },
   { id: 'MY_PROFILE', label: 'My Profile', icon: '👤', route: '/dashboard/profile' },
+  { id: 'SETTINGS', label: 'Settings', icon: '⚙️', route: '/dashboard/settings' },
   
   // Client Features
   { id: 'CLIENT_ORDERS', label: 'My Orders', icon: '🛍️', route: '/dashboard/client', clientOnly: true },
@@ -84,19 +86,19 @@ export function getFeatureByRoute(route: string): FeatureDefinition | undefined 
 }
 
 export const DEFAULT_FEATURES_BY_ROLE: Record<string, AppFeature[]> = {
-  client: ['CLIENT_ORDERS', 'CLIENT_NEW_REQUEST', 'CLIENT_PRODUCTS', 'CLIENT_ISSUES', 'MY_PROFILE'],
-  marketing: ['COMPANY', 'MARKETING', 'MARKETING_CLIENTS', 'PRICE_LIST', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  boss: ['COMPANY', 'APPROVALS', 'PR_APPROVALS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  finance: ['COMPANY', 'FINANCE', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  warehouse: ['COMPANY', 'WAREHOUSE', 'INVENTORY', 'CATALOG', 'CREATE_PR', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  technician: ['COMPANY', 'DELIVERY', 'MY_INVENTORY', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  courier: ['COMPANY', 'COURIER', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  faktur: ['COMPANY', 'FINANCE', 'CATALOG', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  admin: ['COMPANY', 'ADMIN_PANEL', 'USERS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
+  client: ['CLIENT_ORDERS', 'CLIENT_NEW_REQUEST', 'CLIENT_PRODUCTS', 'CLIENT_ISSUES', 'MY_PROFILE', 'SETTINGS'],
+  marketing: ['COMPANY', 'MARKETING', 'MARKETING_CLIENTS', 'PRICE_LIST', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  boss: ['COMPANY', 'APPROVALS', 'PR_APPROVALS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  finance: ['COMPANY', 'FINANCE', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  warehouse: ['COMPANY', 'WAREHOUSE', 'INVENTORY', 'CATALOG', 'CREATE_PR', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  technician: ['COMPANY', 'DELIVERY', 'MY_INVENTORY', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  courier: ['COMPANY', 'COURIER', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  faktur: ['COMPANY', 'FINANCE', 'CATALOG', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  admin: ['COMPANY', 'ADMIN_PANEL', 'USERS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
   owner: FEATURE_DEFINITIONS.filter(f => !f.clientOnly).map(f => f.id),
-  director: ['COMPANY', 'DIRECTOR_OVERVIEW', 'APPROVALS', 'PR_APPROVALS', 'CLAIM_APPROVALS', 'ANALYTICS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  tax: ['COMPANY', 'TAX_REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  manager: ['COMPANY', 'APPROVALS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  purchasing: ['COMPANY', 'CREATE_PR', 'CATALOG', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
-  claim_officer: ['COMPANY', 'DISBURSEMENTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE'],
+  director: ['COMPANY', 'DIRECTOR_OVERVIEW', 'APPROVALS', 'PR_APPROVALS', 'CLAIM_APPROVALS', 'ANALYTICS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  tax: ['COMPANY', 'TAX_REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  manager: ['COMPANY', 'APPROVALS', 'REPORTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  purchasing: ['COMPANY', 'CREATE_PR', 'CATALOG', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
+  claim_officer: ['COMPANY', 'DISBURSEMENTS', 'CLAIMS', 'TIME_OFF', 'ATTENDANCE', 'MY_PROFILE', 'SETTINGS'],
 };
