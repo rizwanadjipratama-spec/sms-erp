@@ -19,3 +19,5 @@ export { fakturService } from './faktur-service';
 export { leaveService } from './leave-service';
 export { attendanceService } from './attendance-service';
 export { claimService } from './claim-service';
+export { autoApproveService } from './auto-approve-service';
+export type { AutoApproveSettings, AutoApproveResult } from './auto-approve-service';

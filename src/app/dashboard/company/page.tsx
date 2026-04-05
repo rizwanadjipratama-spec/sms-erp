@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 import { canAccessRoute } from '@/lib/permissions';
-import { analyticsService, authService } from '@/lib/services';
+import { analyticsService, authService, autoApproveService } from '@/lib/services';
+import type { AutoApproveSettings } from '@/lib/services';
 import { profilesDb } from '@/lib/db';
 import { formatCurrency, formatNumber, formatRelative } from '@/lib/format-utils';
 import { DashboardSkeleton, StatCard, EmptyState, ErrorState } from '@/components/ui';
@@ -61,6 +62,10 @@ export default function CompanyDashboard() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Auto-approve settings
+  const [autoSettings, setAutoSettings] = useState<AutoApproveSettings | null>(null);
+  const [savingAuto, setSavingAuto] = useState(false);
+
   // Auth guard
   useEffect(() => {
     if (!loading && !profile) router.push('/login');
@@ -93,6 +98,25 @@ export default function CompanyDashboard() {
       setFetching(false);
     }
   }, [profile, activeBranchId]);
+
+  // Fetch auto-approve settings
+  useEffect(() => {
+    if (!activeBranchId || !isSupervisor(profile?.role)) return;
+    autoApproveService.getSettings(activeBranchId).then(setAutoSettings);
+  }, [activeBranchId, profile?.role]);
+
+  const handleAutoSettingsSave = useCallback(async (updates: Partial<AutoApproveSettings>) => {
+    if (!activeBranchId || !autoSettings) return;
+    setSavingAuto(true);
+    try {
+      await autoApproveService.updateSettings(activeBranchId, updates);
+      setAutoSettings(prev => prev ? { ...prev, ...updates } : prev);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSavingAuto(false);
+    }
+  }, [activeBranchId, autoSettings]);
 
   useEffect(() => {
     if (profile) refresh();
@@ -388,6 +412,77 @@ export default function CompanyDashboard() {
           )}
         </div>
       </div>
+
+      {/* Auto Approval Settings (supervisors only) */}
+      {isSupervisor(profile?.role) && autoSettings && (
+        <div className="bg-white border border-[var(--apple-border)] rounded-2xl p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-[var(--apple-text-primary)] mb-4">⚡ Auto Approval Settings</h2>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {/* Toggle */}
+            <div className="flex items-center justify-between sm:flex-col sm:items-start gap-2 p-4 rounded-xl bg-[var(--apple-gray-bg)] border border-[var(--apple-border)]">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--apple-text-secondary)]">Auto Mode</p>
+                <p className="text-[10px] text-[var(--apple-text-tertiary)] mt-0.5">Otomatis ACC/Reject di Boss</p>
+              </div>
+              <button
+                onClick={() => handleAutoSettingsSave({ auto_approve_enabled: !autoSettings.auto_approve_enabled })}
+                disabled={savingAuto}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  autoSettings.auto_approve_enabled
+                    ? 'bg-emerald-500 focus:ring-emerald-500'
+                    : 'bg-gray-300 focus:ring-gray-400'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out mt-0.5 ${
+                    autoSettings.auto_approve_enabled ? 'translate-x-5 ml-0.5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Min Spend */}
+            <div className="p-4 rounded-xl bg-[var(--apple-gray-bg)] border border-[var(--apple-border)]">
+              <p className="text-xs font-bold uppercase tracking-wider text-[var(--apple-text-secondary)] mb-2">Min. Spend Auto ACC</p>
+              <p className="text-[10px] text-[var(--apple-text-tertiary)] mb-2">Client baru dibawah ini harus manual</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[var(--apple-text-secondary)]">Rp</span>
+                <input
+                  type="number"
+                  value={autoSettings.auto_approve_min_spend}
+                  onChange={(e) => setAutoSettings(prev => prev ? { ...prev, auto_approve_min_spend: Number(e.target.value) || 0 } : prev)}
+                  className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[var(--apple-blue)]/20 focus:border-[var(--apple-blue)]"
+                />
+              </div>
+              <button
+                onClick={() => handleAutoSettingsSave({ auto_approve_min_spend: autoSettings.auto_approve_min_spend })}
+                disabled={savingAuto}
+                className="mt-2 w-full text-[10px] font-bold py-1.5 bg-[var(--apple-blue)] text-white rounded-lg hover:bg-[var(--apple-blue-hover)] transition-colors disabled:opacity-50"
+              >Simpan</button>
+            </div>
+
+            {/* Default Limit */}
+            <div className="p-4 rounded-xl bg-[var(--apple-gray-bg)] border border-[var(--apple-border)]">
+              <p className="text-xs font-bold uppercase tracking-wider text-[var(--apple-text-secondary)] mb-2">Default Limit Client Baru</p>
+              <p className="text-[10px] text-[var(--apple-text-tertiary)] mb-2">Limit piutang untuk client baru</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[var(--apple-text-secondary)]">Rp</span>
+                <input
+                  type="number"
+                  value={autoSettings.auto_approve_default_limit}
+                  onChange={(e) => setAutoSettings(prev => prev ? { ...prev, auto_approve_default_limit: Number(e.target.value) || 0 } : prev)}
+                  className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[var(--apple-blue)]/20 focus:border-[var(--apple-blue)]"
+                />
+              </div>
+              <button
+                onClick={() => handleAutoSettingsSave({ auto_approve_default_limit: autoSettings.auto_approve_default_limit })}
+                disabled={savingAuto}
+                className="mt-2 w-full text-[10px] font-bold py-1.5 bg-[var(--apple-blue)] text-white rounded-lg hover:bg-[var(--apple-blue-hover)] transition-colors disabled:opacity-50"
+              >Simpan</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Order Pipeline */}
       <div className="bg-white border border-[var(--apple-border)] rounded-2xl p-5 shadow-sm">
